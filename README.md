@@ -1,38 +1,38 @@
-
-<!DOCTYPE html>
 <html lang="ka">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🏨 სასტუმროს მართვის სისტემა</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --primary: #3b82f6;
-            --primary-dark: #1d4ed8;
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
             --secondary: #64748b;
-            --success: #22c55e;
-            --warning: #eab308;
-            --danger: #ef4444;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #dc2626;
             --light: #f8fafc;
             --dark: #0f172a;
             --border: #e2e8f0;
-            --accent: #ec4899;
+            --accent: #0ea5e9;
             --gradient: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
             --calendar-bg: #ffffff;
             --calendar-header: #f1f5f9;
             --calendar-border: #cbd5e1;
-            --reserved: #fefce8;
-            --reserved-border: #eab308;
-            --checkedin: #dcfce7;
-            --checkedin-border: #22c55e;
+            --reserved: #fee2e2;
+            --reserved-border: #ef4444;
+            --checkedin: #dbeafe;
+            --checkedin-border: #3b82f6;
             --checkout: #fee2e2;
             --checkout-border: #ef4444;
             --day-width: 42px;
         }
-        body { font-family: 'Roboto', sans-serif; background: var(--light); color: var(--dark); line-height: 1.6; }
+        body { font-family: 'Inter', sans-serif; background: #f5f7fb; color: var(--dark); line-height: 1.55; }
         .container { max-width: 1440px; margin: 0 auto; padding: 24px; }
+
+        /* Sidebar layout removed (revert to top tabs) */
 
         /* Login */
         .login-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: var(--gradient); }
@@ -41,28 +41,26 @@
         .login-box h1 { text-align: center; margin-bottom: 32px; color: var(--primary); font-size: 32px; display: flex; align-items: center; justify-content: center; gap: 8px; }
 
         /* Header */
-        .header { background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }
+        .header { background: white; padding: 22px 24px; border-radius: 16px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06); margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }
         .header h1 { color: var(--primary); font-size: 28px; display: flex; align-items: center; gap: 8px; }
         .user-info { display: flex; align-items: center; gap: 16px; }
         .user-info span { font-weight: 500; color: var(--secondary); }
 
         /* Navigation */
-        .nav-tabs { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; background: white; padding: 12px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-        .nav-tabs button { padding: 12px 28px; background: transparent; border: 2px solid transparent; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 500; transition: all 0.3s ease; color: var(--dark); display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .nav-tabs button:hover { background: var(--light); border-color: var(--primary); color: var(--primary); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .nav-tabs button.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
+        .nav-tabs { display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; justify-content: center; background: white; padding: 10px; border-radius: 16px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06); }
 
         /* Cards */
-        .card { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 24px; transition: transform 0.3s ease; }
+        .card { background: white; border-radius: 16px; padding: 22px 24px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06); margin-bottom: 24px; transition: transform 0.2s ease, box-shadow 0.2s ease; }
         .card:hover { transform: translateY(-3px); }
         .card h2 { margin-bottom: 24px; color: var(--primary); font-size: 24px; }
         .card h3 { margin-bottom: 16px; color: var(--dark); font-size: 20px; }
 
         /* Stats */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; margin-bottom: 32px; }
-        .stat-card { background: linear-gradient(135deg, #ffffff, #f8fafc); padding: 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); text-align: center; transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .stat-card { background: #ffffff; padding: 22px; border-radius: 16px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06); text-align: left; transition: transform 0.2s ease, box-shadow 0.2s ease; position: relative; overflow: hidden; }
+        .stat-card::before { content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: var(--primary); }
         .stat-card:hover { transform: scale(1.05); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
-        .stat-card .label { font-size: 16px; color: var(--secondary); margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .stat-card .label { font-size: 14px; color: var(--secondary); margin-bottom: 8px; display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
         .stat-card .value { font-size: 36px; font-weight: bold; color: var(--primary); }
 
         /* Forms */
@@ -119,10 +117,12 @@
         .calendar-head-cell { padding: 12px 8px; text-align: center; font-size: 14px; font-weight: 600; color: var(--dark); border-right: 1px solid var(--calendar-border); }
         .calendar-head-cell.room { text-align: left; padding-left: 16px; position: sticky; left: 0; z-index: 6; background: var(--calendar-header); border-right: 2px solid var(--calendar-border); }
         .calendar-head-cell.weekend { background: #ffedd5; color: #ea580c; }
+        .calendar-head-cell.today { background: #dbeafe; color: #1d4ed8; border-bottom: 2px solid #1d4ed8; }
 
         .calendar-row { position: relative; border-bottom: 1px solid var(--calendar-border); }
         .calendar-room-cell { padding: 14px 16px; font-weight: 600; color: var(--dark); background: white; border-right: 2px solid var(--calendar-border); position: sticky; left: 0; z-index: 4; display: flex; align-items: center; gap: 8px; }
         .calendar-day-cell { border-right: 1px solid var(--calendar-border); height: 48px; background: white; }
+        .calendar-day-cell.today { background: #eff6ff; box-shadow: inset 0 0 0 1px #3b82f6; }
         .calendar-row:hover .calendar-day-cell { background: #f8fafc; }
         .calendar-row:hover .calendar-room-cell { background: #f8fafc; }
 
@@ -188,7 +188,6 @@
         /* Responsive */
         @media (max-width: 768px) {
             .header { flex-direction: column; gap: 16px; }
-            .nav-tabs button { flex: 1; min-width: 140px; }
             .form-row { grid-template-columns: 1fr; }
             .stats-grid { grid-template-columns: 1fr; }
             .calendar-controls { flex-direction: column; gap: 16px; align-items: flex-start; }
@@ -206,6 +205,206 @@
             margin-bottom: 16px;
         }
         .consent-form p { margin-bottom: 10px; }
+
+        /* ===== SaaS UI Polish Overrides (visual-only) ===== */
+        body { background: #f5f7fb; line-height: 1.55; }
+        .header { border-radius: 16px; padding: 22px 24px; box-shadow: 0 10px 24px rgba(15,23,42,0.06); }
+        .nav-tabs { border-radius: 16px; padding: 10px; box-shadow: 0 10px 24px rgba(15,23,42,0.06); }
+        .nav-tabs button {
+            font-weight: 600;
+            font-size: 14px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            color: #0f172a;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .nav-tabs button svg { width: 18px; height: 18px; stroke: #ffffff; stroke-width: 1.8; fill: none; }
+        .nav-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 14px rgba(15,23,42,0.12);
+        }
+        .nav-icon.blue { background: linear-gradient(135deg, #2563eb, #60a5fa); }
+        .nav-icon.purple { background: linear-gradient(135deg, #7c3aed, #a78bfa); }
+        .nav-icon.orange { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+        .nav-icon.teal { background: linear-gradient(135deg, #0ea5e9, #22d3ee); }
+        .nav-icon.green { background: linear-gradient(135deg, #16a34a, #34d399); }
+        .nav-icon.gray { background: linear-gradient(135deg, #64748b, #94a3b8); }
+        .nav-tabs button:hover {
+            transform: translateY(-1px);
+            background: #f1f5f9;
+            box-shadow: 0 8px 18px rgba(15,23,42,0.08);
+        }
+        .nav-tabs button.active {
+            background: rgba(37,99,235,0.12);
+            color: #1e40af;
+            border-color: rgba(37,99,235,0.25);
+            box-shadow: inset 0 0 0 1px rgba(37,99,235,0.15);
+        }
+
+        .card { border-radius: 16px; padding: 22px 24px; box-shadow: 0 10px 24px rgba(15,23,42,0.06); }
+        .stat-card { border-radius: 16px; padding: 22px; text-align: left; }
+        .stat-card .label { font-size: 14px; justify-content: flex-start; }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea { padding: 10px 14px; border-radius: 10px; font-size: 14px; border: 1px solid #e2e8f0; }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+
+        .btn { padding: 10px 18px; border-radius: 12px; font-size: 14px; font-weight: 600; letter-spacing: 0.2px; }
+        .btn-primary {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            box-shadow: 0 10px 24px rgba(37,99,235,0.28);
+            border: 1px solid rgba(37,99,235,0.2);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(37,99,235,0.35); }
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #0f172a;
+            box-shadow: 0 6px 14px rgba(15,23,42,0.08);
+            border: 1px solid #e2e8f0;
+        }
+        .btn-secondary:hover { background: #e9eef6; }
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            box-shadow: 0 8px 20px rgba(239,68,68,0.3);
+            border: 1px solid rgba(239,68,68,0.2);
+        }
+        .btn-danger:hover { transform: translateY(-1px); }
+
+        table th, table td { padding: 14px 16px; }
+        table th { background: #f8fafc; color: #0f172a; }
+        table tbody tr:nth-child(odd) { background: #fcfdff; }
+        table tr:hover { background: #f6f8fc; }
+
+        .reservation-info-modal { border-radius: 16px; box-shadow: 0 18px 40px rgba(15,23,42,0.18); }
+
+        /* Calendar polish */
+        .calendar-wrapper { border-radius: 18px; box-shadow: 0 12px 28px rgba(15,23,42,0.08); }
+        .calendar-header { border-bottom: 1px solid rgba(255,255,255,0.15); }
+        .calendar-head-cell { font-weight: 600; font-size: 13px; }
+        .calendar-day-cell { transition: background 0.2s ease, box-shadow 0.2s ease; }
+        .calendar-day-cell:hover { background: #eef2ff; }
+        .calendar-day-cell.today { background: #e0e7ff; box-shadow: inset 0 0 0 1px #3b82f6; }
+        .calendar-head-cell.today { background: #e0e7ff; color: #1d4ed8; }
+        .reservation-bar {
+            border-radius: 10px;
+            font-size: 12px;
+            letter-spacing: 0.2px;
+            box-shadow: 0 6px 14px rgba(15,23,42,0.15);
+        }
+        .reservation-bar.reserved { background: #fee2e2; border-color: #ef4444; }
+        .reservation-bar.checkedin { background: #dbeafe; border-color: #3b82f6; }
+        .reservation-bar.checkout { background: #ffe4e6; border-color: #f43f5e; }
+
+        /* ===== Design Refresh (Applied) ===== */
+        * { box-sizing: border-box; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .nav-tabs button { transition: all 0.2s; }
+        .nav-tabs button:hover { background: rgba(59, 130, 246, 0.1); }
+        .nav-tabs button.active {
+            background: rgba(59, 130, 246, 0.15);
+            color: #2563eb;
+            border-right: 3px solid #2563eb;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+        .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+        }
+        .btn-secondary:hover { background: #e2e8f0; }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+        }
+        .btn-danger:hover { background: #dc2626; }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+            outline: none;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .modal-overlay { background: rgba(0,0,0,0.5); transition: all 0.3s; }
+        .modal-content { background: white; border-radius: 16px; max-width: 600px; width: 90%; max-height: 90%; overflow-y: auto; transform: scale(0.9); transition: all 0.3s; }
+        .modal.active .modal-content { transform: scale(1); }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .table-container table tr { transition: all 0.2s; }
+        .table-container table tr:hover { background: #f8fafc; }
     </style>
 </head>
 <body>
@@ -236,12 +435,42 @@
             </div>
 
             <div class="nav-tabs">
-                <button class="active" onclick="showPage('dashboard', this)">📊 დაშბორდი</button>
-                <button onclick="showPage('calendar', this)">📅 კალენდარი</button>
-                <button onclick="showPage('reservations', this)">📋 ჯავშნები</button>
-                <button onclick="showPage('rooms', this)">🚪 ოთახები</button>
-                <button onclick="showPage('reports', this)">📈 ანგარიშები</button>
-                <button onclick="showPage('settings', this)">⚙️ პარამეტრები</button>
+                <button class="active" onclick="showPage('dashboard', this)">
+                    <span class="nav-icon blue">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="2"></rect><rect x="13" y="3" width="8" height="8" rx="2"></rect><rect x="3" y="13" width="8" height="8" rx="2"></rect><rect x="13" y="13" width="8" height="8" rx="2"></rect></svg>
+                    </span>
+                    დაშბორდი
+                </button>
+                <button onclick="showPage('calendar', this)">
+                    <span class="nav-icon purple">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="8" y1="3" x2="8" y2="7"></line><line x1="16" y1="3" x2="16" y2="7"></line></svg>
+                    </span>
+                    კალენდარი
+                </button>
+                <button onclick="showPage('reservations', this)">
+                    <span class="nav-icon orange">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"></path><line x1="8" y1="10" x2="16" y2="10"></line><line x1="8" y1="14" x2="16" y2="14"></line></svg>
+                    </span>
+                    ჯავშნები
+                </button>
+                <button onclick="showPage('rooms', this)">
+                    <span class="nav-icon teal">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="16" cy="12" r="1.5"></circle></svg>
+                    </span>
+                    ოთახები
+                </button>
+                <button onclick="showPage('reports', this)">
+                    <span class="nav-icon green">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="4" y1="20" x2="20" y2="20"></line><rect x="6" y="10" width="3" height="10" rx="1"></rect><rect x="11" y="6" width="3" height="14" rx="1"></rect><rect x="16" y="13" width="3" height="7" rx="1"></rect></svg>
+                    </span>
+                    ანგარიშები
+                </button>
+                <button onclick="showPage('settings', this)">
+                    <span class="nav-icon gray">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1 1 0 0 0 .2-1l-1-1.7a7.9 7.9 0 0 0 0-1.6l1-1.7a1 1 0 0 0-.2-1l-1.6-1.6a1 1 0 0 0-1-.2l-1.7 1a7.9 7.9 0 0 0-1.6 0l-1.7-1a1 1 0 0 0-1 .2L8.4 4.8a1 1 0 0 0-.2 1l1 1.7a7.9 7.9 0 0 0 0 1.6l-1 1.7a1 1 0 0 0 .2 1l1.6 1.6a1 1 0 0 0 1 .2l1.7-1a7.9 7.9 0 0 0 1.6 0l1.7 1a1 1 0 0 0 1-.2z"></path></svg>
+                    </span>
+                    პარამეტრები
+                </button>
             </div>
 
             <div id="dashboardPage" class="page"></div>
@@ -250,6 +479,10 @@
             <div id="roomsPage" class="page hidden"></div>
             <div id="reportsPage" class="page hidden"></div>
             <div id="settingsPage" class="page hidden"></div>
+            <div id="checkinoutPage" class="page hidden"></div>
+            <div id="paymentsPage" class="page hidden"></div>
+            <div id="staffPage" class="page hidden"></div>
+            <div id="housekeepingPage" class="page hidden"></div>
         </div>
     </div>
 
@@ -261,6 +494,21 @@
         <p id="infoNights"></p>
         <p id="infoStatus"></p>
         <p id="infoTotal"></p>
+        <div class="form-group">
+            <label>კომენტარი</label>
+            <textarea id="infoNotes" readonly></textarea>
+        </div>
+        <div class="form-group">
+            <label>თანხმობის ენა</label>
+            <select id="consentLangInfo">
+                <option value="ka">ქართული</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-primary" id="infoCheckinBtn">ჩექინი</button>
+            <button class="btn btn-danger" id="infoCheckoutBtn">ჩექაუთი</button>
+        </div>
         <div class="btn-group">
             <button class="btn btn-primary" id="editReservationBtn">რედაქტირება</button>
             <button class="btn btn-secondary" id="printInvoiceBtn">ინვოისის ბეჭდვა</button>
@@ -372,14 +620,15 @@
                         guestCitizenship: 'საქართველო',
                         guestBirthDate: '1990-01-01',
                         roomId: 1,
-                        checkinDate: formatDate(addDays(today, -2)),
-                        checkoutDate: formatDate(addDays(today, 1)),
+                        checkinDate: formatDateISO(addDays(today, -2)),
+                        checkoutDate: formatDateISO(addDays(today, 1)),
                         checkinTime: '14:00',
                         checkoutTime: '12:00',
                         numGuests: 1,
                         notes: '',
                         status: 'Checked-in',
                         pricePerNight: 80,
+                        advanceAmount: 0,
                         lateCheckoutHours: 0,
                         extraBed: false,
                         createdAt: new Date().toISOString()
@@ -393,14 +642,15 @@
                         guestCitizenship: 'საქართველო',
                         guestBirthDate: '1992-02-02',
                         roomId: 3,
-                        checkinDate: formatDate(addDays(today, 1)),
-                        checkoutDate: formatDate(addDays(today, 4)),
+                        checkinDate: formatDateISO(addDays(today, 1)),
+                        checkoutDate: formatDateISO(addDays(today, 4)),
                         checkinTime: '14:00',
                         checkoutTime: '12:00',
                         numGuests: 2,
                         notes: '',
                         status: 'Reserved',
                         pricePerNight: 80,
+                        advanceAmount: 0,
                         lateCheckoutHours: 0,
                         extraBed: false,
                         createdAt: new Date().toISOString()
@@ -414,14 +664,15 @@
                         guestCitizenship: 'საქართველო',
                         guestBirthDate: '1985-03-03',
                         roomId: 5,
-                        checkinDate: formatDate(addDays(today, 5)),
-                        checkoutDate: formatDate(addDays(today, 8)),
+                        checkinDate: formatDateISO(addDays(today, 5)),
+                        checkoutDate: formatDateISO(addDays(today, 8)),
                         checkinTime: '14:00',
                         checkoutTime: '12:00',
                         numGuests: 2,
                         notes: '',
                         status: 'Reserved',
                         pricePerNight: 120,
+                        advanceAmount: 0,
                         lateCheckoutHours: 0,
                         extraBed: false,
                         createdAt: new Date().toISOString()
@@ -435,14 +686,15 @@
                         guestCitizenship: 'საქართველო',
                         guestBirthDate: '1995-04-04',
                         roomId: 7,
-                        checkinDate: formatDate(addDays(today, 0)),
-                        checkoutDate: formatDate(addDays(today, 3)),
+                        checkinDate: formatDateISO(addDays(today, 0)),
+                        checkoutDate: formatDateISO(addDays(today, 3)),
                         checkinTime: '14:00',
                         checkoutTime: '12:00',
                         numGuests: 1,
                         notes: '',
                         status: 'Checked-in',
                         pricePerNight: 120,
+                        advanceAmount: 0,
                         lateCheckoutHours: 0,
                         extraBed: false,
                         createdAt: new Date().toISOString()
@@ -452,16 +704,51 @@
                 Storage.set('nextReservationId', 5);
                 Storage.set('payments', []);
                 Storage.set('nextPaymentId', 1);
+                Storage.set('guests', []);
+                Storage.set('monthlyRates', getDefaultMonthlyRates());
                 Storage.set('initialized', true);
             }
         }
 
-        function formatDate(date) {
+        function getDefaultMonthlyRates() {
+            const rooms = Storage.get('rooms', []);
+            const types = ['Single', 'Double', 'Triple', 'Family', 'Suite'];
+            const defaultByType = {};
+            types.forEach(t => {
+                const room = rooms.find(r => r.roomType === t);
+                defaultByType[t] = room ? room.basePrice : 0;
+            });
+            const rates = {};
+            for (let m = 1; m <= 12; m++) {
+                rates[m] = { ...defaultByType };
+            }
+            return rates;
+        }
+
+        function getPriceForRoomDate(room, dateStr) {
+            const rates = Storage.get('monthlyRates', {});
+            const d = new Date(dateStr);
+            const month = d.getMonth() + 1;
+            const byMonth = rates[month];
+            if (byMonth && byMonth[room.roomType] !== undefined) {
+                return byMonth[room.roomType];
+            }
+            return room.basePrice;
+        }
+
+        function formatDateISO(date) {
             const d = new Date(date);
             const year = d.getFullYear();
             const month = String(d.getMonth() + 1).padStart(2, '0');
             const day = String(d.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
+        }
+        function formatDateDisplay(date) {
+            const d = new Date(date);
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            return `${day}/${month}/${year}`;
         }
         function addDays(date, days) {
             const result = new Date(date);
@@ -485,6 +772,20 @@
             if (minutes === null) return 0;
             const diff = minutes - (12 * 60);
             return diff > 0 ? Math.ceil(diff / 60) : 0;
+        }
+        function findGuestByIdNumber(idNumber) {
+            const guests = Storage.get('guests', []);
+            return guests.find(g => g.guestIdNumber === idNumber);
+        }
+        function upsertGuest(guest) {
+            const guests = Storage.get('guests', []);
+            const idx = guests.findIndex(g => g.guestIdNumber === guest.guestIdNumber);
+            if (idx === -1) {
+                guests.push(guest);
+            } else {
+                guests[idx] = { ...guests[idx], ...guest };
+            }
+            Storage.set('guests', guests);
         }
         function showAlert(containerId, message, type = 'success') {
             const container = document.getElementById(containerId);
@@ -537,6 +838,10 @@
                 case 'rooms': renderRooms(); break;
                 case 'reports': renderReports(); break;
                 case 'settings': renderSettings(); break;
+                case 'checkinout': renderCheckInOut(); break;
+                case 'payments': renderPayments(); break;
+                case 'staff': renderStaff(); break;
+                case 'housekeeping': renderHousekeeping(); break;
             }
 
             if (pageName === 'reservations') {
@@ -550,7 +855,7 @@
         }
 
         function renderDashboard() {
-            const today = formatDate(new Date());
+            const today = formatDateISO(new Date());
             const reservations = Storage.get('reservations', []);
             const rooms = Storage.get('rooms', []);
             const arrivals = reservations.filter(r => r.checkinDate === today && r.status !== 'Cancelled').length;
@@ -563,13 +868,13 @@
 
             let html = `
                 <div class="stats-grid">
-                    <div class="stat-card"><div class="label">🛬 დღევანდელი ჩასახლებები</div><div class="value">${arrivals}</div></div>
-                    <div class="stat-card"><div class="label">🛫 დღევანდელი გასახლებები</div><div class="value">${departures}</div></div>
+                    <div class="stat-card"><div class="label">🛬 დღევანდელი Check-in</div><div class="value">${arrivals}</div></div>
+                    <div class="stat-card"><div class="label">🛫 დღევანდელი Check-out</div><div class="value">${departures}</div></div>
                     <div class="stat-card"><div class="label">🏠 ამჟამად დასახლებული</div><div class="value">${inHouse}</div></div>
                     <div class="stat-card"><div class="label">🆓 თავისუფალი ოთახები</div><div class="value">${available}</div></div>
                 </div>
                 <div class="card">
-                    <h3>დღევანდელი ჩასახლებები</h3>
+                    <h3>დღევანდელი Check-in</h3>
                     ${arrivalsToday.length > 0 ? `
                         <div class="table-container">
                             <table>
@@ -591,10 +896,10 @@
                                 </tbody>
                             </table>
                         </div>
-                    ` : '<div class="alert alert-info">დღეს ჩასახლებები არ არის</div>'}
+                    ` : '<div class="alert alert-info">დღეს Check-in არ არის</div>'}
                 </div>
                 <div class="card">
-                    <h3>დღევანდელი გასახლებები</h3>
+                    <h3>დღევანდელი Check-out</h3>
                     ${departuresToday.length > 0 ? `
                         <div class="table-container">
                             <table>
@@ -616,7 +921,7 @@
                                 </tbody>
                             </table>
                         </div>
-                    ` : '<div class="alert alert-info">დღეს გასახლებები არ არის</div>'}
+                    ` : '<div class="alert alert-info">დღეს Check-out არ არის</div>'}
                 </div>
             `;
             document.getElementById('dashboardPage').innerHTML = html;
@@ -628,6 +933,7 @@
             const month = currentCalendarDate.getMonth();
             const monthNames = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
             const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const todayStr = formatDateISO(new Date());
 
             const rooms = Storage.get('rooms', []);
             const reservations = Storage.get('reservations', []);
@@ -637,7 +943,9 @@
             for (let day = 1; day <= daysInMonth; day++) {
                 const currentDate = new Date(year, month, day);
                 const isWeekendDay = isWeekend(currentDate);
-                headerCells += `<div class="calendar-head-cell ${isWeekendDay ? 'weekend' : ''}">${day}</div>`;
+                const currentDateStr = formatDateISO(currentDate);
+                const isToday = currentDateStr === todayStr;
+                headerCells += `<div class="calendar-head-cell ${isWeekendDay ? 'weekend' : ''} ${isToday ? 'today' : ''}">${day}</div>`;
             }
             headerCells += '</div>';
 
@@ -647,7 +955,10 @@
                 bodyRows += `<div class="calendar-room-cell">${room.roomName || room.roomNumber}<span class="room-type-badge">${room.roomType}</span></div>`;
 
                 for (let day = 1; day <= daysInMonth; day++) {
-                    bodyRows += `<div class="calendar-day-cell"></div>`;
+                    const currentDate = new Date(year, month, day);
+                    const currentDateStr = formatDateISO(currentDate);
+                    const isToday = currentDateStr === todayStr;
+                    bodyRows += `<div class="calendar-day-cell ${isToday ? 'today' : ''}" data-room-id="${room.id}" data-date="${currentDateStr}" onclick="openNewReservationModalWithDate(${room.id}, '${currentDateStr}')"></div>`;
                 }
 
                 const roomRes = reservations.filter(r => r.roomId === room.id && r.status !== 'Cancelled');
@@ -684,7 +995,7 @@
                         <div class="reservation-bar ${statusClass}" data-reservation-id="${res.id}"
                             style="left: ${leftPx + 180}px; width: ${widthPx}px; --left-cut:${leftCut}px; --right-cut:${rightCut}px;"
                             onclick="showReservationInfo(this)">
-                            ${res.guestName.split(' ')[0]}
+                            ${res.guestName}
                         </div>
                     `;
                 });
@@ -708,7 +1019,7 @@
                                 <div class="legend-item"><div class="legend-color available"></div><span>თავისუფალი</span></div>
                                 <div class="legend-item"><div class="legend-color reserved"></div><span>დაჯავშნილი</span></div>
                                 <div class="legend-item"><div class="legend-color checkedin"></div><span>დასახლებული</span></div>
-                                <div class="legend-item"><div class="legend-color checkout"></div><span>გასახლება</span></div>
+                                <div class="legend-item"><div class="legend-color checkout"></div><span>Check-out</span></div>
                             </div>
                         </div>
                         <div class="calendar-grid">
@@ -724,11 +1035,11 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Check-in</label>
-                            <input type="date" id="availCheckIn" value="${formatDate(new Date())}">
+                            <input type="date" id="availCheckIn" value="${formatDateISO(new Date())}">
                         </div>
                         <div class="form-group">
                             <label>Check-out</label>
-                            <input type="date" id="availCheckOut" value="${formatDate(addDays(new Date(), 1))}">
+                            <input type="date" id="availCheckOut" value="${formatDateISO(addDays(new Date(), 1))}">
                         </div>
                         <div class="form-group">
                             <label>&nbsp;</label>
@@ -753,13 +1064,20 @@
                 const total = getReservationFinancials(reservation.id);
                 document.getElementById('infoGuestName').textContent = reservation.guestName;
                 document.getElementById('infoPhone').innerHTML = reservation.guestPhone ? `📞 ${reservation.guestPhone}` : '';
-                document.getElementById('infoDates').innerHTML = `📅 ${reservation.checkinDate} - ${reservation.checkoutDate}`;
+                document.getElementById('infoDates').innerHTML = `📅 ${formatDateDisplay(reservation.checkinDate)} - ${formatDateDisplay(reservation.checkoutDate)}`;
                 const cinTime = reservation.checkinTime || '14:00';
                 const coutTime = reservation.checkoutTime || '12:00';
                 document.getElementById('infoTimes').innerHTML = `⏰ Check-in: ${cinTime} | Check-out: ${coutTime}`;
+                document.getElementById('infoCheckinBtn').onclick = function() {
+                    setReservationStatus(reservation.id, 'Checked-in');
+                };
+                document.getElementById('infoCheckoutBtn').onclick = function() {
+                    setReservationStatus(reservation.id, 'Checked-out');
+                };
                 document.getElementById('infoNights').innerHTML = `🌙 ${calculateNights(reservation.checkinDate, reservation.checkoutDate)} ღამე`;
                 document.getElementById('infoStatus').innerHTML = `<span class="badge badge-${reservation.status.toLowerCase().replace('-', '')}">${reservation.status}</span>`;
-                document.getElementById('infoTotal').innerHTML = `💵 ჯამი: ${total.total}₾ ( + ლეით ჩექაუთი ${total.lateCheckoutFee}₾ )`;
+                document.getElementById('infoTotal').innerHTML = `💵 ჯამი: ${total.dueTotal}₾ (სრული: ${total.grossTotal}₾, ავანსი: ${total.advance}₾${total.lateCheckoutFee > 0 ? `, ლეითი: ${total.lateCheckoutFee}₾` : ''})`;
+                document.getElementById('infoNotes').value = reservation.notes || '';
                 document.getElementById('editReservationBtn').onclick = function() {
                     closeInfoModal();
                     openEditReservationModal(reservation.id);
@@ -769,7 +1087,10 @@
                 };
                 const consentBtn = document.getElementById('printConsentBtn');
                 if (consentBtn) {
-                    consentBtn.onclick = function() { printConsent(reservation.id); };
+                    consentBtn.onclick = function() {
+                        const lang = document.getElementById('consentLangInfo')?.value || 'ka';
+                        printConsent(reservation.id, lang);
+                    };
                 }
                 document.getElementById('reservationInfoModal').classList.add('show');
                 document.getElementById('modalOverlay').classList.add('show');
@@ -778,6 +1099,24 @@
         function closeInfoModal() {
             document.getElementById('reservationInfoModal').classList.remove('show');
             document.getElementById('modalOverlay').classList.remove('show');
+        }
+        function setReservationStatus(reservationId, status) {
+            const reservations = Storage.get('reservations', []);
+            const idx = reservations.findIndex(r => r.id === reservationId);
+            if (idx === -1) return;
+            reservations[idx].status = status;
+            if (status === 'Checked-out') {
+                const rooms = Storage.get('rooms', []);
+                const roomIndex = rooms.findIndex(r => r.id === reservations[idx].roomId);
+                if (roomIndex !== -1) {
+                    rooms[roomIndex].cleaningStatus = 'Dirty';
+                    Storage.set('rooms', rooms);
+                }
+            }
+            Storage.set('reservations', reservations);
+            renderCalendar();
+            renderReservations();
+            showReservationInfo({ getAttribute: () => reservationId });
         }
 
         function openEditReservationModal(reservationId) {
@@ -824,6 +1163,7 @@
                             </select>
                         </div>
                         <div class="form-group"><label>ფასი ღამეში (₾)</label><input type="number" id="editPricePerNight" value="${reservation.pricePerNight}" min="0" step="10"></div>
+                        <div class="form-group"><label>ავანსი (₾)</label><input type="number" id="editAdvanceAmount" value="${reservation.advanceAmount || 0}" min="0" step="10"></div>
                     </div>
                     <div class="form-group"><label>შენიშვნა</label><textarea id="editNotes">${reservation.notes || ''}</textarea></div>
                     <div class="form-group">
@@ -859,6 +1199,7 @@
             const checkoutTime = document.getElementById('editCheckoutTime').value || '12:00';
             const status = document.getElementById('editStatus').value;
             const pricePerNight = parseFloat(document.getElementById('editPricePerNight').value);
+            const advanceAmount = parseFloat(document.getElementById('editAdvanceAmount').value) || 0;
             const notes = document.getElementById('editNotes').value;
             const lateCheckoutHours = calculateLateCheckoutHours(checkoutTime);
             const extraBed = document.getElementById('editExtraBed').checked;
@@ -880,8 +1221,18 @@
                     ...reservations[index],
                     guestName, guestPhone, guestEmail, guestIdNumber, guestCitizenship, guestBirthDate,
                     numGuests, checkinDate, checkoutDate, checkinTime, checkoutTime,
-                    status, pricePerNight, notes, lateCheckoutHours, extraBed
+                    status, pricePerNight, advanceAmount, notes, lateCheckoutHours, extraBed
                 };
+                if (guestIdNumber) {
+                    upsertGuest({
+                        guestIdNumber,
+                        guestName,
+                        guestPhone,
+                        guestEmail,
+                        guestCitizenship,
+                        guestBirthDate
+                    });
+                }
 
                 if (status === 'Checked-out') {
                     const rooms = Storage.get('rooms', []);
@@ -990,7 +1341,7 @@
                 html += `
                     <div class="accordion-item" id="resAccordion${res.id}">
                         <div class="accordion-header" onclick="toggleAccordion(this)">
-                            <span>${statusEmojis[res.status] || ''} ${res.guestName} - ოთახი ${room ? (room.roomName || room.roomNumber) : '-'} (${res.checkinDate} - ${res.checkoutDate})</span>
+                            <span>${statusEmojis[res.status] || ''} ${res.guestName} - ოთახი ${room ? (room.roomName || room.roomNumber) : '-'} (${formatDateDisplay(res.checkinDate)} - ${formatDateDisplay(res.checkoutDate)})</span>
                             <span>▼</span>
                         </div>
                         <div class="accordion-content">
@@ -1036,16 +1387,26 @@
                                     </select>
                                 </div>
                                 <div class="form-group"><label>ფასი ღამეში (₾)</label><input type="number" id="pricePerNight${res.id}" value="${res.pricePerNight}" min="0" step="10"></div>
+                                <div class="form-group"><label>ავანსი (₾)</label><input type="number" id="advanceAmount${res.id}" value="${res.advanceAmount || 0}" min="0" step="10"></div>
                             </div>
                             <div class="form-group"><label>შენიშვნა</label><textarea id="notes${res.id}">${res.notes || ''}</textarea></div>
                             <div class="form-row">
                                 <div class="form-group"><label>ღამეები</label><input type="text" value="${nights}" disabled></div>
-                                <div class="form-group"><label>სრული თანხა</label><input type="text" value="${financials.total}₾ (ლეით: ${financials.lateCheckoutFee}₾)" disabled></div>
+                                <div class="form-group"><label>სრული თანხა</label><input type="text" value="${financials.dueTotal}₾ (სრული: ${financials.grossTotal}₾, ავანსი: ${financials.advance}₾${financials.lateCheckoutFee > 0 ? `, ლეითი: ${financials.lateCheckoutFee}₾` : ''})" disabled></div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>თანხმობის ენა</label>
+                                    <select id="consentLang${res.id}">
+                                        <option value="ka">ქართული</option>
+                                        <option value="en">English</option>
+                                    </select>
+                                </div>
                             </div>
                             <div class="btn-group">
                                 <button class="btn btn-primary" onclick="saveReservationFromAccordion(${res.id})">შენახვა</button>
                                 <button class="btn btn-secondary" onclick="printInvoice(${res.id})">ინვოისის ბეჭდვა</button>
-                                <button class="btn btn-secondary" onclick="printConsent(${res.id})">თანხმობის ბეჭდვა</button>
+                                <button class="btn btn-secondary" onclick="printConsent(${res.id}, document.getElementById('consentLang${res.id}').value)">თანხმობის ბეჭდვა</button>
                                 <button class="btn btn-danger" onclick="deleteReservation(${res.id})">წაშლა</button>
                             </div>
                         </div>
@@ -1086,12 +1447,19 @@
                     <div class="form-group"><label>ტელეფონი</label><input type="text" id="newGuestPhone"></div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group"><label>Check-in *</label><input type="date" id="newCheckinDate" value="${formatDate(new Date())}"></div>
-                    <div class="form-group"><label>Check-out *</label><input type="date" id="newCheckoutDate" value="${formatDate(addDays(new Date(), 1))}"></div>
+                    <div class="form-group"><label>ელფოსტა</label><input type="email" id="newGuestEmail"></div>
+                    <div class="form-group"><label>პირადი ნომერი / პასპორტის №</label><input type="text" id="newGuestIdNumber" oninput="fillGuestByIdNumber()"></div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group"><label>Check-in დრო</label><input type="time" id="newCheckinTime" value="14:00"></div>
-                    <div class="form-group"><label>Check-out დრო</label><input type="time" id="newCheckoutTime" value="12:00"></div>
+                    <div class="form-group"><label>მოქალაქეობა</label><input type="text" id="newGuestCitizenship"></div>
+                    <div class="form-group"><label>დაბადების თარიღი</label><input type="date" id="newGuestBirthDate"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>სტუმრების რაოდენობა</label><input type="number" id="newNumGuests" value="1" min="1"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Check-in *</label><input type="date" id="newCheckinDate" value="${formatDateISO(new Date())}"></div>
+                    <div class="form-group"><label>Check-out *</label><input type="date" id="newCheckoutDate" value="${formatDateISO(addDays(new Date(), 1))}"></div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -1099,6 +1467,7 @@
                         <select id="newRoomId">${rooms.map(r => `<option value="${r.id}">${r.roomName || r.roomNumber} (${r.roomType})</option>`).join('')}</select>
                     </div>
                     <div class="form-group"><label>ფასი ღამეში (₾)</label><input type="number" id="newPricePerNight" value="${rooms[0]?.basePrice || 0}" min="0" step="10"></div>
+                    <div class="form-group"><label>ავანსი (₾)</label><input type="number" id="newAdvanceAmount" value="0" min="0" step="10"></div>
                 </div>
                 <div class="form-row">
                     <div class="form-group"><label>სტატუსი</label>
@@ -1115,24 +1484,54 @@
             document.getElementById('reservationModal').classList.add('active');
             document.getElementById('newRoomId').addEventListener('change', (e) => {
                 const room = rooms.find(r => r.id === parseInt(e.target.value));
-                if (room) document.getElementById('newPricePerNight').value = room.basePrice;
+                if (room) {
+                    const dateStr = document.getElementById('newCheckinDate').value;
+                    const price = dateStr ? getPriceForRoomDate(room, dateStr) : room.basePrice;
+                    document.getElementById('newPricePerNight').value = price;
+                }
             });
-            const newCheckoutTime = document.getElementById('newCheckoutTime');
             const newLate = document.getElementById('newLateCheckoutHours');
-            const updateNewLate = () => { newLate.value = calculateLateCheckoutHours(newCheckoutTime.value); };
-            newCheckoutTime.addEventListener('change', updateNewLate);
-            updateNewLate();
+            newLate.value = 0;
+        }
+        function openNewReservationModalWithDate(roomId, dateStr) {
+            openNewReservationModal();
+            const rooms = Storage.get('rooms', []);
+            const room = rooms.find(r => r.id === roomId);
+            if (room) {
+                document.getElementById('newRoomId').value = roomId;
+                const price = getPriceForRoomDate(room, dateStr);
+                document.getElementById('newPricePerNight').value = price;
+            }
+            document.getElementById('newCheckinDate').value = dateStr;
+            document.getElementById('newCheckoutDate').value = formatDateISO(addDays(new Date(dateStr), 1));
+        }
+        function fillGuestByIdNumber() {
+            const idNumber = document.getElementById('newGuestIdNumber').value.trim();
+            if (!idNumber) return;
+            const guest = findGuestByIdNumber(idNumber);
+            if (!guest) return;
+            document.getElementById('newGuestName').value = guest.guestName || '';
+            document.getElementById('newGuestPhone').value = guest.guestPhone || '';
+            document.getElementById('newGuestEmail').value = guest.guestEmail || '';
+            document.getElementById('newGuestCitizenship').value = guest.guestCitizenship || '';
+            document.getElementById('newGuestBirthDate').value = guest.guestBirthDate || '';
         }
 
         function createReservation() {
             const guestName = document.getElementById('newGuestName').value.trim();
             const guestPhone = document.getElementById('newGuestPhone').value.trim();
+            const guestEmail = document.getElementById('newGuestEmail').value.trim();
+            const guestIdNumber = document.getElementById('newGuestIdNumber').value.trim();
+            const guestCitizenship = document.getElementById('newGuestCitizenship').value.trim();
+            const guestBirthDate = document.getElementById('newGuestBirthDate').value;
+            const numGuests = parseInt(document.getElementById('newNumGuests').value) || 1;
             const checkinDate = document.getElementById('newCheckinDate').value;
             const checkoutDate = document.getElementById('newCheckoutDate').value;
-            const checkinTime = document.getElementById('newCheckinTime').value || '14:00';
-            const checkoutTime = document.getElementById('newCheckoutTime').value || '12:00';
+            const checkinTime = '14:00';
+            const checkoutTime = '12:00';
             const roomId = parseInt(document.getElementById('newRoomId').value);
             const pricePerNight = parseFloat(document.getElementById('newPricePerNight').value);
+            const advanceAmount = parseFloat(document.getElementById('newAdvanceAmount').value) || 0;
             const status = document.getElementById('newStatus').value;
             const lateCheckoutHours = calculateLateCheckoutHours(checkoutTime);
             const notes = document.getElementById('newNotes').value;
@@ -1147,19 +1546,34 @@
                 id: nextId,
                 guestName,
                 guestPhone,
+                guestEmail,
+                guestIdNumber,
+                guestCitizenship,
+                guestBirthDate,
                 roomId,
                 checkinDate,
                 checkoutDate,
                 checkinTime,
                 checkoutTime,
-                numGuests: 1,
+                numGuests,
                 notes,
                 status,
                 pricePerNight,
+                advanceAmount,
                 lateCheckoutHours,
                 extraBed: false,
                 createdAt: new Date().toISOString()
             });
+            if (guestIdNumber) {
+                upsertGuest({
+                    guestIdNumber,
+                    guestName,
+                    guestPhone,
+                    guestEmail,
+                    guestCitizenship,
+                    guestBirthDate
+                });
+            }
             Storage.set('reservations', reservations);
             Storage.set('nextReservationId', nextId + 1);
             closeModal('reservationModal');
@@ -1187,6 +1601,7 @@
             const extraBed = document.getElementById(`extraBed${resId}`).checked;
             const status = document.getElementById(`status${resId}`).value;
             const pricePerNight = parseFloat(document.getElementById(`pricePerNight${resId}`).value);
+            const advanceAmount = parseFloat(document.getElementById(`advanceAmount${resId}`).value) || 0;
             const notes = document.getElementById(`notes${resId}`).value;
 
             if (!guestName) { showAlert(`resAlert${resId}`, 'სახელი აუცილებელია!', 'error'); return; }
@@ -1200,7 +1615,7 @@
             reservations[index] = { ...reservations[index],
                 guestName, guestPhone, guestEmail, guestIdNumber, guestCitizenship, guestBirthDate,
                 numGuests, checkinDate, checkoutDate, checkinTime, checkoutTime, lateCheckoutHours,
-                extraBed, status, pricePerNight, notes
+                extraBed, status, pricePerNight, advanceAmount, notes
             };
 
             Storage.set('reservations', reservations);
@@ -1220,14 +1635,17 @@
         function getReservationFinancials(resId) {
             const reservations = Storage.get('reservations', []);
             const res = reservations.find(r => r.id === resId);
-            if (!res) return { nights: 0, baseTotal: 0, lateCheckoutFee: 0, total: 0 };
+            if (!res) return { nights: 0, baseTotal: 0, lateCheckoutFee: 0, grossTotal: 0, advance: 0, dueTotal: 0 };
             const nights = calculateNights(res.checkinDate, res.checkoutDate);
             const baseTotal = nights * res.pricePerNight;
             const lateHours = res.lateCheckoutHours !== undefined
                 ? res.lateCheckoutHours
                 : calculateLateCheckoutHours(res.checkoutTime || '12:00');
             const lateCheckoutFee = Math.max(0, lateHours || 0) * LATE_CHECKOUT_RATE;
-            return { nights, baseTotal, lateCheckoutFee, total: baseTotal + lateCheckoutFee };
+            const grossTotal = baseTotal + lateCheckoutFee;
+            const advance = Math.max(0, res.advanceAmount || 0);
+            const dueTotal = Math.max(0, grossTotal - advance);
+            return { nights, baseTotal, lateCheckoutFee, grossTotal, advance, dueTotal };
         }
         function printInvoice(resId) {
             const reservations = Storage.get('reservations', []);
@@ -1240,6 +1658,7 @@
             const cinTime = res.checkinTime || '14:00';
             const coutTime = res.checkoutTime || '12:00';
             const lateHours = calculateLateCheckoutHours(coutTime);
+            const hasLate = financials.lateCheckoutFee > 0;
 
             const w = window.open('', '_blank');
             if (!w) return;
@@ -1268,7 +1687,7 @@
                         <div>
                             <h1>სასტუმრო — ინვოისი</h1>
                             <div class="muted">ინვოისის №: ${invoiceNo}</div>
-                            <div class="muted">თარიღი: ${formatDate(new Date())}</div>
+                            <div class="muted">თარიღი: ${formatDateDisplay(new Date())}</div>
                         </div>
                         <div class="right">
                             <div class="muted">სტატუსი: ${res.status}</div>
@@ -1279,7 +1698,7 @@
                         <div><strong>სტუმარი:</strong> ${res.guestName}</div>
                         <div><strong>ტელეფონი:</strong> ${res.guestPhone || '-'}</div>
                         <div><strong>ოთახი:</strong> ${room ? (room.roomName || room.roomNumber) : '-' } (${room ? room.roomType : '-'})</div>
-                        <div><strong>თარიღები:</strong> ${res.checkinDate} ${cinTime} — ${res.checkoutDate} ${coutTime}</div>
+                        <div><strong>თარიღები:</strong> ${formatDateDisplay(res.checkinDate)} ${cinTime} — ${formatDateDisplay(res.checkoutDate)} ${coutTime}</div>
                     </div>
 
                     <div class="box">
@@ -1299,17 +1718,24 @@
                                     <td class="right">${res.pricePerNight}₾</td>
                                     <td class="right">${financials.baseTotal}₾</td>
                                 </tr>
+                                ${hasLate ? `
                                 <tr>
                                     <td>ლეით ჩექაუთი (${lateHours} სთ, 10₾/სთ)</td>
                                     <td class="right">${lateHours}</td>
                                     <td class="right">${LATE_CHECKOUT_RATE}₾</td>
                                     <td class="right">${financials.lateCheckoutFee}₾</td>
+                                </tr>` : ``}
+                                <tr>
+                                    <td>ავანსი</td>
+                                    <td class="right">1</td>
+                                    <td class="right">-</td>
+                                    <td class="right">-${financials.advance}₾</td>
                                 </tr>
                             </tbody>
                         </table>
                         <div class="row" style="margin-top: 12px;">
                             <div></div>
-                            <div class="total">სულ: ${financials.total}₾</div>
+                            <div class="total">სრული: ${financials.grossTotal}₾ | ავანსი: ${financials.advance}₾ | დასარჩენი: ${financials.dueTotal}₾</div>
                         </div>
                     </div>
 
@@ -1322,7 +1748,7 @@
             w.document.close();
             w.focus();
         }
-        function printConsent(resId) {
+        function printConsent(resId, lang = 'ka') {
             const reservations = Storage.get('reservations', []);
             const rooms = Storage.get('rooms', []);
             const res = reservations.find(r => r.id === resId);
@@ -1330,50 +1756,92 @@
             const room = rooms.find(r => r.id === res.roomId);
             const cinTime = res.checkinTime || '14:00';
             const coutTime = res.checkoutTime || '12:00';
+            const checkinDisplay = formatDateDisplay(res.checkinDate);
+            const checkoutDisplay = formatDateDisplay(res.checkoutDate);
+            const birthDisplay = res.guestBirthDate ? formatDateDisplay(res.guestBirthDate) : '';
 
             const w = window.open('', '_blank');
             if (!w) return;
+            const isKa = lang === 'ka';
+            const title = isKa ? 'სტუმრის რეგისტრაციისა და თანხმობის ფორმა' : 'Guest Registration and Consent Form';
+            const consentText = isKa ? `
+                <p><strong>სასტუმროს დასახელება:</strong> ______________________________</p>
+                <p><strong>მისამართი:</strong> ________________________________________</p>
+                <p><strong>ტელეფონი / ელფოსტა:</strong> _______________________________</p>
+                <h4>სტუმრის ინფორმაცია</h4>
+                <p><strong>სახელი, გვარი:</strong> ${res.guestName || '___________________________________'}</p>
+                <p><strong>პირადი ნომერი / პასპორტის №:</strong> ${res.guestIdNumber || '______________________________'}</p>
+                <p><strong>მოქალაქეობა:</strong> ${res.guestCitizenship || '______________________________'}</p>
+                <p><strong>დაბადების თარიღი:</strong> ${birthDisplay || '______________________________'}</p>
+                <p><strong>ტელეფონის ნომერი:</strong> ${res.guestPhone || '______________________________'}</p>
+                <p><strong>ელფოსტა (არასავალდებულო):</strong> ${res.guestEmail || '______________________________'}</p>
+                <h4>განთავსების დეტალები</h4>
+                <p><strong>ჩექინის თარიღი:</strong> ${checkinDisplay}</p>
+                <p><strong>ჩექაუთის თარიღი:</strong> ${checkoutDisplay}</p>
+                <p><strong>ოთახის ნომერი / ტიპი:</strong> ${room ? (room.roomName || room.roomNumber) : '-'} / ${room ? room.roomType : '-'}</p>
+                <p><strong>სტუმრების რაოდენობა:</strong> ${res.numGuests || 1}</p>
+                <h4>თანხმობა და წესების მიღება</h4>
+                <p>ქვემოთ ხელმოწერით ვადასტურებ, რომ:</p>
+                <p>მივიღე და გავეცანი სასტუმროს შიდა წესებს და ვეთანხმები მათ დაცვას;</p>
+                <p>ვიღებ პასუხისმგებლობას ნომერში არსებული ინვენტარის დაზიანების ან დაკარგვის შემთხვევაში;</p>
+                <p>ვეთანხმები, რომ სასტუმრო უფლებამოსილია დაამუშაოს ჩემი პერსონალური მონაცემები მხოლოდ მომსახურების გაწევის მიზნით;</p>
+                <p>ვაცნობიერებ, რომ ჩექაუთის დაგვიანების ან წესების დარღვევის შემთხვევაში შესაძლოა დამეკისროს დამატებითი გადასახადი.</p>
+                <p>☐ ვეთანხმები ზემოთ ჩამოთვლილ პირობებს</p>
+                <h4>ხელმოწერა</h4>
+                <p><strong>სტუმრის ხელმოწერა:</strong> _________________________________</p>
+                <p><strong>თარიღი:</strong> _____________________</p>
+                <p><strong>სასტუმროს წარმომადგენლის ხელმოწერა:</strong> __________________.</p>
+            ` : `
+                <p><strong>Hotel Name:</strong> ______________________________</p>
+                <p><strong>Address:</strong> ________________________________________</p>
+                <p><strong>Phone / Email:</strong> _______________________________</p>
+                <h4>Guest Information</h4>
+                <p><strong>Full Name:</strong> ${res.guestName || '___________________________________'}</p>
+                <p><strong>ID / Passport No.:</strong> ${res.guestIdNumber || '______________________________'}</p>
+                <p><strong>Citizenship:</strong> ${res.guestCitizenship || '______________________________'}</p>
+                <p><strong>Date of Birth:</strong> ${birthDisplay || '______________________________'}</p>
+                <p><strong>Phone Number:</strong> ${res.guestPhone || '______________________________'}</p>
+                <p><strong>Email (optional):</strong> ${res.guestEmail || '______________________________'}</p>
+                <h4>Accommodation Details</h4>
+                <p><strong>Check-in Date:</strong> ${checkinDisplay}</p>
+                <p><strong>Check-out Date:</strong> ${checkoutDisplay}</p>
+                <p><strong>Room No. / Type:</strong> ${room ? (room.roomName || room.roomNumber) : '-'} / ${room ? room.roomType : '-'}</p>
+                <p><strong>Number of Guests:</strong> ${res.numGuests || 1}</p>
+                <h4>Consent and Rules</h4>
+                <p>By signing below, I confirm that:</p>
+                <p>I have received and read the hotel rules and agree to comply with them;</p>
+                <p>I accept responsibility for any damage or loss of room inventory;</p>
+                <p>I agree that the hotel may process my personal data solely for service purposes;</p>
+                <p>I acknowledge that late checkout or rule violations may result in additional charges.</p>
+                <p>☐ I agree to the terms listed above</p>
+                <h4>Signature</h4>
+                <p><strong>Guest Signature:</strong> _________________________________</p>
+                <p><strong>Date:</strong> _____________________</p>
+                <p><strong>Hotel Representative Signature:</strong> __________________.</p>
+            `;
             w.document.write(`
                 <!DOCTYPE html>
-                <html lang="ka">
+                <html lang="${isKa ? 'ka' : 'en'}">
                 <head>
                     <meta charset="UTF-8">
-                    <title>სტუმრის თანხმობა</title>
+                    <title>${title}</title>
                     <style>
-                        body { font-family: 'Roboto', sans-serif; padding: 32px; color: #0f172a; }
-                        .consent-form { padding: 20px; border: 1px solid #e2e8f0; }
-                        h3 { text-align: center; margin-bottom: 16px; }
-                        p { margin-bottom: 10px; line-height: 1.5; }
-                        .row { display: flex; justify-content: space-between; margin-top: 24px; }
-                        .line { border-bottom: 1px solid #0f172a; width: 220px; height: 20px; }
+                        @page { size: A4; margin: 14mm; }
+                        body { font-family: 'Roboto', sans-serif; padding: 0; color: #0f172a; font-size: 12px; }
+                        .consent-form { padding: 14px; border: 1px solid #e2e8f0; }
+                        h3 { text-align: center; margin-bottom: 10px; font-size: 16px; }
+                        h4 { margin-top: 10px; margin-bottom: 6px; font-size: 13px; }
+                        p { margin-bottom: 6px; line-height: 1.35; }
                         @media print { .no-print { display: none; } }
                     </style>
                 </head>
                 <body>
                     <div class="consent-form">
-                        <h3>სტუმრის თანხმობის ფორმა</h3>
-                        <p>მე, ქვემოთ ხელმომწერი, ვადასტურებ რომ გავეცანი სასტუმროს წესებს და ვეთანხმები პირობებს.</p>
-                        <p><strong>სტუმარი:</strong> ${res.guestName}</p>
-                        <p><strong>პირადი ნომერი/პასპორტი:</strong> ${res.guestIdNumber || '-'}</p>
-                        <p><strong>ტელეფონი:</strong> ${res.guestPhone || '-'}</p>
-                        <p><strong>ოთახი:</strong> ${room ? (room.roomName || room.roomNumber) : '-'} (${room ? room.roomType : '-'})</p>
-                        <p><strong>ჩექინი:</strong> ${res.checkinDate} ${cinTime}</p>
-                        <p><strong>ჩექაუთი:</strong> ${res.checkoutDate} ${coutTime}</p>
-                        <p>ვეთანხმები დამატებით გადასახადებს (დამატებითი სერვისები, ლეით ჩექაუთი და ა.შ.).</p>
-
-                        <div class="row">
-                            <div>
-                                <div class="line"></div>
-                                <div>სტუმრის ხელმოწერა</div>
-                            </div>
-                            <div>
-                                <div class="line"></div>
-                                <div>თარიღი</div>
-                            </div>
-                        </div>
+                        <h3>${title}</h3>
+                        ${consentText}
                     </div>
                     <div class="no-print" style="margin-top: 16px;">
-                        <button onclick="window.print()">ბეჭდვა</button>
+                        <button onclick="window.print()">${isKa ? 'ბეჭდვა' : 'Print'}</button>
                     </div>
                 </body>
                 </html>
@@ -1479,7 +1947,7 @@
         function renderReports() {
             const reservations = Storage.get('reservations', []);
             const rooms = Storage.get('rooms', []);
-            const totalRevenue = reservations.reduce((sum, r) => sum + getReservationFinancials(r.id).total, 0);
+            const totalRevenue = reservations.reduce((sum, r) => sum + getReservationFinancials(r.id).grossTotal, 0);
             const occupied = reservations.filter(r => r.status === 'Checked-in').length;
 
             let html = `
@@ -1497,6 +1965,8 @@
         }
 
         function renderSettings() {
+            const monthlyRates = Storage.get('monthlyRates', getDefaultMonthlyRates());
+            const months = ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
             const html = `
                 <div class="card">
                     <h2>პარამეტრები</h2>
@@ -1519,8 +1989,81 @@
                     </div>
                     <div id="settingsAlert"></div>
                 </div>
+                <div class="card">
+                    <h2>ფასები</h2>
+                    <div class="alert alert-info">ოთახის ფასების მართვა თვეების მიხედვით</div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>თვე</th>
+                                    <th>Single</th>
+                                    <th>Double</th>
+                                    <th>Triple</th>
+                                    <th>Family</th>
+                                    <th>Suite</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${months.map((m, i) => {
+                                    const idx = i + 1;
+                                    const row = monthlyRates[idx] || {};
+                                    return `
+                                        <tr>
+                                            <td>${m}</td>
+                                            <td><input type="number" id="rate_${idx}_Single" value="${row.Single ?? 0}" min="0" step="10"></td>
+                                            <td><input type="number" id="rate_${idx}_Double" value="${row.Double ?? 0}" min="0" step="10"></td>
+                                            <td><input type="number" id="rate_${idx}_Triple" value="${row.Triple ?? 0}" min="0" step="10"></td>
+                                            <td><input type="number" id="rate_${idx}_Family" value="${row.Family ?? 0}" min="0" step="10"></td>
+                                            <td><input type="number" id="rate_${idx}_Suite" value="${row.Suite ?? 0}" min="0" step="10"></td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="saveMonthlyRates()">ფასების შენახვა</button>
+                    </div>
+                </div>
             `;
             document.getElementById('settingsPage').innerHTML = html;
+        }
+        function renderCheckInOut() {
+            const html = `
+                <div class="card">
+                    <h2>Check‑in / Check‑out</h2>
+                    <div class="alert alert-info">ამ გვერდზე შეგიძლიათ სწრაფი ჩექინ/ჩექაუთ ოპერაციები დაამატოთ.</div>
+                </div>
+            `;
+            document.getElementById('checkinoutPage').innerHTML = html;
+        }
+        function renderPayments() {
+            const html = `
+                <div class="card">
+                    <h2>გადახდები</h2>
+                    <div class="alert alert-info">გადახდების ისტორია და სტატუსები.</div>
+                </div>
+            `;
+            document.getElementById('paymentsPage').innerHTML = html;
+        }
+        function renderStaff() {
+            const html = `
+                <div class="card">
+                    <h2>პერსონალი</h2>
+                    <div class="alert alert-info">პერსონალის მართვის გვერდი.</div>
+                </div>
+            `;
+            document.getElementById('staffPage').innerHTML = html;
+        }
+        function renderHousekeeping() {
+            const html = `
+                <div class="card">
+                    <h2>Housekeeping</h2>
+                    <div class="alert alert-info">ოთახების დასუფთავების სტატუსები.</div>
+                </div>
+            `;
+            document.getElementById('housekeepingPage').innerHTML = html;
         }
 
         function closeModal(modalId) {
@@ -1621,6 +2164,20 @@
             document.getElementById('currentPassword').value = '';
             document.getElementById('newPassword').value = '';
             document.getElementById('confirmPassword').value = '';
+        }
+        function saveMonthlyRates() {
+            const rates = {};
+            for (let m = 1; m <= 12; m++) {
+                rates[m] = {
+                    Single: parseFloat(document.getElementById(`rate_${m}_Single`).value) || 0,
+                    Double: parseFloat(document.getElementById(`rate_${m}_Double`).value) || 0,
+                    Triple: parseFloat(document.getElementById(`rate_${m}_Triple`).value) || 0,
+                    Family: parseFloat(document.getElementById(`rate_${m}_Family`).value) || 0,
+                    Suite: parseFloat(document.getElementById(`rate_${m}_Suite`).value) || 0
+                };
+            }
+            Storage.set('monthlyRates', rates);
+            showAlert('settingsAlert', 'ფასები შენახულია', 'success');
         }
 
         window.addEventListener('load', () => {
