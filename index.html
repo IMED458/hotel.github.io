@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hotel Admin System</title>
+  <title>სასტუმროს მართვის სისტემა</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="/_sdk/element_sdk.js"></script>
   <script src="/_sdk/data_sdk.js"></script>
@@ -71,7 +71,7 @@
           <div class="w-10 h-10 bg-gradient-to-br from-sky-500 to-blue-600 rounded-xl flex items-center justify-center text-white">🏨</div>
           <div>
             <h1 id="hotel-name-display" class="font-bold text-lg text-gray-900 dark:text-white">Grand Hotel</h1>
-            <p class="text-xs text-gray-500">Admin System</p>
+            <p class="text-xs text-gray-500">მართვის სისტემა</p>
           </div>
         </div>
       </div>
@@ -138,9 +138,9 @@
 
   <script>
     const NAV_ITEMS = [
-      ['dashboard', 'დეშბორდი'], ['calendar', 'კალენდარი / Timeline'], ['rooms', 'ნომრები'], ['reservations', 'ჯავშნები'],
+      ['dashboard', 'დეშბორდი'], ['calendar', 'კალენდარი'], ['rooms', 'ნომრები'], ['reservations', 'ჯავშნები'],
       ['guests', 'სტუმრები'], ['checkin', 'Check-in / Check-out'], ['payments', 'გადახდები / ინვოისები'],
-      ['housekeeping', 'Housekeeping'], ['pricing', 'ფასები / ტარიფები'], ['channels', 'Channel Manager'],
+      ['housekeeping', 'დასუფთავება'], ['pricing', 'ფასები / ტარიფები'], ['channels', 'არხების მენეჯერი'],
       ['reports', 'რეპორტები'], ['settings', 'პარამეტრები']
     ];
 
@@ -332,8 +332,26 @@
       if (!cin || !cout) return 1;
       return Math.max(1, Math.ceil((cout - cin) / (1000 * 60 * 60 * 24)));
     }
-    function getRoomTypes() {
-      return ['Single', 'Double', 'Triple', 'Family', 'Suite'];
+    function getRoomTypes() { return ['Single', 'Double', 'Triple', 'Family', 'Suite']; }
+    function roomTypeLabel(v) {
+      const map = { Single: 'ერთადგილიანი', Double: 'ორადგილიანი', Triple: 'სამადგილიანი', Family: 'ოჯახური', Suite: 'ლუქსი' };
+      return map[v] || v || '-';
+    }
+    function roomStatusLabel(v) {
+      const map = { available: 'ხელმისაწვდომი', booked: 'დაჯავშნილი', occupied: 'დაკავებული', cleaning: 'დასუფთავება', maintenance: 'რემონტი' };
+      return map[v] || v || '-';
+    }
+    function reservationStatusLabel(v) {
+      const map = { Reserved: 'დაჯავშნილი', 'Checked-in': 'Check-in', 'Checked-out': 'Check-out', Cancelled: 'გაუქმებული' };
+      return map[v] || v || '-';
+    }
+    function paymentStatusLabel(v) {
+      const map = { unpaid: 'გადაუხდელი', partial: 'ნაწილობრივ', paid: 'გადახდილი' };
+      return map[v] || v || '-';
+    }
+    function paymentMethodLabel(v) {
+      const map = { cash: 'ნაღდი', card: 'ბარათი', bank: 'ბანკი' };
+      return map[v] || v || '-';
     }
     function getState(key, fallback) {
       try {
@@ -359,7 +377,7 @@
           rooms.push({
             id: i - 100,
             roomNumber: String(i),
-            roomName: `Room ${i}`,
+            roomName: `ნომერი ${i}`,
             roomType,
             basePrice,
             floor: Math.floor(i / 100),
@@ -375,7 +393,7 @@
         const reservations = [
           { id: 1, guestName: 'გიორგი მელაძე', guestPhone: '555123456', guestEmail: 'giorgi@mail.ge', guestIdNumber: '01001000001', guestCitizenship: 'საქართველო', guestBirthDate: '1990-01-01', roomId: 1, checkinDate: formatDateISO(addDays(today, -1)), checkoutDate: formatDateISO(addDays(today, 2)), status: 'Checked-in', totalPrice: 360, paymentStatus: 'paid' },
           { id: 2, guestName: 'ანა ქავთარაძე', guestPhone: '555777888', guestEmail: '', guestIdNumber: '01001000002', guestCitizenship: 'საქართველო', guestBirthDate: '1993-06-21', roomId: 6, checkinDate: formatDateISO(addDays(today, 1)), checkoutDate: formatDateISO(addDays(today, 4)), status: 'Reserved', totalPrice: 510, paymentStatus: 'partial' },
-          { id: 3, guestName: 'Lars Holm', guestPhone: '+46 700 000 000', guestEmail: 'lars@sample.se', guestIdNumber: 'SE9988', guestCitizenship: 'Sweden', guestBirthDate: '1987-03-03', roomId: 12, checkinDate: formatDateISO(addDays(today, 3)), checkoutDate: formatDateISO(addDays(today, 5)), status: 'Reserved', totalPrice: 900, paymentStatus: 'unpaid' }
+          { id: 3, guestName: 'Lars Holm', guestPhone: '+46 700 000 000', guestEmail: 'lars@sample.se', guestIdNumber: 'SE9988', guestCitizenship: 'შვედეთი', guestBirthDate: '1987-03-03', roomId: 12, checkinDate: formatDateISO(addDays(today, 3)), checkoutDate: formatDateISO(addDays(today, 5)), status: 'Reserved', totalPrice: 900, paymentStatus: 'unpaid' }
         ];
         setState('reservations', reservations);
         setState('nextReservationId', 4);
@@ -458,7 +476,7 @@
             <h3 class="font-semibold mb-4">დღის აქტივობა</h3>
             <div class="space-y-3 text-sm">
               <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">🔑 Check-in - ნომერი 102 (10:30)</div>
-              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">🧹 Housekeeping task დასრულდა (11:20)</div>
+              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">🧹 დასუფთავების დავალება დასრულდა (11:20)</div>
               <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">📝 ახალი ჯავშანი: ანა აბაშიძე (12:05)</div>
               <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">💳 გადახდა მიღებულია ${config.currency_symbol}220 (13:10)</div>
             </div>
@@ -475,7 +493,7 @@
                   <td class="py-3">${findRoomById(r.roomId)?.roomNumber || '-'}</td>
                   <td class="py-3">${formatDate(r.checkinDate)}</td>
                   <td class="py-3">${formatDate(r.checkoutDate)}</td>
-                  <td class="py-3"><span class="px-2 py-1 rounded-full text-xs ${statusBadge(formatReservationStatus(r.status))}">${r.status || 'Reserved'}</span></td>
+                  <td class="py-3"><span class="px-2 py-1 rounded-full text-xs ${statusBadge(formatReservationStatus(r.status))}">${reservationStatusLabel(r.status || 'Reserved')}</span></td>
                   <td class="py-3 font-semibold">${config.currency_symbol}${Number(r.totalPrice || 0).toLocaleString('en-US')}</td>
                 </tr>
               `).join('')}
@@ -607,7 +625,7 @@
           <div class="relative border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50/40 dark:hover:bg-gray-700/20" style="display:grid;grid-template-columns:${roomWidth}px repeat(7, ${dayWidth}px);min-width:${totalWidth}px;min-height:${rowMinHeight}px;">
             <div class="p-3 flex items-center gap-2 bg-white dark:bg-gray-800">
               <span class="font-medium text-gray-900 dark:text-white">${escapeHtml(room.roomNumber || room.roomName || '')}</span>
-              <span class="text-xs text-gray-500 capitalize">${escapeHtml(room.roomType || '')}</span>
+              <span class="text-xs text-gray-500">${escapeHtml(roomTypeLabel(room.roomType || ''))}</span>
             </div>
             ${days.map(d => {
               const dateStr = formatDateISO(d);
@@ -757,9 +775,9 @@
               <div class="flex items-start justify-between">
                 <div>
                   <div class="text-2xl font-bold">${r.roomNumber || '-'}</div>
-                  <div class="text-sm text-gray-500">${r.roomType || 'Single'} • სართული ${r.floor || 1}</div>
+                  <div class="text-sm text-gray-500">${roomTypeLabel(r.roomType || 'Single')} • სართული ${r.floor || 1}</div>
                 </div>
-                <span class="px-2 py-1 rounded-full text-xs ${r.status === 'available' ? 'bg-green-100 text-green-700' : r.status === 'occupied' ? 'bg-violet-100 text-violet-700' : r.status === 'booked' ? 'bg-sky-100 text-sky-700' : r.status === 'cleaning' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}">${r.status || 'available'}</span>
+                <span class="px-2 py-1 rounded-full text-xs ${r.status === 'available' ? 'bg-green-100 text-green-700' : r.status === 'occupied' ? 'bg-violet-100 text-violet-700' : r.status === 'booked' ? 'bg-sky-100 text-sky-700' : r.status === 'cleaning' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}">${roomStatusLabel(r.status || 'available')}</span>
               </div>
               <div class="mt-4 text-sm text-gray-500">🛏️ ${r.beds || 1} საწოლი • 👥 მაქს. ${r.maxGuests || 2}</div>
               <div class="mt-2 font-semibold">${config.currency_symbol}${Number(r.basePrice || 0).toLocaleString('en-US')}/ღამე</div>
@@ -780,7 +798,7 @@
         <div class="bg-white dark:bg-gray-800 rounded-xl p-4 mb-6 border border-gray-100 dark:border-gray-700 flex flex-wrap gap-3">
           <input type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
           <input type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
-          <select class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>ყველა სტატუსი</option><option>pending</option><option>confirmed</option><option>checked-in</option><option>checked-out</option><option>cancelled</option></select>
+          <select class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>ყველა სტატუსი</option><option>მოლოდინში</option><option>დადასტურებული</option><option>Check-in</option><option>Check-out</option><option>გაუქმებული</option></select>
           <button class="px-3 py-2 rounded-lg bg-sky-600 text-white">ფილტრი</button>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto">
@@ -804,8 +822,8 @@
                   <td class="px-4 py-3">${findRoomById(r.roomId)?.roomNumber || '-'}</td>
                   <td class="px-4 py-3">${formatDate(r.checkinDate)}</td>
                   <td class="px-4 py-3">${formatDate(r.checkoutDate)}</td>
-                  <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${statusBadge(formatReservationStatus(r.status))}">${r.status || 'Reserved'}</span></td>
-                  <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${paymentBadge(r.paymentStatus)}">${r.paymentStatus || 'unpaid'}</span></td>
+                  <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${statusBadge(formatReservationStatus(r.status))}">${reservationStatusLabel(r.status || 'Reserved')}</span></td>
+                  <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${paymentBadge(r.paymentStatus)}">${paymentStatusLabel(r.paymentStatus || 'unpaid')}</span></td>
                   <td class="px-4 py-3 font-semibold">${config.currency_symbol}${Number(r.totalPrice || 0).toLocaleString('en-US')}</td>
                   <td class="px-4 py-3">
                     <div class="flex gap-2 flex-wrap">
@@ -835,7 +853,7 @@
               <div class="flex items-center gap-3 mb-3">
                 <div class="w-11 h-11 rounded-full bg-sky-600 text-white flex items-center justify-center font-bold">${(g.guestName || 'G').charAt(0).toUpperCase()}</div>
                 <div>
-                  <div class="font-semibold">${g.guestName || 'Guest'}</div>
+                  <div class="font-semibold">${g.guestName || 'სტუმარი'}</div>
                   <div class="text-xs text-gray-500">${g.guestEmail || '-'}</div>
                 </div>
               </div>
@@ -862,7 +880,7 @@
                 <div>${r.guestName} • ${findRoomById(r.roomId)?.roomNumber || '-'} • ${formatDate(r.checkinDate)}</div>
                 <div class="mt-2 flex gap-2">
                   <button class="px-2 py-1 rounded bg-white dark:bg-gray-800 text-xs" onclick="printConsent(${r.id}, 'ka')">თანხმობა KA</button>
-                  <button class="px-2 py-1 rounded bg-white dark:bg-gray-800 text-xs" onclick="printConsent(${r.id}, 'en')">Consent EN</button>
+                  <button class="px-2 py-1 rounded bg-white dark:bg-gray-800 text-xs" onclick="printConsent(${r.id}, 'en')">თანხმობა (EN)</button>
                 </div>
               </div>`).join('') || '<div class="text-sm text-gray-500">არ არის</div>'}</div>
           </div>
@@ -888,7 +906,7 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">მიღებული</p><p class="text-2xl font-bold">${config.currency_symbol}${paid.toLocaleString('en-US')}</p></div>
           <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">გადასახდელი</p><p class="text-2xl font-bold text-red-500">${config.currency_symbol}${unpaid.toLocaleString('en-US')}</p></div>
-          <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">Refund</p><p class="text-2xl font-bold text-amber-500">${config.currency_symbol}0</p></div>
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">დაბრუნება</p><p class="text-2xl font-bold text-amber-500">${config.currency_symbol}0</p></div>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto">
           <table class="w-full text-sm">
@@ -898,8 +916,8 @@
                 <td class="px-4 py-3">${p.guestName}</td>
                 <td class="px-4 py-3">#${p.reservationId}</td>
                 <td class="px-4 py-3">${config.currency_symbol}${Number(p.amount || 0).toLocaleString('en-US')}</td>
-                <td class="px-4 py-3">${p.method || '-'}</td>
-                <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${paymentBadge(p.status)}">${p.status}</span></td>
+                <td class="px-4 py-3">${paymentMethodLabel(p.method || '-')}</td>
+                <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${paymentBadge(p.status)}">${paymentStatusLabel(p.status)}</span></td>
                 <td class="px-4 py-3"><div class="flex gap-2"><button class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" onclick="openPaymentEdit(${p.id})">რედაქტირება</button><button class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" onclick="printPaymentInvoice(${p.id})">ინვოისი</button></div></td>
               </tr>
             `).join('') || '<tr><td colspan="6" class="px-4 py-6 text-center text-gray-500">გადახდები არ არის</td></tr>'}</tbody>
@@ -915,7 +933,7 @@
       const maintenance = rooms.filter(r => r.status === 'maintenance').length;
       document.getElementById('page-housekeeping').innerHTML = `
         <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-bold">Housekeeping</h2>
+          <h2 class="text-xl font-bold">დასუფთავება</h2>
           <button onclick="showToast('დავალება დამატებულია')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი დავალება</button>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -924,9 +942,9 @@
           <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4"><p class="text-sm text-red-700">რემონტი</p><p class="text-2xl font-bold">${maintenance}</p></div>
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700"><h3 class="font-semibold mb-4">To Do</h3><div class="space-y-2 text-sm"><div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">101 - Linen შეცვლა</div><div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">202 - Deep clean</div></div></div>
-          <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700"><h3 class="font-semibold mb-4">In Progress</h3><div class="space-y-2 text-sm"><div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">301 - Bathroom repair</div></div></div>
-          <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700"><h3 class="font-semibold mb-4">Done</h3><div class="space-y-2 text-sm"><div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">102 - მზადაა</div></div></div>
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700"><h3 class="font-semibold mb-4">შესასრულებელი</h3><div class="space-y-2 text-sm"><div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">101 - თეთრეულის შეცვლა</div><div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">202 - ღრმა დასუფთავება</div></div></div>
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700"><h3 class="font-semibold mb-4">მიმდინარე</h3><div class="space-y-2 text-sm"><div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">301 - აბაზანის შეკეთება</div></div></div>
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700"><h3 class="font-semibold mb-4">დასრულებული</h3><div class="space-y-2 text-sm"><div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">102 - მზადაა</div></div></div>
         </div>
       `;
     }
@@ -941,7 +959,7 @@
           <div class="lg:col-span-3 bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 overflow-x-auto">
             <h3 class="font-semibold mb-4">ფასები თვეების მიხედვით (ედიტინგი)</h3>
             <table class="w-full text-sm">
-              <thead><tr class="text-left text-gray-500"><th class="py-2">თვე</th>${getRoomTypes().map(t => `<th class="py-2">${t}</th>`).join('')}</tr></thead>
+              <thead><tr class="text-left text-gray-500"><th class="py-2">თვე</th>${getRoomTypes().map(t => `<th class="py-2">${roomTypeLabel(t)}</th>`).join('')}</tr></thead>
               <tbody>
                 ${Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
                   const row = getMonthlyRates()[m] || {};
@@ -961,20 +979,20 @@
           <h2 class="text-xl font-bold">რეპორტები და ანალიტიკა</h2>
           <div class="flex gap-2"><select class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>ბოლო თვე</option><option>ბოლო კვარტალი</option></select><button class="px-3 py-2 rounded-lg bg-sky-600 text-white">PDF</button></div>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">დაკავებულობა</p><p class="text-2xl font-bold">72.4%</p></div>
-          <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">ADR</p><p class="text-2xl font-bold">${config.currency_symbol}185</p></div>
-          <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">RevPAR</p><p class="text-2xl font-bold">${config.currency_symbol}134</p></div>
-          <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">No-show</p><p class="text-2xl font-bold">4.2%</p></div>
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">საშუალო ტარიფი (ADR)</p><p class="text-2xl font-bold">${config.currency_symbol}185</p></div>
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">ერთ ნომერზე შემოსავალი (RevPAR)</p><p class="text-2xl font-bold">${config.currency_symbol}134</p></div>
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">არ გამოცხადება</p><p class="text-2xl font-bold">4.2%</p></div>
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700"><h3 class="font-semibold mb-4">შემოსავალი თვეების მიხედვით</h3><div class="h-52 flex items-end gap-2">${[60, 72, 80, 76, 84, 92, 95, 88, 79, 82, 90, 97].map(v => `<div class="flex-1 bg-sky-100 dark:bg-sky-900/20 rounded-t relative"><div class="absolute bottom-0 inset-x-0 bg-sky-500 rounded-t" style="height:${v}%"></div></div>`).join('')}</div></div>
-          <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700"><h3 class="font-semibold mb-4">ჯავშნების წყარო</h3><div class="space-y-3 text-sm"><div class="flex justify-between"><span>Booking.com</span><span>45%</span></div><div class="flex justify-between"><span>Airbnb</span><span>22%</span></div><div class="flex justify-between"><span>Direct</span><span>18%</span></div><div class="flex justify-between"><span>Expedia</span><span>15%</span></div></div></div>
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700"><h3 class="font-semibold mb-4">ჯავშნების წყარო</h3><div class="space-y-3 text-sm"><div class="flex justify-between"><span>Booking.com</span><span>45%</span></div><div class="flex justify-between"><span>Airbnb</span><span>22%</span></div><div class="flex justify-between"><span>პირდაპირი</span><span>18%</span></div><div class="flex justify-between"><span>Expedia</span><span>15%</span></div></div></div>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
           <h3 class="font-semibold mb-4">ნომრის ტიპების შესრულება</h3>
           <div class="overflow-x-auto">
-            <table class="w-full text-sm"><thead><tr class="text-left text-gray-500"><th class="pb-2">ტიპი</th><th class="pb-2">დაკავებულობა</th><th class="pb-2">ADR</th><th class="pb-2">შემოსავალი</th></tr></thead><tbody><tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-3">Standard</td><td class="py-3">78%</td><td class="py-3">${config.currency_symbol}125</td><td class="py-3">${config.currency_symbol}42,500</td></tr><tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-3">Deluxe</td><td class="py-3">68%</td><td class="py-3">${config.currency_symbol}210</td><td class="py-3">${config.currency_symbol}38,220</td></tr><tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-3">Suite</td><td class="py-3">52%</td><td class="py-3">${config.currency_symbol}450</td><td class="py-3">${config.currency_symbol}46,800</td></tr></tbody></table>
+            <table class="w-full text-sm"><thead><tr class="text-left text-gray-500"><th class="pb-2">ტიპი</th><th class="pb-2">დაკავებულობა</th><th class="pb-2">ADR</th><th class="pb-2">შემოსავალი</th></tr></thead><tbody><tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-3">სტანდარტი</td><td class="py-3">78%</td><td class="py-3">${config.currency_symbol}125</td><td class="py-3">${config.currency_symbol}42,500</td></tr><tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-3">დელუქსი</td><td class="py-3">68%</td><td class="py-3">${config.currency_symbol}210</td><td class="py-3">${config.currency_symbol}38,220</td></tr><tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-3">ლუქსი</td><td class="py-3">52%</td><td class="py-3">${config.currency_symbol}450</td><td class="py-3">${config.currency_symbol}46,800</td></tr></tbody></table>
           </div>
         </div>
       `;
@@ -1019,7 +1037,7 @@
                   <input class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="12:00 შემდეგ • 10₾ / საათი">
                 </div>
                 <div>
-                  <label class="block mb-1 text-gray-500">No-show ჯარიმა (ღამეების რაოდენობა)</label>
+                  <label class="block mb-1 text-gray-500">არ გამოცხადების ჯარიმა (ღამეების რაოდენობა)</label>
                   <input type="number" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="1">
                 </div>
               </div>
@@ -1036,11 +1054,11 @@
               </div>
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
-              <h3 class="font-semibold mb-4">Audit Log</h3>
+              <h3 class="font-semibold mb-4">მოქმედებების ისტორია</h3>
               <div class="space-y-2 text-xs text-gray-500">
                 <div>ჯავშანი #1234 შეიქმნა • 5 წთ წინ</div>
                 <div>Check-in ნომერი 102 • 17 წთ წინ</div>
-                <div>ფასი განახლდა (Suite) • 1 სთ წინ</div>
+                <div>ფასი განახლდა (ლუქსი) • 1 სთ წინ</div>
               </div>
             </div>
           </div>
@@ -1132,13 +1150,13 @@
           <input id="editGuestIdNumber" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(res.guestIdNumber || '')}" placeholder="პირადი ნომერი / პასპორტი">
           <input id="editGuestCitizenship" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(res.guestCitizenship || '')}" placeholder="მოქალაქეობა">
           <input id="editGuestBirthDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(res.guestBirthDate || '')}">
-          <select id="editRoomId" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${getRoomsData().map(r => `<option value="${r.id}" ${Number(r.id)===Number(res.roomId)?'selected':''}>${r.roomName} (${r.roomType})</option>`).join('')}</select>
-          <select id="editStatus" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option ${res.status==='Reserved'?'selected':''}>Reserved</option><option ${res.status==='Checked-in'?'selected':''}>Checked-in</option><option ${res.status==='Checked-out'?'selected':''}>Checked-out</option><option ${res.status==='Cancelled'?'selected':''}>Cancelled</option></select>
+          <select id="editRoomId" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${getRoomsData().map(r => `<option value="${r.id}" ${Number(r.id)===Number(res.roomId)?'selected':''}>${r.roomName} (${roomTypeLabel(r.roomType)})</option>`).join('')}</select>
+          <select id="editStatus" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option ${res.status==='Reserved'?'selected':''} value="Reserved">დაჯავშნილი</option><option ${res.status==='Checked-in'?'selected':''} value="Checked-in">Check-in</option><option ${res.status==='Checked-out'?'selected':''} value="Checked-out">Check-out</option><option ${res.status==='Cancelled'?'selected':''} value="Cancelled">გაუქმებული</option></select>
           <input id="editCheckinDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(res.checkinDate || '')}">
           <input id="editCheckoutDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(res.checkoutDate || '')}">
-          <select id="editPaymentStatus" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid" ${res.paymentStatus==='unpaid'?'selected':''}>unpaid</option><option value="partial" ${res.paymentStatus==='partial'?'selected':''}>partial</option><option value="paid" ${res.paymentStatus==='paid'?'selected':''}>paid</option></select>
+          <select id="editPaymentStatus" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid" ${res.paymentStatus==='unpaid'?'selected':''}>გადაუხდელი</option><option value="partial" ${res.paymentStatus==='partial'?'selected':''}>ნაწილობრივ</option><option value="paid" ${res.paymentStatus==='paid'?'selected':''}>გადახდილი</option></select>
           <input id="editTotalPrice" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(res.totalPrice||0)}">
-          <select id="editConsentLang" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="ka">ქართული</option><option value="en">English</option></select>
+          <select id="editConsentLang" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="ka">ქართული</option><option value="en">ინგლისური</option></select>
         </div>
         <div class="flex gap-2 mt-4 flex-wrap">
           <button class="px-3 py-2 rounded bg-sky-600 text-white" onclick="saveReservationEdits(${res.id})">შენახვა</button>
@@ -1146,7 +1164,7 @@
           <button class="px-3 py-2 rounded bg-amber-500 text-white" onclick="checkOutReservation(${res.id})">Check-out</button>
           <button class="px-3 py-2 rounded bg-red-600 text-white" onclick="deleteReservation(${res.id})">წაშლა</button>
           <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printConsent(${res.id}, 'ka')">თანხმობა KA</button>
-          <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printConsent(${res.id}, 'en')">Consent EN</button>
+          <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printConsent(${res.id}, 'en')">თანხმობა (EN)</button>
         </div>
         <div class="mt-3 text-xs text-gray-500">ოთახი: ${escapeHtml(room?.roomName || room?.roomNumber || '-')} (${escapeHtml(room?.roomType || '-')})</div>
       `;
@@ -1276,7 +1294,7 @@
               <div class="muted">${escapeHtml(hotel.phone)} • ${escapeHtml(hotel.email)}</div>
               <div class="muted">${escapeHtml(hotel.address)}</div>
             </div>
-            <div class="right"><div class="muted">სტატუსი: ${res.status}</div></div>
+            <div class="right"><div class="muted">სტატუსი: ${reservationStatusLabel(res.status)}</div></div>
           </div>
           <div class="box">
             <div><strong>სტუმარი:</strong> ${escapeHtml(res.guestName)}</div>
@@ -1402,12 +1420,12 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <label class="text-xs text-gray-500">ნომერი<input id="editRoomNumber" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(room.roomNumber)}"></label>
           <label class="text-xs text-gray-500">სახელი<input id="editRoomName" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(room.roomName)}"></label>
-          <label class="text-xs text-gray-500">ტიპი<select id="editRoomType" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${getRoomTypes().map(t => `<option ${room.roomType===t?'selected':''}>${t}</option>`).join('')}</select></label>
+          <label class="text-xs text-gray-500">ტიპი<select id="editRoomType" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${getRoomTypes().map(t => `<option value="${t}" ${room.roomType===t?'selected':''}>${roomTypeLabel(t)}</option>`).join('')}</select></label>
           <label class="text-xs text-gray-500">ღამის ფასი<input id="editRoomPrice" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.basePrice || 0)}"></label>
           <label class="text-xs text-gray-500">სართული<input id="editRoomFloor" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.floor || 1)}"></label>
           <label class="text-xs text-gray-500">საწოლები<input id="editRoomBeds" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.beds || 1)}"></label>
           <label class="text-xs text-gray-500">მაქს სტუმრები<input id="editRoomMaxGuests" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.maxGuests || 1)}"></label>
-          <label class="text-xs text-gray-500">სტატუსი<select id="editRoomStatus" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option ${room.status==='available'?'selected':''}>available</option><option ${room.status==='booked'?'selected':''}>booked</option><option ${room.status==='occupied'?'selected':''}>occupied</option><option ${room.status==='cleaning'?'selected':''}>cleaning</option><option ${room.status==='maintenance'?'selected':''}>maintenance</option></select></label>
+          <label class="text-xs text-gray-500">სტატუსი<select id="editRoomStatus" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="available" ${room.status==='available'?'selected':''}>ხელმისაწვდომი</option><option value="booked" ${room.status==='booked'?'selected':''}>დაჯავშნილი</option><option value="occupied" ${room.status==='occupied'?'selected':''}>დაკავებული</option><option value="cleaning" ${room.status==='cleaning'?'selected':''}>დასუფთავება</option><option value="maintenance" ${room.status==='maintenance'?'selected':''}>რემონტი</option></select></label>
         </div>
         <button class="mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="saveRoomEdits(${room.id})">შენახვა</button>
       `;
@@ -1446,7 +1464,7 @@
       if (!roomNumber) return showToast('ნომრის ნომერი აუცილებელია', 'error');
       const rooms = getRoomsData();
       const nextId = rooms.length ? Math.max(...rooms.map(r => Number(r.id))) + 1 : 1;
-      rooms.push({ id: nextId, roomNumber, roomName: roomName || `Room ${roomNumber}`, roomType, basePrice, floor, beds, maxGuests, status });
+      rooms.push({ id: nextId, roomNumber, roomName: roomName || `ნომერი ${roomNumber}`, roomType, basePrice, floor, beds, maxGuests, status });
       setRoomsData(rooms);
       closeModal();
       showToast('ნომერი დაემატა');
@@ -1536,8 +1554,8 @@
       document.getElementById('modal-content').innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <input id="editPaymentAmount" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(payment.amount || 0)}">
-          <select id="editPaymentMethod" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option ${payment.method==='cash'?'selected':''} value="cash">cash</option><option ${payment.method==='card'?'selected':''} value="card">card</option><option ${payment.method==='bank'?'selected':''} value="bank">bank</option></select>
-          <select id="editPaymentStatusField" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid" ${payment.status==='unpaid'?'selected':''}>unpaid</option><option value="partial" ${payment.status==='partial'?'selected':''}>partial</option><option value="paid" ${payment.status==='paid'?'selected':''}>paid</option></select>
+          <select id="editPaymentMethod" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option ${payment.method==='cash'?'selected':''} value="cash">ნაღდი</option><option ${payment.method==='card'?'selected':''} value="card">ბარათი</option><option ${payment.method==='bank'?'selected':''} value="bank">ბანკი</option></select>
+          <select id="editPaymentStatusField" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid" ${payment.status==='unpaid'?'selected':''}>გადაუხდელი</option><option value="partial" ${payment.status==='partial'?'selected':''}>ნაწილობრივ</option><option value="paid" ${payment.status==='paid'?'selected':''}>გადახდილი</option></select>
         </div>
         <button class="mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="savePaymentEdits(${payment.id})">შენახვა</button>
       `;
@@ -1576,29 +1594,29 @@
       const c = getChannelConfig();
       document.getElementById('page-channels').innerHTML = `
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-bold">Channel Manager</h2>
+          <h2 class="text-xl font-bold">არხების მენეჯერი</h2>
           <span class="text-sm px-3 py-1 rounded-full ${c.isConnected ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}">${c.isConnected ? 'დაკავშირებულია' : 'გათიშულია'}</span>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div><label class="block text-sm mb-1">კავშირის რეჟიმი</label><select id="ch-mode" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="oauth" ${c.connectionMode==='oauth'?'selected':''}>OAuth</option><option value="apiKey" ${c.connectionMode==='apiKey'?'selected':''}>API Key</option></select></div>
-            <div><label class="block text-sm mb-1">Proxy URL</label><input id="ch-proxy" value="${escapeHtml(c.proxyUrl)}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="https://your-backend.com/channex-proxy"></div>
-            <div><label class="block text-sm mb-1">OAuth Start URL</label><input id="ch-start" value="${escapeHtml(c.authStartUrl)}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"></div>
-            <div><label class="block text-sm mb-1">OAuth Status URL</label><input id="ch-status" value="${escapeHtml(c.authStatusUrl)}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"></div>
-            <div><label class="block text-sm mb-1">API Base URL</label><input id="ch-base" value="${escapeHtml(c.apiBaseUrl)}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"></div>
-            <div><label class="block text-sm mb-1">API Key</label><input id="ch-key" value="${escapeHtml(c.apiKey)}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"></div>
+            <div><label class="block text-sm mb-1">კავშირის რეჟიმი</label><select id="ch-mode" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="oauth" ${c.connectionMode==='oauth'?'selected':''}>OAuth</option><option value="apiKey" ${c.connectionMode==='apiKey'?'selected':''}>API გასაღები</option></select></div>
+            <div><label class="block text-sm mb-1">პროქსი მისამართი</label><input id="ch-proxy" value="${escapeHtml(c.proxyUrl)}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="https://your-backend.com/channex-proxy"></div>
+            <div><label class="block text-sm mb-1">OAuth დაწყების მისამართი</label><input id="ch-start" value="${escapeHtml(c.authStartUrl)}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"></div>
+            <div><label class="block text-sm mb-1">OAuth სტატუსის მისამართი</label><input id="ch-status" value="${escapeHtml(c.authStatusUrl)}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"></div>
+            <div><label class="block text-sm mb-1">API საბაზისო მისამართი</label><input id="ch-base" value="${escapeHtml(c.apiBaseUrl)}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"></div>
+            <div><label class="block text-sm mb-1">API გასაღები</label><input id="ch-key" value="${escapeHtml(c.apiKey)}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"></div>
             <div><label class="block text-sm mb-1">Property ID</label><input id="ch-property" value="${escapeHtml(c.propertyId)}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"></div>
-            <div><label class="block text-sm mb-1">Auto Sync (წუთი)</label><input id="ch-interval" type="number" min="5" value="${c.syncIntervalMinutes}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"></div>
+            <div><label class="block text-sm mb-1">ავტო სინქი (წუთი)</label><input id="ch-interval" type="number" min="5" value="${c.syncIntervalMinutes}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"></div>
           </div>
           <div class="flex flex-wrap gap-2">
             <button onclick="saveChannelSettings()" class="px-4 py-2 bg-sky-600 text-white rounded-xl">შენახვა</button>
             <button onclick="startChannexOAuth()" class="px-4 py-2 bg-indigo-600 text-white rounded-xl">Channex OAuth ავტორიზაცია</button>
             <button onclick="testChannexConnection()" class="px-4 py-2 bg-emerald-600 text-white rounded-xl">კავშირის ტესტი</button>
-            <button onclick="syncChannexData('rates')" class="px-4 py-2 bg-amber-500 text-white rounded-xl">Rates Sync</button>
-            <button onclick="syncChannexData('reservations')" class="px-4 py-2 bg-amber-500 text-white rounded-xl">Reservations Sync</button>
+            <button onclick="syncChannexData('rates')" class="px-4 py-2 bg-amber-500 text-white rounded-xl">ტარიფების სინქი</button>
+            <button onclick="syncChannexData('reservations')" class="px-4 py-2 bg-amber-500 text-white rounded-xl">ჯავშნების სინქი</button>
             <button onclick="disconnectChannex()" class="px-4 py-2 bg-red-600 text-white rounded-xl">გათიშვა</button>
           </div>
-          <div class="text-xs text-gray-500">ბოლო დაკავშირება: ${c.connectedAt ? formatDate(c.connectedAt) : '-'} | ბოლო sync: ${c.lastSyncAt ? formatDate(c.lastSyncAt) : '-'}</div>
+          <div class="text-xs text-gray-500">ბოლო დაკავშირება: ${c.connectedAt ? formatDate(c.connectedAt) : '-'} | ბოლო სინქი: ${c.lastSyncAt ? formatDate(c.lastSyncAt) : '-'}</div>
         </div>
       `;
     }
@@ -1620,7 +1638,7 @@
     function saveChannelSettings() {
       const f = readChannelForm();
       setChannelConfig(f);
-      showToast('Channel Manager პარამეტრები შენახულია');
+      showToast('არხების მენეჯერის პარამეტრები შენახულია');
       renderChannels();
     }
 
@@ -1647,7 +1665,7 @@
           const ok = await refreshChannexOAuthConnection();
           showToast(ok ? 'OAuth კავშირი დადასტურდა' : 'OAuth ჯერ არაა დასრულებული', ok ? 'success' : 'warning');
         } else {
-          if (!c.apiKey && !c.proxyUrl) throw new Error('API key ან Proxy URL აუცილებელია');
+          if (!c.apiKey && !c.proxyUrl) throw new Error('API გასაღები ან პროქსი მისამართი აუცილებელია');
           const base = (c.proxyUrl || c.apiBaseUrl || '').replace(/\/$/, '');
           const r = await fetch(`${base}/properties?pagination[limit]=1`, {
             headers: c.apiKey ? { Authorization: `Bearer ${c.apiKey}` } : {},
@@ -1667,8 +1685,8 @@
     function startChannexOAuth() {
       const f = readChannelForm();
       setChannelConfig(f);
-      if (!f.authStartUrl) return showToast('OAuth Start URL სავალდებულოა', 'error');
-      if (!f.proxyUrl) return showToast('OAuth რეჟიმში Proxy URL სავალდებულოა', 'error');
+      if (!f.authStartUrl) return showToast('OAuth დაწყების მისამართი სავალდებულოა', 'error');
+      if (!f.proxyUrl) return showToast('OAuth რეჟიმში პროქსი მისამართი სავალდებულოა', 'error');
       const callbackUrl = `${window.location.origin}${window.location.pathname}?channex_oauth=success`;
       const url = new URL(f.authStartUrl, window.location.origin);
       url.searchParams.set('redirect_uri', callbackUrl);
@@ -1706,9 +1724,9 @@
         });
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
         setChannelConfig({ lastSyncAt: new Date().toISOString() });
-        showToast(`${kind} sync დასრულდა`);
+        showToast(`${kind === 'rates' ? 'ტარიფების' : 'ჯავშნების'} სინქი დასრულდა`);
       } catch (e) {
-        showToast(`sync შეცდომა: ${e.message}`, 'error');
+        showToast(`სინქის შეცდომა: ${e.message}`, 'error');
       }
       renderChannels();
     }
@@ -1736,8 +1754,8 @@
             <input id="newGuestIdNumber" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="პირადი ნომერი / პასპორტი" onblur="autoFillGuestById()">
             <input id="newGuestCitizenship" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მოქალაქეობა">
             <input id="newGuestBirthDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
-            <select id="newRoomId" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${rooms.map(r => `<option value="${r.id}">${r.roomName} (${r.roomType})</option>`).join('')}</select>
-            <select id="newPaymentStatus" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid">unpaid</option><option value="partial">partial</option><option value="paid">paid</option></select>
+            <select id="newRoomId" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${rooms.map(r => `<option value="${r.id}">${r.roomName} (${roomTypeLabel(r.roomType)})</option>`).join('')}</select>
+            <select id="newPaymentStatus" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid">გადაუხდელი</option><option value="partial">ნაწილობრივ</option><option value="paid">გადახდილი</option></select>
             <input id="newCheckinDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${today}">
             <input id="newCheckoutDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${formatDateISO(addDays(new Date(), 1))}">
           </div>
@@ -1751,13 +1769,13 @@
         content.innerHTML = `
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <label class="text-xs text-gray-500">ნომერი<input id="newRoomNumber" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: 101"></label>
-            <label class="text-xs text-gray-500">სახელი<input id="newRoomName" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: Room 101"></label>
-            <label class="text-xs text-gray-500">ტიპი<select id="newRoomType" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>Single</option><option>Double</option><option>Triple</option><option>Family</option><option>Suite</option></select></label>
+            <label class="text-xs text-gray-500">სახელი<input id="newRoomName" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: ნომერი 101"></label>
+            <label class="text-xs text-gray-500">ტიპი<select id="newRoomType" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="Single">ერთადგილიანი</option><option value="Double">ორადგილიანი</option><option value="Triple">სამადგილიანი</option><option value="Family">ოჯახური</option><option value="Suite">ლუქსი</option></select></label>
             <label class="text-xs text-gray-500">ღამის ფასი<input id="newRoomPrice" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="₾"></label>
             <label class="text-xs text-gray-500">სართული<input id="newRoomFloor" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="1"></label>
             <label class="text-xs text-gray-500">საწოლების რაოდენობა<input id="newRoomBeds" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="1"></label>
             <label class="text-xs text-gray-500">მაქსიმალური სტუმრები<input id="newRoomMaxGuests" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="2"></label>
-            <label class="text-xs text-gray-500">სტატუსი<select id="newRoomStatus" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>available</option><option>booked</option><option>occupied</option><option>cleaning</option><option>maintenance</option></select></label>
+            <label class="text-xs text-gray-500">სტატუსი<select id="newRoomStatus" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="available">ხელმისაწვდომი</option><option value="booked">დაჯავშნილი</option><option value="occupied">დაკავებული</option><option value="cleaning">დასუფთავება</option><option value="maintenance">რემონტი</option></select></label>
           </div>
           <button class='mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg' onclick='addRoomFromModal()'>შენახვა</button>
         `;
@@ -1781,8 +1799,8 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <select id="newPaymentReservationId" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${reservations.map(r => `<option value="${r.id}">#${r.id} • ${escapeHtml(r.guestName)} • ოთახი ${escapeHtml(findRoomById(r.roomId)?.roomNumber || '-')}</option>`).join('')}</select>
             <input id="newPaymentAmount" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="თანხა">
-            <select id="newPaymentMethod" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="cash">cash</option><option value="card">card</option><option value="bank">bank</option></select>
-            <select id="newPaymentStatusField" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid">unpaid</option><option value="partial">partial</option><option value="paid">paid</option></select>
+            <select id="newPaymentMethod" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="cash">ნაღდი</option><option value="card">ბარათი</option><option value="bank">ბანკი</option></select>
+            <select id="newPaymentStatusField" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid">გადაუხდელი</option><option value="partial">ნაწილობრივ</option><option value="paid">გადახდილი</option></select>
           </div>
           <button class='mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg' onclick='addPaymentFromModal()'>შენახვა</button>
         `;
