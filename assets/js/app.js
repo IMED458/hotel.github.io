@@ -10,6 +10,7 @@
       hotel_email: 'info@hotel.ge',
       hotel_phone: '+995 32 123 4567',
       hotel_address: 'რუსთაველის გამზირი 1, თბილისი',
+      hotel_logo_url: '',
       default_checkout_time: '12:00',
       late_checkout_hourly_rate: 10,
       extra_bed_rate: 40,
@@ -36,6 +37,7 @@
       connectedAt: '',
       lastSyncAt: ''
     };
+    const DEFAULT_HOTEL_LOGO_PATH = 'assets/branding/Green%20Tower%20Hotel.png';
 
     let config = { ...defaultConfig };
     let allData = [];
@@ -45,6 +47,8 @@
     let sidebarCollapsed = false;
     let calendarFullscreen = false;
     let draggedReservationId = null;
+    let autoSyncTimerId = null;
+    let autoSyncInProgress = false;
     let roomFilters = { roomType: '', minPrice: '', maxPrice: '', fromDate: '', toDate: '' };
     let calendarFilters = { roomType: '', maxPrice: '' };
     const GEO_MONTHS = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
@@ -128,6 +132,31 @@
     function applyConfig() {
       document.getElementById('hotel-name-display').textContent = config.hotel_name || defaultConfig.hotel_name;
       document.documentElement.style.setProperty('--primary-color', config.primary_color || defaultConfig.primary_color);
+      applyBrandingAssets();
+    }
+
+    function getHotelLogoUrl() {
+      return config.hotel_logo_url || DEFAULT_HOTEL_LOGO_PATH;
+    }
+
+    function applyBrandingAssets() {
+      const logoUrl = getHotelLogoUrl();
+      const brandLogo = document.getElementById('hotel-brand-logo');
+      const fallback = document.getElementById('hotel-brand-logo-fallback');
+      const favicon = document.getElementById('site-favicon');
+
+      if (favicon) favicon.href = logoUrl;
+
+      if (!brandLogo) return;
+      brandLogo.onload = () => {
+        brandLogo.classList.remove('hidden');
+        if (fallback) fallback.classList.add('hidden');
+      };
+      brandLogo.onerror = () => {
+        brandLogo.classList.add('hidden');
+        if (fallback) fallback.classList.remove('hidden');
+      };
+      brandLogo.src = logoUrl;
     }
 
     function getHotelIdentity() {
@@ -174,6 +203,7 @@
       }
 
       await handleOAuthCallback();
+      configureAutoSyncScheduler();
       applyConfig();
       applySidebarState();
       setThemeIcon();
@@ -1442,6 +1472,18 @@
                 <input id="settingsHotelPhone" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(config.hotel_phone || defaultConfig.hotel_phone)}" placeholder="ტელეფონი">
                 <input id="settingsHotelAddress" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(config.hotel_address || defaultConfig.hotel_address)}" placeholder="მისამართი">
               </div>
+              <div class="mt-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600">
+                <p class="text-sm font-medium mb-2">სასტუმროს ლოგო</p>
+                <div class="flex items-center gap-3 mb-3">
+                  <img id="settingsLogoPreview" src="${escapeHtml(getHotelLogoUrl())}" alt="Logo Preview" class="w-12 h-12 rounded-lg object-cover bg-white border border-gray-200">
+                  <span class="text-xs text-gray-500">ფაილის სახელი: <code>Green Tower Hotel.png</code></span>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <input id="settingsHotelLogoFile" type="file" accept=".png,.jpg,.jpeg,.webp,.svg,image/png,image/jpeg,image/webp,image/svg+xml" class="text-xs">
+                  <button class="px-3 py-2 rounded-lg bg-sky-600 text-white text-sm" onclick="uploadHotelLogo()">ლოგოს ატვირთვა</button>
+                  <button class="px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 text-sm" onclick="resetHotelLogo()">ნაგულისხმევზე დაბრუნება</button>
+                </div>
+              </div>
               <button class="mt-4 px-4 py-2 rounded-lg bg-sky-600 text-white" onclick="saveHotelSettings()">შენახვა</button>
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
@@ -1492,12 +1534,41 @@
         hotel_name: document.getElementById('settingsHotelName')?.value.trim() || defaultConfig.hotel_name,
         hotel_email: document.getElementById('settingsHotelEmail')?.value.trim() || defaultConfig.hotel_email,
         hotel_phone: document.getElementById('settingsHotelPhone')?.value.trim() || defaultConfig.hotel_phone,
-        hotel_address: document.getElementById('settingsHotelAddress')?.value.trim() || defaultConfig.hotel_address
+        hotel_address: document.getElementById('settingsHotelAddress')?.value.trim() || defaultConfig.hotel_address,
+        hotel_logo_url: config.hotel_logo_url || ''
       };
       setState('hotelConfig', config);
       if (window.elementSdk?.setConfig) window.elementSdk.setConfig(config);
       applyConfig();
       showToast('პარამეტრები შენახულია');
+    }
+
+    function uploadHotelLogo() {
+      const fileInput = document.getElementById('settingsHotelLogoFile');
+      const file = fileInput?.files?.[0];
+      if (!file) return showToast('ჯერ აირჩიეთ ლოგოს ფაილი', 'warning');
+      const reader = new FileReader();
+      reader.onload = () => {
+        config = { ...config, hotel_logo_url: String(reader.result || '') };
+        setState('hotelConfig', config);
+        if (window.elementSdk?.setConfig) window.elementSdk.setConfig(config);
+        applyBrandingAssets();
+        const preview = document.getElementById('settingsLogoPreview');
+        if (preview) preview.src = getHotelLogoUrl();
+        showToast('ლოგო განახლდა');
+      };
+      reader.onerror = () => showToast('ლოგოს ატვირთვა ვერ მოხერხდა', 'error');
+      reader.readAsDataURL(file);
+    }
+
+    function resetHotelLogo() {
+      config = { ...config, hotel_logo_url: '' };
+      setState('hotelConfig', config);
+      if (window.elementSdk?.setConfig) window.elementSdk.setConfig(config);
+      applyBrandingAssets();
+      const preview = document.getElementById('settingsLogoPreview');
+      if (preview) preview.src = getHotelLogoUrl();
+      showToast('ნაგულისხმევი ლოგო აღდგა');
     }
 
     function savePolicySettings() {
@@ -2534,6 +2605,7 @@
             <div><label class="block text-sm mb-1">API გასაღები</label><input id="ch-key" value="${escapeHtml(c.apiKey)}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"></div>
             <div><label class="block text-sm mb-1">Property ID</label><input id="ch-property" value="${escapeHtml(c.propertyId)}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"></div>
             <div><label class="block text-sm mb-1">ავტო სინქი (წუთი)</label><input id="ch-interval" type="number" min="5" value="${c.syncIntervalMinutes}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"></div>
+            <div class="md:col-span-2"><label class="inline-flex items-center gap-2 text-sm mt-2"><input id="ch-auto-sync-enabled" type="checkbox" class="rounded" ${c.autoSyncEnabled ? 'checked' : ''}>ავტომატური სინქი ჩართული</label></div>
           </div>
           <div class="flex flex-wrap gap-2">
             <button onclick="saveChannelSettings()" class="px-4 py-2 bg-sky-600 text-white rounded-xl">შენახვა</button>
@@ -2558,13 +2630,14 @@
         apiKey: document.getElementById('ch-key').value.trim(),
         propertyId: document.getElementById('ch-property').value.trim(),
         syncIntervalMinutes: Number(document.getElementById('ch-interval').value || 15),
-        autoSyncEnabled: true
+        autoSyncEnabled: !!document.getElementById('ch-auto-sync-enabled')?.checked
       };
     }
 
     function saveChannelSettings() {
       const f = readChannelForm();
       setChannelConfig(f);
+      configureAutoSyncScheduler();
       showToast('არხების მენეჯერის პარამეტრები შენახულია');
       renderChannels();
     }
@@ -2606,6 +2679,7 @@
         setChannelConfig({ isConnected: false });
         showToast(`შეცდომა: ${e.message}`, 'error');
       }
+      configureAutoSyncScheduler();
       renderChannels();
     }
 
@@ -2639,9 +2713,13 @@
       window.history.replaceState({}, document.title, `${window.location.origin}${window.location.pathname}${window.location.hash}`);
     }
 
-    async function syncChannexData(kind) {
+    async function syncChannexData(kind, options = {}) {
+      const { silent = false, noRender = false } = options || {};
       const c = getChannelConfig();
-      if (!c.isConnected) return showToast('ჯერ დააკავშირეთ Channex', 'warning');
+      if (!c.isConnected) {
+        if (!silent) showToast('ჯერ დააკავშირეთ Channex', 'warning');
+        return;
+      }
       const base = (c.proxyUrl || c.apiBaseUrl || '').replace(/\/$/, '');
       const path = kind === 'rates' ? `/room_types?filter[property_id]=${encodeURIComponent(c.propertyId || '')}&pagination[limit]=5` : `/bookings?filter[property_id]=${encodeURIComponent(c.propertyId || '')}&pagination[limit]=20`;
       try {
@@ -2651,17 +2729,42 @@
         });
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
         setChannelConfig({ lastSyncAt: new Date().toISOString() });
-        showToast(`${kind === 'rates' ? 'ტარიფების' : 'ჯავშნების'} სინქი დასრულდა`);
+        if (!silent) showToast(`${kind === 'rates' ? 'ტარიფების' : 'ჯავშნების'} სინქი დასრულდა`);
       } catch (e) {
-        showToast(`სინქის შეცდომა: ${e.message}`, 'error');
+        if (!silent) showToast(`სინქის შეცდომა: ${e.message}`, 'error');
       }
-      renderChannels();
+      if (!noRender) renderChannels();
     }
 
     function disconnectChannex() {
       setChannelConfig({ isConnected: false, connectedAt: '', lastSyncAt: '', apiKey: '' });
+      configureAutoSyncScheduler();
       showToast('Channex კავშირი გათიშულია', 'warning');
       renderChannels();
+    }
+
+    async function runAutoSyncCycle() {
+      const c = getChannelConfig();
+      if (!c.autoSyncEnabled || !c.isConnected || autoSyncInProgress) return;
+      autoSyncInProgress = true;
+      try {
+        await syncChannexData('rates', { silent: true, noRender: true });
+        await syncChannexData('reservations', { silent: true, noRender: true });
+      } finally {
+        autoSyncInProgress = false;
+        if (currentPage === 'channels') renderChannels();
+      }
+    }
+
+    function configureAutoSyncScheduler() {
+      if (autoSyncTimerId) {
+        clearInterval(autoSyncTimerId);
+        autoSyncTimerId = null;
+      }
+      const c = getChannelConfig();
+      if (!c.autoSyncEnabled || !c.isConnected) return;
+      const intervalMs = Math.max(1, Number(c.syncIntervalMinutes || 15)) * 60 * 1000;
+      autoSyncTimerId = setInterval(runAutoSyncCycle, intervalMs);
     }
 
     function openModal(type) {

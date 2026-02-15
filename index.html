@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>სასტუმროს მართვის სისტემა</title>
+  <link id="site-favicon" rel="icon" type="image/png" href="assets/branding/Green%20Tower%20Hotel.png">
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="/_sdk/element_sdk.js"></script>
   <script src="/_sdk/data_sdk.js"></script>
@@ -38,8 +39,9 @@
       <div class="p-6 border-b border-gray-100 dark:border-gray-700">
         <div class="flex items-center justify-between gap-2">
           <div class="flex items-center gap-3 min-w-0">
-          <div class="w-10 h-10 bg-gradient-to-br from-sky-500 to-blue-600 rounded-xl flex items-center justify-center text-white">
-            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16M9 7h1m4 0h1M9 11h1m4 0h1M9 15h1m4 0h1"/></svg>
+          <div class="w-10 h-10 bg-gradient-to-br from-sky-500 to-blue-600 rounded-xl flex items-center justify-center text-white overflow-hidden">
+            <img id="hotel-brand-logo" class="hidden hotel-brand-logo w-full h-full object-cover" alt="Hotel Logo">
+            <svg id="hotel-brand-logo-fallback" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16M9 7h1m4 0h1M9 11h1m4 0h1M9 15h1m4 0h1"/></svg>
           </div>
           <div class="sidebar-text min-w-0">
             <h1 id="hotel-name-display" class="font-bold text-lg text-gray-900 dark:text-white">Grand Hotel</h1>
