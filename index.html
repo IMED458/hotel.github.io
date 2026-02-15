@@ -36,10 +36,20 @@
     .app-wrapper { min-height: 100%; overflow: auto; }
     .sidebar { width: 280px; }
     .main-content { margin-left: 280px; }
+    body.sidebar-collapsed .sidebar { width: 88px; }
+    body.sidebar-collapsed .main-content { margin-left: 88px; }
+    body.sidebar-collapsed .sidebar-text,
+    body.sidebar-collapsed .sidebar-label { display: none; }
+    body.sidebar-collapsed #main-nav .nav-item { justify-content: center; padding-left: 0.5rem; padding-right: 0.5rem; }
+    body.sidebar-collapsed #main-nav .nav-icon { margin-right: 0; }
+    body.sidebar-collapsed .sidebar-user { justify-content: center; }
+    body.sidebar-collapsed .sidebar-user .w-10 { margin-right: 0; }
     @media (max-width: 1024px) {
       .sidebar { transform: translateX(-100%); position: fixed; z-index: 50; transition: transform .2s ease; }
       .sidebar.open { transform: translateX(0); }
       .main-content { margin-left: 0; }
+      body.sidebar-collapsed .sidebar { width: 280px; }
+      body.sidebar-collapsed .main-content { margin-left: 0; }
     }
     .toast { animation: slideIn .25s ease; }
     @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
@@ -67,21 +77,26 @@
   <div class="app-wrapper flex">
     <aside id="sidebar" class="sidebar fixed h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
       <div class="p-6 border-b border-gray-100 dark:border-gray-700">
-        <div class="flex items-center gap-3">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-3 min-w-0">
           <div class="w-10 h-10 bg-gradient-to-br from-sky-500 to-blue-600 rounded-xl flex items-center justify-center text-white">🏨</div>
-          <div>
+          <div class="sidebar-text min-w-0">
             <h1 id="hotel-name-display" class="font-bold text-lg text-gray-900 dark:text-white">Grand Hotel</h1>
             <p class="text-xs text-gray-500">მართვის სისტემა</p>
           </div>
+          </div>
+          <button onclick="toggleSidebarCollapse()" class="hidden lg:inline-flex p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700" title="მენიუს შეკეცვა/გაშლა">
+            <span id="sidebar-collapse-icon">⇤</span>
+          </button>
         </div>
       </div>
 
       <nav class="flex-1 p-4 space-y-1 overflow-y-auto" id="main-nav"></nav>
 
       <div class="p-4 border-t border-gray-100 dark:border-gray-700">
-        <div class="flex items-center gap-3">
+        <div class="sidebar-user flex items-center gap-3">
           <div class="w-10 h-10 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold">A</div>
-          <div class="flex-1">
+          <div class="sidebar-text flex-1">
             <p class="font-medium text-sm text-gray-900 dark:text-white">ადმინისტრატორი</p>
             <p class="text-xs text-gray-500">admin@hotel.ge</p>
           </div>
@@ -137,10 +152,10 @@
 
   <script>
     const NAV_ITEMS = [
-      ['dashboard', 'დეშბორდი'], ['calendar', 'კალენდარი'], ['rooms', 'ნომრები'], ['reservations', 'ჯავშნები'],
-      ['guests', 'სტუმრები'], ['checkin', 'Check-in / Check-out'], ['payments', 'გადახდები / ინვოისები'],
-      ['pricing', 'ფასები / ტარიფები'], ['channels', 'Channel Manager'],
-      ['reports', 'რეპორტები'], ['settings', 'პარამეტრები']
+      ['dashboard', 'დეშბორდი', '📊'], ['calendar', 'კალენდარი', '🗓️'], ['rooms', 'ნომრები', '🚪'], ['reservations', 'ჯავშნები', '📘'],
+      ['guests', 'სტუმრები', '👥'], ['checkin', 'Check-in / Check-out', '🧾'], ['payments', 'გადახდები / ინვოისები', '💳'],
+      ['pricing', 'ფასები / ტარიფები', '🏷️'], ['channels', 'Channel Manager', '🌐'],
+      ['reports', 'რეპორტები', '📈'], ['settings', 'პარამეტრები', '⚙️']
     ];
 
     const defaultConfig = {
@@ -179,6 +194,7 @@
     let currentPage = 'dashboard';
     let calendarDate = new Date();
     let calendarView = 'week';
+    let sidebarCollapsed = false;
     const GEO_MONTHS = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
 
     const dataHandler = {
@@ -219,9 +235,24 @@
 
     function initNav() {
       const nav = document.getElementById('main-nav');
-      nav.innerHTML = NAV_ITEMS.map(([id, label]) => `
-        <button onclick="navigateTo('${id}')" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" data-page="${id}">${label}</button>
+      nav.innerHTML = NAV_ITEMS.map(([id, label, icon]) => `
+        <button onclick="navigateTo('${id}')" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" data-page="${id}" title="${label}">
+          <span class="nav-icon text-base">${icon || '•'}</span>
+          <span class="sidebar-label">${label}</span>
+        </button>
       `).join('');
+    }
+
+    function applySidebarState() {
+      document.body.classList.toggle('sidebar-collapsed', sidebarCollapsed);
+      const icon = document.getElementById('sidebar-collapse-icon');
+      if (icon) icon.textContent = sidebarCollapsed ? '⇥' : '⇤';
+    }
+
+    function toggleSidebarCollapse() {
+      sidebarCollapsed = !sidebarCollapsed;
+      setState('sidebarCollapsed', sidebarCollapsed);
+      applySidebarState();
     }
 
     function applyConfig() {
@@ -241,6 +272,7 @@
     async function initialize() {
       initNav();
       ensureHotelState();
+      sidebarCollapsed = !!getState('sidebarCollapsed', false);
       config = { ...defaultConfig, ...getState('hotelConfig', {}) };
       if (window.elementSdk) {
         window.elementSdk.init({
@@ -273,6 +305,7 @@
 
       await handleOAuthCallback();
       applyConfig();
+      applySidebarState();
       navigateTo('dashboard');
     }
 
@@ -657,6 +690,7 @@
 
       updateCalendarTitle();
       const grid = document.getElementById('calendar-grid');
+      grid.className = calendarView === 'month' ? '' : 'min-w-[900px]';
       if (calendarView === 'week') {
         renderWeekView(grid, rooms, reservations);
       } else if (calendarView === 'month') {
@@ -726,13 +760,15 @@
           .sort((a, b) => a.startPos - b.startPos || a.endPos - b.endPos);
 
         const laneEnds = [];
+        const barStep = dayWidth <= 20 ? 28 : 34;
+        const barTopBase = 5;
         const bars = roomReservations.map(item => {
           let lane = 0;
           while (lane < laneEnds.length && item.startPos < laneEnds[lane]) lane++;
           laneEnds[lane] = item.endPos;
           const left = roomWidth + (item.startPos * dayWidth) + 1;
           const width = Math.max(24, ((item.endPos - item.startPos) * dayWidth) - 2);
-          const top = 5 + (lane * 34);
+          const top = barTopBase + (lane * barStep);
           const booking = item.reservation;
           const cls = booking.status === 'Checked-in' ? 'checkedin' : booking.status === 'Checked-out' ? 'checkout' : 'reserved';
           return `<div class="reservation-bar ${cls}" style="left:${left}px;top:${top}px;width:${width}px;" onclick="openReservationDetails(${booking.id})">${escapeHtml(booking.guestName || '-')}</div>`;
@@ -769,17 +805,19 @@
       }
 
       const dayNames = ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
-      const roomWidth = 180;
-      const dayWidth = 44;
+      const availableWidth = Math.max(720, (grid.parentElement?.clientWidth || window.innerWidth || 1280) - 12);
+      const roomWidth = availableWidth >= 1200 ? 170 : availableWidth >= 992 ? 150 : 130;
+      const dayWidth = Math.max(16, Math.floor((availableWidth - roomWidth) / days.length));
       const totalWidth = roomWidth + (dayWidth * days.length);
+      const dayFontClass = dayWidth <= 20 ? 'text-[9px]' : dayWidth <= 24 ? 'text-[10px]' : 'text-xs';
 
       const header = `
         <div class="border-b border-gray-100 dark:border-gray-700" style="display:grid;grid-template-columns:${roomWidth}px repeat(${days.length}, ${dayWidth}px);min-width:${totalWidth}px;">
           <div class="p-3 bg-gray-50 dark:bg-gray-700/50 font-medium text-sm text-gray-500 dark:text-gray-400">ნომერი</div>
           ${days.map((d) => `
             <div class="p-2 bg-gray-50 dark:bg-gray-700/50 text-center border-l border-gray-100 dark:border-gray-700/40">
-              <div class="text-[10px] text-gray-500 dark:text-gray-400">${dayNames[d.getDay()]}</div>
-              <div class="text-xs font-semibold text-gray-900 dark:text-white ${isToday(d) ? 'text-sky-600' : ''}">${d.getDate()}</div>
+              <div class="${dayFontClass} text-gray-500 dark:text-gray-400">${dayNames[d.getDay()]}</div>
+              <div class="${dayFontClass} font-semibold text-gray-900 dark:text-white ${isToday(d) ? 'text-sky-600' : ''}">${d.getDate()}</div>
             </div>
           `).join('')}
         </div>
@@ -822,7 +860,7 @@
           return `<div class="reservation-bar ${cls}" style="left:${left}px;top:${top}px;width:${width}px;" onclick="openReservationDetails(${booking.id})">${escapeHtml(booking.guestName || '-')}</div>`;
         }).join('');
 
-        const rowMinHeight = Math.max(48, laneEnds.length * 34 + 10);
+        const rowMinHeight = Math.max(44, laneEnds.length * barStep + 10);
         return `
           <div class="relative border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50/40 dark:hover:bg-gray-700/20" style="display:grid;grid-template-columns:${roomWidth}px repeat(${days.length}, ${dayWidth}px);min-width:${totalWidth}px;min-height:${rowMinHeight}px;">
             <div class="p-3 flex items-center gap-2 bg-white dark:bg-gray-800 sticky left-0 z-10">
