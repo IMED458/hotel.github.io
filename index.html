@@ -737,9 +737,9 @@
         return typeOk && priceOk;
       });
       const gridWrapClass = calendarFullscreen ? 'overflow-auto' : 'overflow-auto';
-      const gridWrapStyle = calendarFullscreen ? 'max-height: calc(100vh - 250px);' : 'max-height: 72vh;';
+      const gridWrapStyle = calendarFullscreen ? 'max-height: calc(100vh - 190px);' : 'max-height: 72vh;';
       const shellClasses = calendarFullscreen
-        ? 'fixed inset-3 z-[80] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden'
+        ? 'fixed inset-0 z-[120] bg-white dark:bg-gray-800 rounded-none shadow-2xl border-0 overflow-hidden'
         : 'bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden';
 
       document.getElementById('page-calendar').innerHTML = `
@@ -828,8 +828,9 @@
       }
 
       const dayNames = ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'];
-      const roomWidth = 180;
-      const dayWidth = 128;
+      const shellWidth = document.getElementById('calendar-shell')?.clientWidth || grid.parentElement?.clientWidth || window.innerWidth;
+      const roomWidth = calendarFullscreen ? Math.max(170, Math.floor(shellWidth * 0.16)) : 180;
+      const dayWidth = calendarFullscreen ? Math.max(120, Math.floor((shellWidth - roomWidth - 20) / 7)) : 128;
       const totalWidth = roomWidth + (dayWidth * 7);
       const weekEnd = days[6];
 
@@ -927,7 +928,8 @@
       }
 
       const dayNames = ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
-      const availableWidth = Math.max(720, (grid.parentElement?.clientWidth || window.innerWidth || 1280) - 12);
+      const shellWidth = document.getElementById('calendar-shell')?.clientWidth || grid.parentElement?.clientWidth || window.innerWidth || 1280;
+      const availableWidth = Math.max(720, shellWidth - 12);
       const roomWidth = availableWidth >= 1200 ? 170 : availableWidth >= 992 ? 150 : 130;
       const dayWidth = Math.max(16, Math.floor((availableWidth - roomWidth) / days.length));
       const totalWidth = roomWidth + (dayWidth * days.length);
