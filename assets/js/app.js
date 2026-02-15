@@ -1873,7 +1873,6 @@
           </div>
           <label class="text-xs text-gray-500">სრული თანხა<input id="editTotalPrice" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(res.totalPrice||0)}" readonly></label>
           <label class="text-xs text-gray-500">დასარჩენი გადასახდელი თანხა<input id="editDueAmount" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Math.max(0, Number(res.totalPrice || 0) - Number(res.paidAmount || 0))}" readonly></label>
-          <select id="editConsentLang" class="mt-5 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="ka">ქართული</option><option value="en">ინგლისური</option></select>
         </div>
         <div class="mt-2 text-xs text-gray-500">გვიანი Check-out გადასახადი: <strong id="editLateCheckoutFee">${config.currency_symbol}${Number(res.lateCheckoutFee || 0).toLocaleString('en-US')}</strong></div>
         <div class="mt-1 text-xs text-gray-500">Extra Bed გადასახადი: <strong id="editExtraBedFee">${config.currency_symbol}${Number(res.extraBedFee || 0).toLocaleString('en-US')}</strong></div>
