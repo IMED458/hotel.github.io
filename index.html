@@ -72,6 +72,21 @@
     :root { --calendar-room-width: 180px; --calendar-week-day-width: 128px; }
     .consent-print { padding: 18px; border: 1px solid #d1d5db; font-size: 13px; line-height: 1.5; }
     body.calendar-fullscreen-open { overflow: hidden; }
+    #modal-container.calendar-context #modal-dialog {
+      inset: 0 0 0 auto !important;
+      transform: none !important;
+      width: min(620px, 100vw) !important;
+      max-width: none !important;
+      height: 100vh !important;
+      max-height: 100vh !important;
+      border-radius: 0 !important;
+    }
+    @media (max-width: 1024px) {
+      #modal-container.calendar-context #modal-dialog {
+        inset: 0 !important;
+        width: 100vw !important;
+      }
+    }
   </style>
 </head>
 <body class="h-full bg-gray-50 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-100">
@@ -144,7 +159,7 @@
 
   <div id="modal-container" class="fixed inset-0 z-50 hidden">
     <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeModal()"></div>
-    <div class="absolute inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden max-h-[90%] flex flex-col">
+    <div id="modal-dialog" class="absolute inset-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden max-h-[90%] flex flex-col">
       <div class="p-6 border-b border-gray-100 dark:border-gray-700 grid grid-cols-[1fr_auto_1fr] items-center">
         <h3 id="modal-title" class="text-lg font-semibold text-gray-900 dark:text-white justify-self-start">ფორმა</h3>
         <div id="modal-header-amount" class="hidden text-3xl font-extrabold text-red-600 tracking-tight justify-self-center"></div>
@@ -2541,6 +2556,8 @@
       const content = document.getElementById('modal-content');
       const headerAmount = document.getElementById('modal-header-amount');
       container.classList.remove('hidden');
+      const calendarContext = calendarFullscreen && currentPage === 'calendar' && type === 'new-reservation';
+      container.classList.toggle('calendar-context', !!calendarContext);
       if (headerAmount) {
         headerAmount.classList.add('hidden');
         headerAmount.textContent = '';
@@ -2654,7 +2671,11 @@
       }
     }
 
-    function closeModal() { document.getElementById('modal-container').classList.add('hidden'); }
+    function closeModal() {
+      const container = document.getElementById('modal-container');
+      container.classList.add('hidden');
+      container.classList.remove('calendar-context');
+    }
     function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
     function toggleDarkMode() {
       document.documentElement.classList.toggle('dark');
