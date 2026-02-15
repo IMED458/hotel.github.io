@@ -1136,6 +1136,21 @@
       renderCurrentPage();
     }
 
+    function computeReservationTotal(roomId, checkinDate, checkoutDate) {
+      const room = findRoomById(Number(roomId));
+      const nights = calculateNights(checkinDate, checkoutDate);
+      return Math.max(0, nights * Number(room?.basePrice || 0));
+    }
+
+    function recalcEditReservationTotal() {
+      const roomId = Number(document.getElementById('editRoomId')?.value);
+      const checkinDate = document.getElementById('editCheckinDate')?.value;
+      const checkoutDate = document.getElementById('editCheckoutDate')?.value;
+      const totalEl = document.getElementById('editTotalPrice');
+      if (!roomId || !checkinDate || !checkoutDate || !totalEl) return;
+      totalEl.value = String(computeReservationTotal(roomId, checkinDate, checkoutDate));
+    }
+
     function openReservationDetails(resId) {
       const res = getReservationsData().find(r => Number(r.id) === Number(resId));
       if (!res) return;
@@ -1168,12 +1183,24 @@
         </div>
         <div class="mt-3 text-xs text-gray-500">ოთახი: ${escapeHtml(room?.roomName || room?.roomNumber || '-')} (${escapeHtml(room?.roomType || '-')})</div>
       `;
+      document.getElementById('editRoomId')?.addEventListener('change', recalcEditReservationTotal);
+      document.getElementById('editCheckinDate')?.addEventListener('change', recalcEditReservationTotal);
+      document.getElementById('editCheckoutDate')?.addEventListener('change', recalcEditReservationTotal);
+      recalcEditReservationTotal();
     }
 
     function saveReservationEdits(resId) {
       const reservations = getReservationsData();
       const idx = reservations.findIndex(r => Number(r.id) === Number(resId));
       if (idx === -1) return;
+      const nextRoomId = Number(document.getElementById('editRoomId').value);
+      const nextCheckinDate = document.getElementById('editCheckinDate').value;
+      const nextCheckoutDate = document.getElementById('editCheckoutDate').value;
+      if (nextCheckoutDate <= nextCheckinDate) {
+        showToast('Check-out თარიღი უნდა იყოს Check-in თარიღის შემდეგ', 'error');
+        return;
+      }
+      const recalculatedTotal = computeReservationTotal(nextRoomId, nextCheckinDate, nextCheckoutDate);
       reservations[idx] = {
         ...reservations[idx],
         guestName: document.getElementById('editGuestName').value.trim(),
@@ -1182,12 +1209,12 @@
         guestIdNumber: document.getElementById('editGuestIdNumber').value.trim(),
         guestCitizenship: document.getElementById('editGuestCitizenship').value.trim(),
         guestBirthDate: document.getElementById('editGuestBirthDate').value,
-        roomId: Number(document.getElementById('editRoomId').value),
+        roomId: nextRoomId,
         status: document.getElementById('editStatus').value,
-        checkinDate: document.getElementById('editCheckinDate').value,
-        checkoutDate: document.getElementById('editCheckoutDate').value,
+        checkinDate: nextCheckinDate,
+        checkoutDate: nextCheckoutDate,
         paymentStatus: document.getElementById('editPaymentStatus').value,
-        totalPrice: Number(document.getElementById('editTotalPrice').value || 0)
+        totalPrice: recalculatedTotal
       };
       setReservationsData(reservations);
       showToast('ჯავშანი განახლდა');
