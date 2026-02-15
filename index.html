@@ -621,6 +621,7 @@
               </div>
               <div class="text-sm text-gray-500">${g.guestPhone || '-'}</div>
               ${g.flagged ? '<div class="mt-2 text-xs text-red-600">⚠ მონიშნულია</div>' : ''}
+              <button class="mt-3 px-3 py-2 text-xs rounded-lg bg-gray-100 dark:bg-gray-700" onclick="openGuestEdit('${escapeHtml(g.guestIdNumber || '')}')">რედაქტირება</button>
             </div>
           `).join('')}
         </div>
@@ -907,9 +908,10 @@
         </div>
         <div class="flex gap-2 mt-4 flex-wrap">
           <button class="px-3 py-2 rounded bg-sky-600 text-white" onclick="saveReservationEdits(${res.id})">შენახვა</button>
+          <button class="px-3 py-2 rounded bg-emerald-600 text-white" onclick="checkInReservation(${res.id})">Check-in</button>
           <button class="px-3 py-2 rounded bg-red-600 text-white" onclick="deleteReservation(${res.id})">წაშლა</button>
-          <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printInvoice(${res.id})">ინვოისის ბეჭდვა</button>
-          <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printConsent(${res.id}, document.getElementById('editConsentLang').value)">თანხმობის ბეჭდვა</button>
+          <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printConsent(${res.id}, 'ka')">თანხმობა KA</button>
+          <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printConsent(${res.id}, 'en')">Consent EN</button>
         </div>
         <div class="mt-3 text-xs text-gray-500">ოთახი: ${escapeHtml(room?.roomName || room?.roomNumber || '-')} (${escapeHtml(room?.roomType || '-')})</div>
       `;
@@ -945,6 +947,26 @@
       const reservations = getReservationsData().filter(r => Number(r.id) !== Number(resId));
       setReservationsData(reservations);
       showToast('ჯავშანი წაიშალა', 'warning');
+      closeModal();
+      renderCurrentPage();
+    }
+
+    function checkInReservation(resId) {
+      const reservations = getReservationsData();
+      const idx = reservations.findIndex(r => Number(r.id) === Number(resId));
+      if (idx === -1) return;
+      reservations[idx].status = 'Checked-in';
+      setReservationsData(reservations);
+      const room = findRoomById(reservations[idx].roomId);
+      if (room) {
+        const rooms = getRoomsData();
+        const rIdx = rooms.findIndex(r => Number(r.id) === Number(room.id));
+        if (rIdx !== -1) {
+          rooms[rIdx].status = 'occupied';
+          setRoomsData(rooms);
+        }
+      }
+      showToast('Check-in დასრულდა');
       closeModal();
       renderCurrentPage();
     }
@@ -1117,14 +1139,14 @@
       document.getElementById('modal-title').textContent = 'ნომრის რედაქტირება';
       document.getElementById('modal-content').innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <input id="editRoomNumber" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(room.roomNumber)}" placeholder="ნომერი">
-          <input id="editRoomName" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(room.roomName)}" placeholder="სახელი">
-          <select id="editRoomType" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${getRoomTypes().map(t => `<option ${room.roomType===t?'selected':''}>${t}</option>`).join('')}</select>
-          <input id="editRoomPrice" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.basePrice || 0)}">
-          <input id="editRoomFloor" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.floor || 1)}">
-          <input id="editRoomBeds" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.beds || 1)}">
-          <input id="editRoomMaxGuests" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.maxGuests || 1)}">
-          <select id="editRoomStatus" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option ${room.status==='available'?'selected':''}>available</option><option ${room.status==='booked'?'selected':''}>booked</option><option ${room.status==='occupied'?'selected':''}>occupied</option><option ${room.status==='cleaning'?'selected':''}>cleaning</option><option ${room.status==='maintenance'?'selected':''}>maintenance</option></select>
+          <label class="text-xs text-gray-500">ნომერი<input id="editRoomNumber" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(room.roomNumber)}"></label>
+          <label class="text-xs text-gray-500">სახელი<input id="editRoomName" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(room.roomName)}"></label>
+          <label class="text-xs text-gray-500">ტიპი<select id="editRoomType" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${getRoomTypes().map(t => `<option ${room.roomType===t?'selected':''}>${t}</option>`).join('')}</select></label>
+          <label class="text-xs text-gray-500">ღამის ფასი<input id="editRoomPrice" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.basePrice || 0)}"></label>
+          <label class="text-xs text-gray-500">სართული<input id="editRoomFloor" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.floor || 1)}"></label>
+          <label class="text-xs text-gray-500">საწოლები<input id="editRoomBeds" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.beds || 1)}"></label>
+          <label class="text-xs text-gray-500">მაქს სტუმრები<input id="editRoomMaxGuests" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.maxGuests || 1)}"></label>
+          <label class="text-xs text-gray-500">სტატუსი<select id="editRoomStatus" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option ${room.status==='available'?'selected':''}>available</option><option ${room.status==='booked'?'selected':''}>booked</option><option ${room.status==='occupied'?'selected':''}>occupied</option><option ${room.status==='cleaning'?'selected':''}>cleaning</option><option ${room.status==='maintenance'?'selected':''}>maintenance</option></select></label>
         </div>
         <button class="mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="saveRoomEdits(${room.id})">შენახვა</button>
       `;
@@ -1183,6 +1205,45 @@
       setGuestsData(guests);
       closeModal();
       showToast('სტუმარი დაემატა');
+      renderGuests();
+    }
+
+    function openGuestEdit(guestIdNumber) {
+      const guests = getGuestsData();
+      const idx = guests.findIndex(g => String(g.guestIdNumber || '') === String(guestIdNumber || ''));
+      if (idx === -1) return;
+      const g = guests[idx];
+      openModal('custom');
+      document.getElementById('modal-title').textContent = 'სტუმრის რედაქტირება';
+      document.getElementById('modal-content').innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label class="text-xs text-gray-500">სახელი<input id="editGuestModalName" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(g.guestName || '')}"></label>
+          <label class="text-xs text-gray-500">ტელეფონი<input id="editGuestModalPhone" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(g.guestPhone || '')}"></label>
+          <label class="text-xs text-gray-500">ელფოსტა<input id="editGuestModalEmail" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(g.guestEmail || '')}"></label>
+          <label class="text-xs text-gray-500">პირადი ნომერი / პასპორტი<input id="editGuestModalId" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(g.guestIdNumber || '')}"></label>
+          <label class="text-xs text-gray-500">მოქალაქეობა<input id="editGuestModalCitizenship" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(g.guestCitizenship || '')}"></label>
+          <label class="text-xs text-gray-500">დაბადების თარიღი<input id="editGuestModalBirthDate" type="date" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(g.guestBirthDate || '')}"></label>
+        </div>
+        <button class="mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="saveGuestEdits('${escapeHtml(g.guestIdNumber || '')}', ${idx})">შენახვა</button>
+      `;
+    }
+
+    function saveGuestEdits(originalId, idxHint) {
+      const guests = getGuestsData();
+      const idx = Number.isInteger(idxHint) ? idxHint : guests.findIndex(g => String(g.guestIdNumber || '') === String(originalId || ''));
+      if (idx === -1) return;
+      guests[idx] = {
+        ...guests[idx],
+        guestName: document.getElementById('editGuestModalName').value.trim(),
+        guestPhone: document.getElementById('editGuestModalPhone').value.trim(),
+        guestEmail: document.getElementById('editGuestModalEmail').value.trim(),
+        guestIdNumber: document.getElementById('editGuestModalId').value.trim(),
+        guestCitizenship: document.getElementById('editGuestModalCitizenship').value.trim(),
+        guestBirthDate: document.getElementById('editGuestModalBirthDate').value
+      };
+      setGuestsData(guests);
+      closeModal();
+      showToast('სტუმარი განახლდა');
       renderGuests();
     }
 
@@ -1428,14 +1489,14 @@
         title.textContent = 'ახალი ნომერი';
         content.innerHTML = `
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <input id="newRoomNumber" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="ნომერი (მაგ: 101)">
-            <input id="newRoomName" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="სახელი">
-            <select id="newRoomType" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>Single</option><option>Double</option><option>Triple</option><option>Family</option><option>Suite</option></select>
-            <input id="newRoomPrice" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="ღამის ფასი">
-            <input id="newRoomFloor" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="სართული" value="1">
-            <input id="newRoomBeds" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="საწოლები" value="1">
-            <input id="newRoomMaxGuests" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაქს სტუმრები" value="2">
-            <select id="newRoomStatus" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>available</option><option>booked</option><option>occupied</option><option>cleaning</option><option>maintenance</option></select>
+            <label class="text-xs text-gray-500">ნომერი<input id="newRoomNumber" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: 101"></label>
+            <label class="text-xs text-gray-500">სახელი<input id="newRoomName" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: Room 101"></label>
+            <label class="text-xs text-gray-500">ტიპი<select id="newRoomType" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>Single</option><option>Double</option><option>Triple</option><option>Family</option><option>Suite</option></select></label>
+            <label class="text-xs text-gray-500">ღამის ფასი<input id="newRoomPrice" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="₾"></label>
+            <label class="text-xs text-gray-500">სართული<input id="newRoomFloor" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="1"></label>
+            <label class="text-xs text-gray-500">საწოლების რაოდენობა<input id="newRoomBeds" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="1"></label>
+            <label class="text-xs text-gray-500">მაქსიმალური სტუმრები<input id="newRoomMaxGuests" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="2"></label>
+            <label class="text-xs text-gray-500">სტატუსი<select id="newRoomStatus" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>available</option><option>booked</option><option>occupied</option><option>cleaning</option><option>maintenance</option></select></label>
           </div>
           <button class='mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg' onclick='addRoomFromModal()'>შენახვა</button>
         `;
