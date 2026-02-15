@@ -2608,12 +2608,25 @@
       renderChannels();
     }
 
+    function parseJsonSafe(text, contextLabel) {
+      const raw = String(text || '').trim();
+      if (!raw) return {};
+      if (raw.startsWith('<!DOCTYPE') || raw.startsWith('<html') || raw.startsWith('<')) {
+        throw new Error(`${contextLabel} JSON-ის ნაცვლად HTML აბრუნებს. შეამოწმეთ URL/Proxy endpoint.`);
+      }
+      try {
+        return JSON.parse(raw);
+      } catch {
+        throw new Error(`${contextLabel} არასწორ JSON პასუხს აბრუნებს.`);
+      }
+    }
+
     async function refreshChannexOAuthConnection() {
       const c = getChannelConfig();
       if (!c.authStatusUrl) throw new Error('OAuth status URL ცარიელია');
       const res = await fetch(c.authStatusUrl, { method: 'GET', credentials: 'include' });
       const text = await res.text();
-      const data = text ? JSON.parse(text) : {};
+      const data = parseJsonSafe(text, 'OAuth status URL');
       if (!res.ok) throw new Error(data.message || `${res.status} ${res.statusText}`);
       const connected = !!(data.connected ?? data.isConnected ?? data.active);
       setChannelConfig({
