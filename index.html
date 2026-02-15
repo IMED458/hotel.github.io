@@ -79,7 +79,9 @@
       <div class="p-6 border-b border-gray-100 dark:border-gray-700">
         <div class="flex items-center justify-between gap-2">
           <div class="flex items-center gap-3 min-w-0">
-          <div class="w-10 h-10 bg-gradient-to-br from-sky-500 to-blue-600 rounded-xl flex items-center justify-center text-white">🏨</div>
+          <div class="w-10 h-10 bg-gradient-to-br from-sky-500 to-blue-600 rounded-xl flex items-center justify-center text-white">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16M9 7h1m4 0h1M9 11h1m4 0h1M9 15h1m4 0h1"/></svg>
+          </div>
           <div class="sidebar-text min-w-0">
             <h1 id="hotel-name-display" class="font-bold text-lg text-gray-900 dark:text-white">Grand Hotel</h1>
             <p class="text-xs text-gray-500">მართვის სისტემა</p>
@@ -101,7 +103,7 @@
             <p class="text-xs text-gray-500">admin@hotel.ge</p>
           </div>
           <button onclick="toggleDarkMode()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
-            <span id="theme-icon">🌙</span>
+            <span id="theme-icon" class="text-slate-500"></span>
           </button>
         </div>
       </div>
@@ -116,7 +118,9 @@
           </div>
           <div class="flex items-center gap-3">
             <button onclick="openModal('new-reservation')" class="px-4 py-2.5 bg-gradient-to-r from-sky-500 to-blue-600 text-white rounded-xl text-sm font-medium">ახალი ჯავშანი</button>
-            <button class="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700">🔔</button>
+            <button class="p-2.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-slate-500">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.857 17H9.143M18 17H6l1.405-1.405A2 2 0 0 0 8 14.172V11a4 4 0 1 1 8 0v3.172c0 .53.21 1.04.595 1.423L18 17Z"/><path d="M10.5 17a1.5 1.5 0 0 0 3 0"/></svg>
+            </button>
           </div>
         </div>
       </header>
@@ -152,10 +156,10 @@
 
   <script>
     const NAV_ITEMS = [
-      ['dashboard', 'დეშბორდი', '📊'], ['calendar', 'კალენდარი', '🗓️'], ['rooms', 'ნომრები', '🚪'], ['reservations', 'ჯავშნები', '📘'],
-      ['guests', 'სტუმრები', '👥'], ['checkin', 'Check-in / Check-out', '🧾'], ['payments', 'გადახდები / ინვოისები', '💳'],
-      ['pricing', 'ფასები / ტარიფები', '🏷️'], ['channels', 'Channel Manager', '🌐'],
-      ['reports', 'რეპორტები', '📈'], ['settings', 'პარამეტრები', '⚙️']
+      ['dashboard', 'დეშბორდი', 'dashboard'], ['calendar', 'კალენდარი', 'calendar'], ['rooms', 'ნომრები', 'rooms'], ['reservations', 'ჯავშნები', 'reservations'],
+      ['guests', 'სტუმრები', 'guests'], ['checkin', 'Check-in / Check-out', 'checkin'], ['payments', 'გადახდები / ინვოისები', 'payments'],
+      ['pricing', 'ფასები / ტარიფები', 'pricing'], ['channels', 'Channel Manager', 'channels'],
+      ['reports', 'რეპორტები', 'reports'], ['settings', 'პარამეტრები', 'settings']
     ];
 
     const defaultConfig = {
@@ -237,10 +241,28 @@
       const nav = document.getElementById('main-nav');
       nav.innerHTML = NAV_ITEMS.map(([id, label, icon]) => `
         <button onclick="navigateTo('${id}')" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" data-page="${id}" title="${label}">
-          <span class="nav-icon text-base">${icon || '•'}</span>
+          <span class="nav-icon">${navIconSvg(icon)}</span>
           <span class="sidebar-label">${label}</span>
         </button>
       `).join('');
+    }
+
+    function navIconSvg(icon) {
+      const cls = 'w-5 h-5 text-current opacity-90';
+      const map = {
+        dashboard: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 13h8V3H3v10Zm10 8h8V3h-8v18ZM3 21h8v-6H3v6Z"/></svg>`,
+        calendar: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 2v4M16 2v4M3 10h18"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg>`,
+        rooms: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 21V10h16v11M2 21h20M7 10V5h4v5"/></svg>`,
+        reservations: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 12h8M8 16h5"/></svg>`,
+        guests: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2"/><path d="M15 20a5 5 0 0 1 6 0"/></svg>`,
+        checkin: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 17l-5-5 5-5"/><path d="M5 12h14"/><path d="M14 5h5v14h-5"/></svg>`,
+        payments: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg>`,
+        pricing: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 12h-8m0 0V4m0 8 5 5M4 12h3m0 0V7m0 5 4 4"/></svg>`,
+        channels: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h18M12 3a15.3 15.3 0 0 1 0 18M12 3a15.3 15.3 0 0 0 0 18"/><circle cx="12" cy="12" r="9"/></svg>`,
+        reports: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V8m6 12V4m6 16v-7m4 7H2"/></svg>`,
+        settings: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.8 1.8 0 0 0 15 19.4a1.8 1.8 0 0 0-1 .6 1.8 1.8 0 0 0-.4 1.16V21a2 2 0 1 1-4 0v-.09a1.8 1.8 0 0 0-.4-1.16 1.8 1.8 0 0 0-1-.6 1.8 1.8 0 0 0-1.98.36l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.8 1.8 0 0 0 4.6 15a1.8 1.8 0 0 0-.6-1 1.8 1.8 0 0 0-1.16-.4H2.75a2 2 0 1 1 0-4h.09A1.8 1.8 0 0 0 4 9.2a1.8 1.8 0 0 0 .6-1A1.8 1.8 0 0 0 4.24 6.22l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.8 1.8 0 0 0 9.2 4a1.8 1.8 0 0 0 1-.6A1.8 1.8 0 0 0 10.6 2.25V2a2 2 0 1 1 4 0v.09a1.8 1.8 0 0 0 .4 1.16 1.8 1.8 0 0 0 1 .6 1.8 1.8 0 0 0 1.98-.36l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.8 1.8 0 0 0 19.4 9c.26.31.47.67.6 1 .1.38.14.77.13 1.16a1.8 1.8 0 0 0 .4 1.16c.31.26.67.47 1 .6h.22a2 2 0 1 1 0 4h-.09a1.8 1.8 0 0 0-1.16.4 1.8 1.8 0 0 0-.6 1Z"/></svg>`
+      };
+      return map[icon] || map.dashboard;
     }
 
     function applySidebarState() {
@@ -306,6 +328,7 @@
       await handleOAuthCallback();
       applyConfig();
       applySidebarState();
+      setThemeIcon();
       navigateTo('dashboard');
     }
 
@@ -601,10 +624,10 @@
 
       document.getElementById('page-dashboard').innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          ${card('დაკავებულობა', `${occupancy}%`, '🏨')}
-          ${card('სულ შემოსავალი', `${config.currency_symbol}${revenue.toLocaleString('en-US')}`, '💵')}
-          ${card('დღეს Check-in', String(checkinsToday), '🛬')}
-          ${card('დღეს Check-out', String(checkoutsToday), '🛫')}
+          ${card('დაკავებულობა', `${occupancy}%`, 'hotel')}
+          ${card('სულ შემოსავალი', `${config.currency_symbol}${revenue.toLocaleString('en-US')}`, 'revenue')}
+          ${card('დღეს Check-in', String(checkinsToday), 'checkin')}
+          ${card('დღეს Check-out', String(checkoutsToday), 'checkout')}
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
           <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
@@ -626,10 +649,10 @@
           <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
             <h3 class="font-semibold mb-4">დღის აქტივობა</h3>
             <div class="space-y-3 text-sm">
-              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">🔑 Check-in - ნომერი 102 (10:30)</div>
-              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">🧹 დასუფთავების დავალება დასრულდა (11:20)</div>
-              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">📝 ახალი ჯავშანი: ანა აბაშიძე (12:05)</div>
-              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">💳 გადახდა მიღებულია ${config.currency_symbol}220 (13:10)</div>
+              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">Check-in - ნომერი 102 (10:30)</div>
+              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">ნომრის მომზადება დასრულდა (11:20)</div>
+              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">ახალი ჯავშანი: ანა აბაშიძე (12:05)</div>
+              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">გადახდა მიღებულია ${config.currency_symbol}220 (13:10)</div>
             </div>
           </div>
         </div>
@@ -977,7 +1000,7 @@
                 </div>
                 <span class="px-2 py-1 rounded-full text-xs ${r.status === 'available' ? 'bg-green-100 text-green-700' : r.status === 'occupied' ? 'bg-violet-100 text-violet-700' : r.status === 'booked' ? 'bg-sky-100 text-sky-700' : r.status === 'cleaning' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}">${roomStatusLabel(r.status || 'available')}</span>
               </div>
-              <div class="mt-4 text-sm text-gray-500">🛏️ ${r.beds || 1} საწოლი • 👥 მაქს. ${r.maxGuests || 2}</div>
+              <div class="mt-4 text-sm text-gray-500">${r.beds || 1} საწოლი • მაქს. ${r.maxGuests || 2} სტუმარი</div>
               <div class="mt-2 font-semibold">${config.currency_symbol}${Number(r.basePrice || 0).toLocaleString('en-US')}/ღამე</div>
               <button class="mt-3 px-3 py-2 text-xs rounded-lg bg-gray-100 dark:bg-gray-700" onclick="openRoomEdit(${r.id})">რედაქტირება</button>
             </div>
@@ -2267,11 +2290,32 @@
     function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
     function toggleDarkMode() {
       document.documentElement.classList.toggle('dark');
-      document.getElementById('theme-icon').textContent = document.documentElement.classList.contains('dark') ? '☀️' : '🌙';
+      setThemeIcon();
     }
 
-    function card(label, value, emoji) {
-      return `<div class='bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700'><div class='text-2xl mb-2'>${emoji}</div><p class='text-sm text-gray-500'>${label}</p><p class='text-3xl font-bold mt-1'>${value}</p></div>`;
+    function setThemeIcon() {
+      const el = document.getElementById('theme-icon');
+      if (!el) return;
+      if (document.documentElement.classList.contains('dark')) {
+        el.innerHTML = '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41"/></svg>';
+      } else {
+        el.innerHTML = '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>';
+      }
+    }
+
+    function metricIcon(name) {
+      const cls = 'w-5 h-5 text-slate-500';
+      const map = {
+        hotel: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16M9 7h1m4 0h1M9 11h1m4 0h1M9 15h1m4 0h1"/></svg>`,
+        revenue: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>`,
+        checkin: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 17l-5-5 5-5"/><path d="M5 12h14"/></svg>`,
+        checkout: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 7l5 5-5 5"/><path d="M5 12h14"/></svg>`
+      };
+      return map[name] || map.hotel;
+    }
+
+    function card(label, value, iconName) {
+      return `<div class='bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700'><div class='mb-2'>${metricIcon(iconName)}</div><p class='text-sm text-gray-500'>${label}</p><p class='text-3xl font-bold mt-1'>${value}</p></div>`;
     }
 
     function escapeHtml(v) {
