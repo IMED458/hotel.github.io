@@ -848,13 +848,15 @@
           .sort((a, b) => a.startPos - b.startPos || a.endPos - b.endPos);
 
         const laneEnds = [];
+        const barStep = dayWidth <= 20 ? 28 : 34;
+        const barTopBase = 5;
         const bars = roomReservations.map(item => {
           let lane = 0;
           while (lane < laneEnds.length && item.startPos < laneEnds[lane]) lane++;
           laneEnds[lane] = item.endPos;
           const left = roomWidth + (item.startPos * dayWidth) + 1;
           const width = Math.max(24, ((item.endPos - item.startPos) * dayWidth) - 2);
-          const top = 5 + (lane * 34);
+          const top = barTopBase + (lane * barStep);
           const booking = item.reservation;
           const cls = booking.status === 'Checked-in' ? 'checkedin' : booking.status === 'Checked-out' ? 'checkout' : 'reserved';
           return `<div class="reservation-bar ${cls}" style="left:${left}px;top:${top}px;width:${width}px;" onclick="openReservationDetails(${booking.id})">${escapeHtml(booking.guestName || '-')}</div>`;
