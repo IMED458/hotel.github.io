@@ -199,6 +199,8 @@
     let calendarDate = new Date();
     let calendarView = 'week';
     let sidebarCollapsed = false;
+    let roomFilters = { roomType: '', minPrice: '', maxPrice: '', fromDate: '', toDate: '' };
+    let calendarFilters = { roomType: '', maxPrice: '' };
     const GEO_MONTHS = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
 
     const dataHandler = {
@@ -451,7 +453,7 @@
     }
     function getRoomTypes() { return ['Single', 'Double', 'Triple', 'Family', 'Suite']; }
     function roomTypeLabel(v) {
-      const map = { Single: 'ერთადგილიანი', Double: 'ორადგილიანი', Triple: 'სამადგილიანი', Family: 'ოჯახური', Suite: 'ლუქსი' };
+      const map = { Single: 'Single', Double: 'Double', Triple: 'Triple', Family: 'Family', Suite: 'Suite' };
       return map[v] || v || '-';
     }
     function roomStatusLabel(v) {
@@ -587,6 +589,27 @@
       setState('monthlyRates', rates);
     }
     function findRoomById(id) { return getRoomsData().find(r => Number(r.id) === Number(id)); }
+    function isReservationBlocking(res) {
+      return !['Cancelled', 'Checked-out', 'cancelled', 'checked-out'].includes(String(res.status || ''));
+    }
+    function isRoomAvailableInRange(roomId, fromDate, toDate, ignoreReservationId = null) {
+      if (!fromDate || !toDate) return true;
+      const from = parseISODateLocal(fromDate);
+      const to = parseISODateLocal(toDate);
+      if (!from || !to || to <= from) return true;
+      const reservations = getReservationsData().filter((r) => Number(r.roomId) === Number(roomId) && isReservationBlocking(r) && Number(r.id) !== Number(ignoreReservationId));
+      return !reservations.some((r) => {
+        const cin = parseISODateLocal(r.checkinDate);
+        const cout = parseISODateLocal(r.checkoutDate);
+        if (!cin || !cout) return false;
+        return cin < to && cout > from;
+      });
+    }
+    function getGroupedRooms(rooms) {
+      return getRoomTypes()
+        .map((type) => ({ type, rooms: rooms.filter((r) => r.roomType === type) }))
+        .filter((g) => g.rooms.length > 0);
+    }
     function formatReservationStatus(s) { return s === 'Checked-in' ? 'checked-in' : s === 'Checked-out' ? 'checked-out' : s === 'Cancelled' ? 'cancelled' : 'confirmed'; }
 
     function statusBadge(status) {
@@ -680,6 +703,11 @@
     function renderCalendar() {
       const rooms = getRoomsData();
       const reservations = getReservationsData();
+      const filteredRooms = rooms.filter((r) => {
+        const typeOk = !calendarFilters.roomType || r.roomType === calendarFilters.roomType;
+        const priceOk = !calendarFilters.maxPrice || Number(r.basePrice || 0) <= Number(calendarFilters.maxPrice);
+        return typeOk && priceOk;
+      });
 
       document.getElementById('page-calendar').innerHTML = `
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
@@ -698,6 +726,15 @@
               <button onclick="navigateCalendar(1)" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">→</button>
               <button onclick="goToToday()" class="ml-2 px-3 py-1.5 text-sm font-medium text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg transition-colors">დღეს</button>
             </div>
+            <div class="flex flex-wrap items-center gap-2 mt-3">
+              <select id="calendarFilterType" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">
+                <option value="">ყველა ტიპი</option>
+                ${getRoomTypes().map((t) => `<option value="${t}" ${calendarFilters.roomType === t ? 'selected' : ''}>${roomTypeLabel(t)}</option>`).join('')}
+              </select>
+              <input id="calendarFilterMaxPrice" type="number" min="0" step="0.01" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm" placeholder="მაქს. ფასი" value="${calendarFilters.maxPrice || ''}">
+              <button onclick="applyCalendarFilters()" class="px-3 py-2 rounded-lg bg-sky-600 text-white text-sm">ფილტრი</button>
+              <button onclick="resetCalendarFilters()" class="px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm">გასუფთავება</button>
+            </div>
           </div>
           <div class="overflow-x-auto">
             <div id="calendar-grid" class="min-w-[900px]"></div>
@@ -715,12 +752,25 @@
       const grid = document.getElementById('calendar-grid');
       grid.className = calendarView === 'month' ? '' : 'min-w-[900px]';
       if (calendarView === 'week') {
-        renderWeekView(grid, rooms, reservations);
+        renderWeekView(grid, filteredRooms, reservations);
       } else if (calendarView === 'month') {
-        renderMonthView(grid, rooms, reservations);
+        renderMonthView(grid, filteredRooms, reservations);
       } else {
-        renderDayView(grid, rooms, reservations);
+        renderDayView(grid, filteredRooms, reservations);
       }
+    }
+
+    function applyCalendarFilters() {
+      calendarFilters = {
+        roomType: document.getElementById('calendarFilterType')?.value || '',
+        maxPrice: document.getElementById('calendarFilterMaxPrice')?.value || ''
+      };
+      renderCalendar();
+    }
+
+    function resetCalendarFilters() {
+      calendarFilters = { roomType: '', maxPrice: '' };
+      renderCalendar();
     }
 
     function updateCalendarTitle() {
@@ -744,18 +794,26 @@
       const weekEnd = days[6];
 
       const header = `
-        <div class="border-b border-gray-100 dark:border-gray-700" style="display:grid;grid-template-columns:${roomWidth}px repeat(7, ${dayWidth}px);min-width:${totalWidth}px;">
+        <div class="border-b border-gray-300 dark:border-gray-600" style="display:grid;grid-template-columns:${roomWidth}px repeat(7, ${dayWidth}px);min-width:${totalWidth}px;">
           <div class="p-3 bg-gray-50 dark:bg-gray-700/50 font-medium text-sm text-gray-500 dark:text-gray-400">ნომერი</div>
           ${days.map((d, idx) => `
-            <div class="p-3 bg-gray-50 dark:bg-gray-700/50 text-center border-l border-gray-100 dark:border-gray-700/40">
+            <div class="p-3 ${isToday(d) ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-gray-50 dark:bg-gray-700/50'} text-center border-l border-gray-300 dark:border-gray-600/50">
               <div class="text-xs text-gray-500 dark:text-gray-400">${dayNames[idx]}</div>
-              <div class="text-sm font-semibold text-gray-900 dark:text-white ${isToday(d) ? 'text-sky-600' : ''}">${d.getDate()}</div>
+              <div class="text-sm font-semibold text-gray-900 dark:text-white ${isToday(d) ? 'text-amber-700 dark:text-amber-300' : ''}">${d.getDate()}</div>
             </div>
           `).join('')}
         </div>
       `;
 
-      const rows = rooms.map(room => {
+      const grouped = getGroupedRooms(rooms);
+      const rows = grouped.map((group) => {
+        const groupHeader = `
+          <div class="border-b border-gray-300 dark:border-gray-600 bg-slate-100 dark:bg-slate-700/40" style="display:grid;grid-template-columns:${roomWidth}px repeat(7, ${dayWidth}px);min-width:${totalWidth}px;">
+            <div class="px-3 py-2 font-semibold text-xs tracking-wide text-slate-700 dark:text-slate-200">${roomTypeLabel(group.type)}</div>
+            ${days.map(() => `<div class="border-l border-gray-300 dark:border-gray-600/50"></div>`).join('')}
+          </div>
+        `;
+        const groupRows = group.rooms.map(room => {
         const roomReservations = reservations
           .filter(r => Number(r.roomId) === Number(room.id))
           .map(r => {
@@ -799,18 +857,19 @@
 
         const rowMinHeight = Math.max(48, laneEnds.length * 34 + 10);
         return `
-          <div class="relative border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50/40 dark:hover:bg-gray-700/20" style="display:grid;grid-template-columns:${roomWidth}px repeat(7, ${dayWidth}px);min-width:${totalWidth}px;min-height:${rowMinHeight}px;">
+          <div class="relative border-b border-gray-300 dark:border-gray-600/50 hover:bg-gray-50/40 dark:hover:bg-gray-700/20" style="display:grid;grid-template-columns:${roomWidth}px repeat(7, ${dayWidth}px);min-width:${totalWidth}px;min-height:${rowMinHeight}px;">
             <div class="p-3 flex items-center gap-2 bg-white dark:bg-gray-800">
               <span class="font-medium text-gray-900 dark:text-white">${escapeHtml(room.roomNumber || room.roomName || '')}</span>
-              <span class="text-xs text-gray-500">${escapeHtml(roomTypeLabel(room.roomType || ''))}</span>
             </div>
             ${days.map(d => {
               const dateStr = formatDateISO(d);
-              return `<div class="relative border-l border-gray-100 dark:border-gray-700/30 ${isToday(d) ? 'bg-sky-50/60 dark:bg-sky-900/10' : ''}" onclick="openNewReservation(${room.id}, '${dateStr}')"></div>`;
+              return `<div class="relative border-l border-gray-300 dark:border-gray-600/40 ${isToday(d) ? 'bg-amber-100/70 dark:bg-amber-900/20' : ''}" onclick="openNewReservation(${room.id}, '${dateStr}')"></div>`;
             }).join('')}
             ${bars}
           </div>
         `;
+      }).join('');
+        return groupHeader + groupRows;
       }).join('');
 
       grid.innerHTML = header + rows;
@@ -835,18 +894,26 @@
       const dayFontClass = dayWidth <= 20 ? 'text-[9px]' : dayWidth <= 24 ? 'text-[10px]' : 'text-xs';
 
       const header = `
-        <div class="border-b border-gray-100 dark:border-gray-700" style="display:grid;grid-template-columns:${roomWidth}px repeat(${days.length}, ${dayWidth}px);min-width:${totalWidth}px;">
+        <div class="border-b border-gray-300 dark:border-gray-600" style="display:grid;grid-template-columns:${roomWidth}px repeat(${days.length}, ${dayWidth}px);min-width:${totalWidth}px;">
           <div class="p-3 bg-gray-50 dark:bg-gray-700/50 font-medium text-sm text-gray-500 dark:text-gray-400">ნომერი</div>
           ${days.map((d) => `
-            <div class="p-2 bg-gray-50 dark:bg-gray-700/50 text-center border-l border-gray-100 dark:border-gray-700/40">
+            <div class="p-2 ${isToday(d) ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-gray-50 dark:bg-gray-700/50'} text-center border-l border-gray-300 dark:border-gray-600/50">
               <div class="${dayFontClass} text-gray-500 dark:text-gray-400">${dayNames[d.getDay()]}</div>
-              <div class="${dayFontClass} font-semibold text-gray-900 dark:text-white ${isToday(d) ? 'text-sky-600' : ''}">${d.getDate()}</div>
+              <div class="${dayFontClass} font-semibold text-gray-900 dark:text-white ${isToday(d) ? 'text-amber-700 dark:text-amber-300' : ''}">${d.getDate()}</div>
             </div>
           `).join('')}
         </div>
       `;
 
-      const rows = rooms.map(room => {
+      const grouped = getGroupedRooms(rooms);
+      const rows = grouped.map((group) => {
+        const groupHeader = `
+          <div class="border-b border-gray-300 dark:border-gray-600 bg-slate-100 dark:bg-slate-700/40" style="display:grid;grid-template-columns:${roomWidth}px repeat(${days.length}, ${dayWidth}px);min-width:${totalWidth}px;">
+            <div class="px-3 py-2 font-semibold text-xs tracking-wide text-slate-700 dark:text-slate-200">${roomTypeLabel(group.type)}</div>
+            ${days.map(() => `<div class="border-l border-gray-300 dark:border-gray-600/50"></div>`).join('')}
+          </div>
+        `;
+        const groupRows = group.rooms.map(room => {
         const roomReservations = reservations
           .filter(r => Number(r.roomId) === Number(room.id))
           .map(r => {
@@ -887,18 +954,19 @@
 
         const rowMinHeight = Math.max(44, laneEnds.length * barStep + 10);
         return `
-          <div class="relative border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50/40 dark:hover:bg-gray-700/20" style="display:grid;grid-template-columns:${roomWidth}px repeat(${days.length}, ${dayWidth}px);min-width:${totalWidth}px;min-height:${rowMinHeight}px;">
+          <div class="relative border-b border-gray-300 dark:border-gray-600/50 hover:bg-gray-50/40 dark:hover:bg-gray-700/20" style="display:grid;grid-template-columns:${roomWidth}px repeat(${days.length}, ${dayWidth}px);min-width:${totalWidth}px;min-height:${rowMinHeight}px;">
             <div class="p-3 flex items-center gap-2 bg-white dark:bg-gray-800 sticky left-0 z-10">
               <span class="font-medium text-gray-900 dark:text-white">${escapeHtml(room.roomNumber || room.roomName || '')}</span>
-              <span class="text-xs text-gray-500">${escapeHtml(roomTypeLabel(room.roomType || ''))}</span>
             </div>
             ${days.map(d => {
               const dateStr = formatDateISO(d);
-              return `<div class="relative border-l border-gray-100 dark:border-gray-700/30 ${isToday(d) ? 'bg-sky-50/60 dark:bg-sky-900/10' : ''}" onclick="openNewReservation(${room.id}, '${dateStr}')"></div>`;
+              return `<div class="relative border-l border-gray-300 dark:border-gray-600/40 ${isToday(d) ? 'bg-amber-100/70 dark:bg-amber-900/20' : ''}" onclick="openNewReservation(${room.id}, '${dateStr}')"></div>`;
             }).join('')}
             ${bars}
           </div>
         `;
+      }).join('');
+        return groupHeader + groupRows;
       }).join('');
 
       grid.innerHTML = header + rows;
@@ -983,15 +1051,54 @@
       recalcNewReservationTotal();
     }
 
+    function applyRoomFilters() {
+      roomFilters = {
+        roomType: document.getElementById('roomFilterType')?.value || '',
+        minPrice: document.getElementById('roomFilterMinPrice')?.value || '',
+        maxPrice: document.getElementById('roomFilterMaxPrice')?.value || '',
+        fromDate: document.getElementById('roomFilterFromDate')?.value || '',
+        toDate: document.getElementById('roomFilterToDate')?.value || ''
+      };
+      renderRooms();
+    }
+
+    function resetRoomFilters() {
+      roomFilters = { roomType: '', minPrice: '', maxPrice: '', fromDate: '', toDate: '' };
+      renderRooms();
+    }
+
     function renderRooms() {
       const rooms = getRoomsData();
+      const filteredRooms = rooms.filter((r) => {
+        const typeOk = !roomFilters.roomType || r.roomType === roomFilters.roomType;
+        const minOk = !roomFilters.minPrice || Number(r.basePrice || 0) >= Number(roomFilters.minPrice);
+        const maxOk = !roomFilters.maxPrice || Number(r.basePrice || 0) <= Number(roomFilters.maxPrice);
+        const availOk = (!roomFilters.fromDate || !roomFilters.toDate) ? true : isRoomAvailableInRange(r.id, roomFilters.fromDate, roomFilters.toDate);
+        return typeOk && minOk && maxOk && availOk;
+      });
       document.getElementById('page-rooms').innerHTML = `
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-bold">ნომრების მართვა</h2>
           <button onclick="openModal('new-room')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი ნომერი</button>
         </div>
+        <div class="bg-white dark:bg-gray-800 rounded-xl p-4 mb-5 border border-gray-200 dark:border-gray-700">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+            <select id="roomFilterType" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">
+              <option value="">ყველა ტიპი</option>
+              ${getRoomTypes().map((t) => `<option value="${t}" ${roomFilters.roomType === t ? 'selected' : ''}>${roomTypeLabel(t)}</option>`).join('')}
+            </select>
+            <input id="roomFilterMinPrice" type="number" min="0" step="0.01" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm" placeholder="მინ. ფასი" value="${roomFilters.minPrice || ''}">
+            <input id="roomFilterMaxPrice" type="number" min="0" step="0.01" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm" placeholder="მაქს. ფასი" value="${roomFilters.maxPrice || ''}">
+            <input id="roomFilterFromDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm" value="${roomFilters.fromDate || ''}">
+            <input id="roomFilterToDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm" value="${roomFilters.toDate || ''}">
+            <div class="flex gap-2">
+              <button onclick="applyRoomFilters()" class="flex-1 px-3 py-2 rounded-lg bg-sky-600 text-white text-sm">შემოწმება</button>
+              <button onclick="resetRoomFilters()" class="flex-1 px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm">გასუფთავება</button>
+            </div>
+          </div>
+        </div>
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          ${rooms.map(r => `
+          ${filteredRooms.map(r => `
             <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700">
               <div class="flex items-start justify-between">
                 <div>
@@ -1004,7 +1111,7 @@
               <div class="mt-2 font-semibold">${config.currency_symbol}${Number(r.basePrice || 0).toLocaleString('en-US')}/ღამე</div>
               <button class="mt-3 px-3 py-2 text-xs rounded-lg bg-gray-100 dark:bg-gray-700" onclick="openRoomEdit(${r.id})">რედაქტირება</button>
             </div>
-          `).join('')}
+          `).join('') || '<div class="col-span-full py-8 text-center text-gray-500">ფილტრზე ოთახი ვერ მოიძებნა</div>'}
         </div>
       `;
     }
@@ -1224,7 +1331,7 @@
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
           <h3 class="font-semibold mb-4">ნომრის ტიპების შესრულება</h3>
           <div class="overflow-x-auto">
-            <table class="w-full text-sm"><thead><tr class="text-left text-gray-500"><th class="pb-2">ტიპი</th><th class="pb-2">დაკავებულობა</th><th class="pb-2">ADR</th><th class="pb-2">შემოსავალი</th></tr></thead><tbody><tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-3">სტანდარტი</td><td class="py-3">78%</td><td class="py-3">${config.currency_symbol}125</td><td class="py-3">${config.currency_symbol}42,500</td></tr><tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-3">დელუქსი</td><td class="py-3">68%</td><td class="py-3">${config.currency_symbol}210</td><td class="py-3">${config.currency_symbol}38,220</td></tr><tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-3">ლუქსი</td><td class="py-3">52%</td><td class="py-3">${config.currency_symbol}450</td><td class="py-3">${config.currency_symbol}46,800</td></tr></tbody></table>
+            <table class="w-full text-sm"><thead><tr class="text-left text-gray-500"><th class="pb-2">ტიპი</th><th class="pb-2">დაკავებულობა</th><th class="pb-2">ADR</th><th class="pb-2">შემოსავალი</th></tr></thead><tbody><tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-3">Single</td><td class="py-3">78%</td><td class="py-3">${config.currency_symbol}125</td><td class="py-3">${config.currency_symbol}42,500</td></tr><tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-3">Double</td><td class="py-3">68%</td><td class="py-3">${config.currency_symbol}210</td><td class="py-3">${config.currency_symbol}38,220</td></tr><tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-3">Suite</td><td class="py-3">52%</td><td class="py-3">${config.currency_symbol}450</td><td class="py-3">${config.currency_symbol}46,800</td></tr></tbody></table>
           </div>
         </div>
       `;
@@ -2244,7 +2351,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <label class="text-xs text-gray-500">ნომერი<input id="newRoomNumber" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: 101"></label>
             <label class="text-xs text-gray-500">სახელი<input id="newRoomName" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: Room 101"></label>
-            <label class="text-xs text-gray-500">ტიპი<select id="newRoomType" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="Single">ერთადგილიანი</option><option value="Double">ორადგილიანი</option><option value="Triple">სამადგილიანი</option><option value="Family">ოჯახური</option><option value="Suite">ლუქსი</option></select></label>
+          <label class="text-xs text-gray-500">ტიპი<select id="newRoomType" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="Single">Single</option><option value="Double">Double</option><option value="Triple">Triple</option><option value="Family">Family</option><option value="Suite">Suite</option></select></label>
             <label class="text-xs text-gray-500">ღამის ფასი<input id="newRoomPrice" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="₾"></label>
             <label class="text-xs text-gray-500">სართული<input id="newRoomFloor" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="1"></label>
             <label class="text-xs text-gray-500">საწოლების რაოდენობა<input id="newRoomBeds" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="1"></label>
