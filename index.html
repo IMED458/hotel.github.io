@@ -290,14 +290,30 @@
       const d = new Date(date);
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
+    function parseISODateLocal(value) {
+      if (!value || typeof value !== 'string') return null;
+      const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) {
+        const d = new Date(value);
+        return Number.isNaN(d.getTime()) ? null : d;
+      }
+      const y = Number(m[1]);
+      const mo = Number(m[2]) - 1;
+      const da = Number(m[3]);
+      return new Date(y, mo, da, 12, 0, 0, 0);
+    }
+    function todayISO() {
+      return formatDateISO(new Date());
+    }
     function addDays(date, days) {
       const d = new Date(date);
       d.setDate(d.getDate() + days);
       return d;
     }
     function calculateNights(checkin, checkout) {
-      const cin = new Date(checkin);
-      const cout = new Date(checkout);
+      const cin = parseISODateLocal(checkin);
+      const cout = parseISODateLocal(checkout);
+      if (!cin || !cout) return 1;
       return Math.max(1, Math.ceil((cout - cin) / (1000 * 60 * 60 * 24)));
     }
     function getRoomTypes() {
@@ -397,7 +413,7 @@
       const occupied = reservations.filter(r => r.status === 'Checked-in').length;
       const occupancy = rooms.length ? Math.round((occupied / rooms.length) * 100) : 0;
       const revenue = reservations.reduce((sum, r) => sum + Number(r.totalPrice || 0), 0);
-      const today = new Date().toISOString().split('T')[0];
+      const today = todayISO();
       const checkinsToday = reservations.filter(r => (r.checkinDate || '').startsWith(today)).length;
       const checkoutsToday = reservations.filter(r => (r.checkoutDate || '').startsWith(today)).length;
 
@@ -470,8 +486,9 @@
         const cellRow = dayCells.map(d => `<div class="timeline-cell ${weekendIndexes.has(d) ? 'bg-amber-50/60 dark:bg-amber-900/10' : ''}"></div>`).join('');
         const rowReservations = reservations.filter(r => Number(r.roomId) === Number(room.id));
         const bars = rowReservations.map(r => {
-          const cin = new Date(r.checkinDate);
-          const cout = new Date(r.checkoutDate);
+          const cin = parseISODateLocal(r.checkinDate);
+          const cout = parseISODateLocal(r.checkoutDate);
+          if (!cin || !cout) return '';
           const start = Math.max(1, cin.getMonth() === date.getMonth() ? cin.getDate() : 1);
           const end = Math.min(daysInMonth, cout.getMonth() === date.getMonth() ? cout.getDate() : daysInMonth);
           const left = 160 + (start - 1) * 28 + 1;
