@@ -58,6 +58,7 @@
     .reservation-bar.reserved { background: #dbeafe; border: 1px solid #60a5fa; color: #1e3a8a; }
     .reservation-bar.checkedin { background: #dcfce7; border: 1px solid #4ade80; color: #14532d; }
     .reservation-bar.checkout { background: #fee2e2; border: 1px solid #f87171; color: #7f1d1d; }
+    .booking-chip { display: block; width: 100%; padding: 4px 8px; font-size: 11px; font-weight: 600; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%); }
     .consent-print { padding: 18px; border: 1px solid #d1d5db; font-size: 13px; line-height: 1.5; }
   </style>
 </head>
@@ -484,6 +485,9 @@
     }
 
     function renderCalendar() {
+      const rooms = getRoomsData();
+      const reservations = getReservationsData();
+
       document.getElementById('page-calendar').innerHTML = `
         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
           <div class="p-6 border-b border-gray-100 dark:border-gray-700">
@@ -507,35 +511,153 @@
           </div>
           <div class="p-4 border-t border-gray-100 dark:border-gray-700 flex items-center gap-6 text-sm">
             <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-sky-500"></div><span class="text-gray-600 dark:text-gray-400">დაჯავშნილი</span></div>
-            <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-green-500"></div><span class="text-gray-600 dark:text-gray-400">ჩექ-ინ</span></div>
-            <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-red-500"></div><span class="text-gray-600 dark:text-gray-400">ჩექ-აუთ</span></div>
+            <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-violet-500"></div><span class="text-gray-600 dark:text-gray-400">დაკავებული</span></div>
+            <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-amber-500"></div><span class="text-gray-600 dark:text-gray-400">დასუფთავება</span></div>
+            <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-red-500"></div><span class="text-gray-600 dark:text-gray-400">რემონტი</span></div>
           </div>
         </div>
       `;
+
       updateCalendarTitle();
-      renderCalendarGrid();
+      const grid = document.getElementById('calendar-grid');
+      if (calendarView === 'week') {
+        renderWeekView(grid, rooms, reservations);
+      } else if (calendarView === 'month') {
+        renderMonthView(grid, rooms, reservations);
+      } else {
+        renderDayView(grid, rooms, reservations);
+      }
     }
 
     function updateCalendarTitle() {
       const months = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
-      const shortMonths = ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
-      const titleEl = document.getElementById('calendar-title');
-      if (!titleEl) return;
-      if (calendarView === 'month') {
-        titleEl.textContent = `${months[calendarDate.getMonth()]} ${calendarDate.getFullYear()}`;
-        return;
+      document.getElementById('calendar-title').textContent = `${months[calendarDate.getMonth()]} ${calendarDate.getFullYear()}`;
+    }
+
+    function renderWeekView(grid, rooms, reservations) {
+      const startOfWeek = getStartOfWeek(calendarDate);
+      const days = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(startOfWeek);
+        d.setDate(d.getDate() + i);
+        days.push(d);
       }
-      if (calendarView === 'week') {
-        const start = getStartOfWeek(calendarDate);
-        const end = addDays(start, 6);
-        titleEl.textContent = `${start.getDate()} ${shortMonths[start.getMonth()]} - ${end.getDate()} ${shortMonths[end.getMonth()]} ${end.getFullYear()}`;
-        return;
+
+      const dayNames = ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
+
+      grid.innerHTML = `
+        <div class="grid grid-cols-8 border-b border-gray-100 dark:border-gray-700">
+          <div class="p-3 bg-gray-50 dark:bg-gray-700/50 font-medium text-sm text-gray-500 dark:text-gray-400">ნომერი</div>
+          ${days.map(d => `
+            <div class="p-3 bg-gray-50 dark:bg-gray-700/50 text-center">
+              <div class="text-xs text-gray-500 dark:text-gray-400">${dayNames[d.getDay()]}</div>
+              <div class="text-sm font-semibold text-gray-900 dark:text-white ${isToday(d) ? 'text-sky-600' : ''}">${d.getDate()}</div>
+            </div>
+          `).join('')}
+        </div>
+        ${rooms.map(room => `
+          <div class="grid grid-cols-8 border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50/50 dark:hover:bg-gray-700/20">
+            <div class="p-3 flex items-center gap-2">
+              <span class="font-medium text-gray-900 dark:text-white">${escapeHtml(room.roomNumber || room.roomName || '')}</span>
+              <span class="text-xs text-gray-500 capitalize">${escapeHtml(room.roomType || '')}</span>
+            </div>
+            ${days.map(d => {
+              const dateStr = formatDateISO(d);
+              const booking = reservations.find(r => Number(r.roomId) === Number(room.id) && (r.checkinDate || '').startsWith(dateStr));
+              return `
+                <div class="p-1 relative min-h-[48px] border-l border-gray-50 dark:border-gray-700/30" onclick="openNewReservation(${room.id}, '${dateStr}')">
+                  ${booking ? `<div class="booking-chip ${booking.status === 'Checked-in' ? 'bg-violet-500 text-white' : booking.status === 'Checked-out' ? 'bg-gray-400 text-white' : 'bg-sky-500 text-white'}" onclick="event.stopPropagation(); openReservationDetails(${booking.id})">${escapeHtml(booking.guestName || '-')}</div>` : ''}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `).join('')}
+      `;
+    }
+
+    function renderMonthView(grid, rooms, reservations) {
+      const year = calendarDate.getFullYear();
+      const month = calendarDate.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const daysInMonth = lastDay.getDate();
+      const startDay = firstDay.getDay();
+
+      const dayNames = ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
+
+      let html = `
+        <div class="grid grid-cols-7 border-b border-gray-100 dark:border-gray-700">
+          ${dayNames.map(d => `<div class="p-3 bg-gray-50 dark:bg-gray-700/50 text-center text-sm font-medium text-gray-500 dark:text-gray-400">${d}</div>`).join('')}
+        </div>
+        <div class="grid grid-cols-7">
+      `;
+
+      for (let i = 0; i < startDay; i++) {
+        html += `<div class="p-2 min-h-[80px] border-b border-r border-gray-50 dark:border-gray-700/30 bg-gray-50/50 dark:bg-gray-800/50"></div>`;
       }
-      titleEl.textContent = `${calendarDate.getDate()} ${months[calendarDate.getMonth()]} ${calendarDate.getFullYear()}`;
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        const dateStr = formatDateISO(date);
+        const dayReservations = reservations.filter(r => (r.checkinDate || '').startsWith(dateStr));
+
+        html += `
+          <div class="p-2 min-h-[80px] border-b border-r border-gray-50 dark:border-gray-700/30 ${isToday(date) ? 'bg-sky-50 dark:bg-sky-900/20' : ''}">
+            <div class="font-medium text-sm ${isToday(date) ? 'text-sky-600' : 'text-gray-900 dark:text-white'}">${day}</div>
+            ${dayReservations.slice(0, 2).map(r => `
+              <div class="mt-1 text-xs bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 px-1 py-0.5 rounded truncate cursor-pointer" onclick="openReservationDetails(${r.id})">
+                ${escapeHtml(r.guestName || '-')}
+              </div>
+            `).join('')}
+            ${dayReservations.length > 2 ? `<div class="text-xs text-gray-500 mt-1">+${dayReservations.length - 2} მეტი</div>` : ''}
+          </div>
+        `;
+      }
+
+      const remainingCells = (7 - ((startDay + daysInMonth) % 7)) % 7;
+      for (let i = 0; i < remainingCells; i++) {
+        html += `<div class="p-2 min-h-[80px] border-b border-r border-gray-50 dark:border-gray-700/30 bg-gray-50/50 dark:bg-gray-800/50"></div>`;
+      }
+
+      html += '</div>';
+      grid.innerHTML = html;
+    }
+
+    function renderDayView(grid, rooms, reservations) {
+      const hours = Array.from({ length: 24 }, (_, i) => i);
+
+      grid.innerHTML = `
+        <div class="flex">
+          <div class="w-24 flex-shrink-0">
+            <div class="p-3 bg-gray-50 dark:bg-gray-700/50 h-12 font-medium text-sm text-gray-500">ნომერი</div>
+            ${rooms.map(r => `
+              <div class="p-3 h-16 border-b border-gray-50 dark:border-gray-700/30 flex items-center">
+                <span class="font-medium text-gray-900 dark:text-white">${escapeHtml(r.roomNumber || r.roomName || '-')}</span>
+              </div>
+            `).join('')}
+          </div>
+          <div class="flex-1 overflow-x-auto">
+            <div class="flex min-w-max">
+              ${hours.map(h => `<div class="w-16 p-2 bg-gray-50 dark:bg-gray-700/50 text-center text-xs text-gray-500 border-l border-gray-100 dark:border-gray-700">${h.toString().padStart(2, '0')}:00</div>`).join('')}
+            </div>
+            ${rooms.map(room => `
+              <div class="flex min-w-max h-16 border-b border-gray-50 dark:border-gray-700/30 relative">
+                ${hours.map(() => `<div class="w-16 border-l border-gray-50 dark:border-gray-700/30"></div>`).join('')}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
     }
 
     function changeCalendarView(view) {
       calendarView = view;
+      document.querySelectorAll('.calendar-view-btn').forEach(btn => {
+        btn.classList.remove('bg-sky-100', 'text-sky-700', 'dark:bg-sky-900/30', 'dark:text-sky-400');
+        if (btn.dataset.view === view) {
+          btn.classList.add('bg-sky-100', 'text-sky-700', 'dark:bg-sky-900/30', 'dark:text-sky-400');
+        }
+      });
       renderCalendar();
     }
 
@@ -561,141 +683,19 @@
       return d;
     }
 
-    function renderCalendarGrid() {
-      if (calendarView === 'month') return renderCalendarMonthView();
-      if (calendarView === 'day') return renderCalendarDayView();
-      return renderCalendarWeekView();
+    function isToday(date) {
+      const t = new Date();
+      return date.getFullYear() === t.getFullYear() && date.getMonth() === t.getMonth() && date.getDate() === t.getDate();
     }
 
-    function renderCalendarWeekView() {
-      const grid = document.getElementById('calendar-grid');
-      if (!grid) return;
-      const rooms = getRoomsData();
-      const reservations = getReservationsData();
-      const start = getStartOfWeek(calendarDate);
-      const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
-      const end = days[6];
-      const dayNames = ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
-
-      const header = `
-        <div class="grid border-b border-gray-100 dark:border-gray-700" style="grid-template-columns:160px repeat(7,minmax(110px,1fr));">
-          <div class="p-3 bg-gray-50 dark:bg-gray-700/50 font-medium text-sm text-gray-500 dark:text-gray-400">ნომერი</div>
-          ${days.map((d, idx) => `<div class="p-3 bg-gray-50 dark:bg-gray-700/50 text-center"><div class="text-xs text-gray-500 dark:text-gray-400">${dayNames[idx]}</div><div class="text-sm font-semibold ${isSameDate(d, new Date()) ? 'text-sky-600' : 'text-gray-900 dark:text-white'}">${d.getDate()}</div></div>`).join('')}
-        </div>
-      `;
-
-      const rows = rooms.map(room => {
-        const rowReservations = reservations
-          .filter(r => Number(r.roomId) === Number(room.id))
-          .map(r => {
-            const cin = parseISODateLocal(r.checkinDate);
-            const cout = parseISODateLocal(r.checkoutDate);
-            if (!cin || !cout) return null;
-            const stayEnd = cout > cin ? addDays(cout, -1) : cin;
-            const from = cin > start ? cin : start;
-            const to = stayEnd < end ? stayEnd : end;
-            if (to < from) return null;
-            const startIndex = Math.floor((from - start) / (1000 * 60 * 60 * 24)) + 1;
-            const endIndex = Math.floor((to - start) / (1000 * 60 * 60 * 24)) + 1;
-            return { reservation: r, start: startIndex, end: endIndex };
-          })
-          .filter(Boolean)
-          .sort((a, b) => a.start - b.start || a.end - b.end);
-
-        const laneEnds = [];
-        const bars = rowReservations.map(item => {
-          let lane = 0;
-          while (lane < laneEnds.length && item.start <= laneEnds[lane]) lane++;
-          laneEnds[lane] = item.end;
-          const leftRatio = (item.start - 1) / 7;
-          const spanRatio = (item.end - item.start + 1) / 7;
-          const top = 5 + lane * 34;
-          const cls = item.reservation.status === 'Checked-in' ? 'checkedin' : item.reservation.status === 'Checked-out' ? 'checkout' : 'reserved';
-          return `<div class="reservation-bar ${cls}" style="left:calc(160px + (100% - 160px) * ${leftRatio});top:${top}px;width:calc((100% - 160px) * ${spanRatio})" onclick="openReservationDetails(${item.reservation.id})">${escapeHtml(item.reservation.guestName || '-')}</div>`;
-        }).join('');
-        const rowMinHeight = Math.max(42, laneEnds.length * 34 + 10);
-
-        return `
-          <div class="relative border-b border-gray-50 dark:border-gray-700/50" style="display:grid;grid-template-columns:160px repeat(7,minmax(110px,1fr));min-height:${rowMinHeight}px;">
-            <div class="p-3 border-r border-gray-100 dark:border-gray-700/50 bg-white dark:bg-gray-800 font-medium text-gray-900 dark:text-white">${escapeHtml(room.roomName)} <span class="text-[11px] text-gray-500">${escapeHtml(room.roomType)}</span></div>
-            ${days.map(d => `<div class="border-r border-gray-100 dark:border-gray-700/50 ${isSameDate(d, new Date()) ? 'bg-sky-50/60 dark:bg-sky-900/10' : ''}"></div>`).join('')}
-            ${bars}
-          </div>
-        `;
-      }).join('');
-
-      grid.innerHTML = header + rows;
-    }
-
-    function renderCalendarMonthView() {
-      const grid = document.getElementById('calendar-grid');
-      if (!grid) return;
-      const reservations = getReservationsData();
-      const year = calendarDate.getFullYear();
-      const month = calendarDate.getMonth();
-      const firstDay = new Date(year, month, 1);
-      const lastDay = new Date(year, month + 1, 0);
-      const daysInMonth = lastDay.getDate();
-      const startDay = firstDay.getDay();
-      const dayNames = ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
-
-      let html = `
-        <div class="grid grid-cols-7 border-b border-gray-100 dark:border-gray-700">
-          ${dayNames.map(d => `<div class="p-3 bg-gray-50 dark:bg-gray-700/50 text-center text-sm font-medium text-gray-500 dark:text-gray-400">${d}</div>`).join('')}
-        </div>
-        <div class="grid grid-cols-7">
-      `;
-
-      for (let i = 0; i < startDay; i++) html += `<div class="p-2 min-h-[90px] border-b border-r border-gray-50 dark:border-gray-700/30 bg-gray-50/50 dark:bg-gray-800/50"></div>`;
-
-      for (let day = 1; day <= daysInMonth; day++) {
-        const date = new Date(year, month, day);
-        const dateStr = formatDateISO(date);
-        const dayReservations = reservations.filter(r => (r.checkinDate || '') === dateStr);
-        html += `
-          <div class="p-2 min-h-[90px] border-b border-r border-gray-50 dark:border-gray-700/30 ${isSameDate(date, new Date()) ? 'bg-sky-50 dark:bg-sky-900/20' : ''}">
-            <div class="font-medium text-sm ${isSameDate(date, new Date()) ? 'text-sky-600' : 'text-gray-900 dark:text-white'}">${day}</div>
-            ${dayReservations.slice(0, 2).map(r => `<div class="mt-1 text-xs px-2 py-1 rounded bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400 cursor-pointer truncate" onclick="openReservationDetails(${r.id})">${escapeHtml(r.guestName || '-')}</div>`).join('')}
-            ${dayReservations.length > 2 ? `<div class="text-xs text-gray-500 mt-1">+${dayReservations.length - 2} მეტი</div>` : ''}
-          </div>
-        `;
-      }
-
-      const remainingCells = (7 - ((startDay + daysInMonth) % 7)) % 7;
-      for (let i = 0; i < remainingCells; i++) html += `<div class="p-2 min-h-[90px] border-b border-r border-gray-50 dark:border-gray-700/30 bg-gray-50/50 dark:bg-gray-800/50"></div>`;
-      html += '</div>';
-      grid.innerHTML = html;
-    }
-
-    function renderCalendarDayView() {
-      const grid = document.getElementById('calendar-grid');
-      if (!grid) return;
-      const rooms = getRoomsData();
-      const reservations = getReservationsData();
-      const dayStr = formatDateISO(calendarDate);
-      const hours = Array.from({ length: 24 }, (_, i) => i);
-
-      grid.innerHTML = `
-        <div class="flex">
-          <div class="w-28 flex-shrink-0">
-            <div class="p-3 bg-gray-50 dark:bg-gray-700/50 h-12 font-medium text-sm text-gray-500">ნომერი</div>
-            ${rooms.map(r => `<div class="p-3 h-16 border-b border-gray-50 dark:border-gray-700/30 flex items-center text-sm font-medium text-gray-900 dark:text-white">${escapeHtml(r.roomNumber)}</div>`).join('')}
-          </div>
-          <div class="flex-1 overflow-x-auto">
-            <div class="flex min-w-max">
-              ${hours.map(h => `<div class="w-20 p-2 bg-gray-50 dark:bg-gray-700/50 text-center text-xs text-gray-500 border-l border-gray-100 dark:border-gray-700">${String(h).padStart(2, '0')}:00</div>`).join('')}
-            </div>
-            ${rooms.map(room => {
-              const hasReservation = reservations.some(r => Number(r.roomId) === Number(room.id) && (r.checkinDate || '') === dayStr);
-              return `<div class="flex min-w-max h-16 border-b border-gray-50 dark:border-gray-700/30 ${hasReservation ? 'bg-sky-50/50 dark:bg-sky-900/10' : ''}">${hours.map(() => `<div class="w-20 border-l border-gray-50 dark:border-gray-700/30"></div>`).join('')}</div>`;
-            }).join('')}
-          </div>
-        </div>
-      `;
-    }
-
-    function isSameDate(a, b) {
-      return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    function openNewReservation(roomId, dateStr) {
+      openModal('new-reservation');
+      const roomEl = document.getElementById('newRoomId');
+      const inEl = document.getElementById('newCheckinDate');
+      const outEl = document.getElementById('newCheckoutDate');
+      if (roomEl && roomId) roomEl.value = String(roomId);
+      if (inEl && dateStr) inEl.value = dateStr;
+      if (outEl && dateStr) outEl.value = formatDateISO(addDays(parseISODateLocal(dateStr) || new Date(), 1));
     }
 
     function renderRooms() {
