@@ -144,6 +144,9 @@
 
     const defaultConfig = {
       hotel_name: 'Grand Hotel',
+      hotel_email: 'info@hotel.ge',
+      hotel_phone: '+995 32 123 4567',
+      hotel_address: 'რუსთაველის გამზირი 1, თბილისი',
       currency_symbol: '₾',
       primary_color: '#0ea5e9',
       background_color: '#f8fafc',
@@ -220,14 +223,25 @@
       document.documentElement.style.setProperty('--primary-color', config.primary_color || defaultConfig.primary_color);
     }
 
+    function getHotelIdentity() {
+      return {
+        name: config.hotel_name || defaultConfig.hotel_name,
+        email: config.hotel_email || defaultConfig.hotel_email,
+        phone: config.hotel_phone || defaultConfig.hotel_phone,
+        address: config.hotel_address || defaultConfig.hotel_address
+      };
+    }
+
     async function initialize() {
       initNav();
       ensureHotelState();
+      config = { ...defaultConfig, ...getState('hotelConfig', {}) };
       if (window.elementSdk) {
         window.elementSdk.init({
           defaultConfig,
           onConfigChange: async (newConfig) => {
             config = { ...defaultConfig, ...newConfig };
+            setState('hotelConfig', config);
             applyConfig();
           },
           mapToCapabilities: (cfg) => ({
@@ -490,8 +504,9 @@
             const cin = parseISODateLocal(r.checkinDate);
             const cout = parseISODateLocal(r.checkoutDate);
             if (!cin || !cout) return null;
+            const stayEnd = cout > cin ? addDays(cout, -1) : cin;
             const start = Math.max(1, cin.getMonth() === date.getMonth() ? cin.getDate() : 1);
-            const end = Math.min(daysInMonth, cout.getMonth() === date.getMonth() ? cout.getDate() : daysInMonth);
+            const end = Math.min(daysInMonth, stayEnd.getMonth() === date.getMonth() ? stayEnd.getDate() : daysInMonth);
             if (end < 1 || start > daysInMonth || end < start) return null;
             return { reservation: r, start, end };
           })
@@ -506,7 +521,7 @@
           laneEnds[lane] = item.end;
           const top = 5 + lane * 34;
           const left = 160 + (item.start - 1) * 28 + 1;
-          const width = Math.max(26, (item.end - item.start + 1) * 28 - 3);
+          const width = Math.max(26, (item.end - item.start + 1) * 28);
           const r = item.reservation;
           const cls = r.status === 'Checked-in' ? 'checkedin' : r.status === 'Checked-out' ? 'checkout' : 'reserved';
           return `<div class="reservation-bar ${cls}" style="left:${left}px;top:${top}px;width:${width}px" onclick="openReservationDetails(${r.id})">${escapeHtml(r.guestName || '-')}</div>`;
@@ -784,12 +799,12 @@
             <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
               <h3 class="font-semibold mb-4">სასტუმროს ინფორმაცია</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(config.hotel_name || 'Grand Hotel')}">
-                <input class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="info@hotel.ge">
-                <input class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="+995 32 123 4567">
-                <input class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="რუსთაველის გამზირი 1, თბილისი">
+                <input id="settingsHotelName" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(config.hotel_name || defaultConfig.hotel_name)}" placeholder="სასტუმროს სახელი">
+                <input id="settingsHotelEmail" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(config.hotel_email || defaultConfig.hotel_email)}" placeholder="ელფოსტა">
+                <input id="settingsHotelPhone" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(config.hotel_phone || defaultConfig.hotel_phone)}" placeholder="ტელეფონი">
+                <input id="settingsHotelAddress" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(config.hotel_address || defaultConfig.hotel_address)}" placeholder="მისამართი">
               </div>
-              <button class="mt-4 px-4 py-2 rounded-lg bg-sky-600 text-white" onclick="showToast('პარამეტრები შენახულია')">შენახვა</button>
+              <button class="mt-4 px-4 py-2 rounded-lg bg-sky-600 text-white" onclick="saveHotelSettings()">შენახვა</button>
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
               <h3 class="font-semibold mb-4">პოლიტიკა</h3>
@@ -842,6 +857,20 @@
           </div>
         </div>
       `;
+    }
+
+    function saveHotelSettings() {
+      config = {
+        ...config,
+        hotel_name: document.getElementById('settingsHotelName')?.value.trim() || defaultConfig.hotel_name,
+        hotel_email: document.getElementById('settingsHotelEmail')?.value.trim() || defaultConfig.hotel_email,
+        hotel_phone: document.getElementById('settingsHotelPhone')?.value.trim() || defaultConfig.hotel_phone,
+        hotel_address: document.getElementById('settingsHotelAddress')?.value.trim() || defaultConfig.hotel_address
+      };
+      setState('hotelConfig', config);
+      if (window.elementSdk?.setConfig) window.elementSdk.setConfig(config);
+      applyConfig();
+      showToast('პარამეტრები შენახულია');
     }
 
     function saveMonthlyRates() {
@@ -925,6 +954,7 @@
         <div class="flex gap-2 mt-4 flex-wrap">
           <button class="px-3 py-2 rounded bg-sky-600 text-white" onclick="saveReservationEdits(${res.id})">შენახვა</button>
           <button class="px-3 py-2 rounded bg-emerald-600 text-white" onclick="checkInReservation(${res.id})">Check-in</button>
+          <button class="px-3 py-2 rounded bg-amber-500 text-white" onclick="checkOutReservation(${res.id})">Check-out</button>
           <button class="px-3 py-2 rounded bg-red-600 text-white" onclick="deleteReservation(${res.id})">წაშლა</button>
           <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printConsent(${res.id}, 'ka')">თანხმობა KA</button>
           <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printConsent(${res.id}, 'en')">Consent EN</button>
@@ -987,6 +1017,26 @@
       renderCurrentPage();
     }
 
+    function checkOutReservation(resId) {
+      const reservations = getReservationsData();
+      const idx = reservations.findIndex(r => Number(r.id) === Number(resId));
+      if (idx === -1) return;
+      reservations[idx].status = 'Checked-out';
+      setReservationsData(reservations);
+      const room = findRoomById(reservations[idx].roomId);
+      if (room) {
+        const rooms = getRoomsData();
+        const rIdx = rooms.findIndex(r => Number(r.id) === Number(room.id));
+        if (rIdx !== -1) {
+          rooms[rIdx].status = 'available';
+          setRoomsData(rooms);
+        }
+      }
+      showToast('Check-out დასრულდა');
+      closeModal();
+      renderCurrentPage();
+    }
+
     function getReservationFinancials(resId) {
       const res = getReservationsData().find(r => Number(r.id) === Number(resId));
       if (!res) return { nights: 0, baseTotal: 0, lateCheckoutFee: 0, grossTotal: 0, advance: 0, dueTotal: 0 };
@@ -1005,6 +1055,7 @@
       const room = findRoomById(res.roomId);
       const financials = getReservationFinancials(resId);
       const invoiceNo = `INV-${res.id}-${new Date().getTime()}`;
+      const hotel = getHotelIdentity();
       const w = window.open('', '_blank');
       if (!w) return;
       w.document.write(`
@@ -1030,9 +1081,11 @@
         <body>
           <div class="row">
             <div>
-              <h1>სასტუმრო — ინვოისი</h1>
+              <h1>${escapeHtml(hotel.name)} — ინვოისი</h1>
               <div class="muted">ინვოისის №: ${invoiceNo}</div>
               <div class="muted">თარიღი: ${formatDate(new Date())}</div>
+              <div class="muted">${escapeHtml(hotel.phone)} • ${escapeHtml(hotel.email)}</div>
+              <div class="muted">${escapeHtml(hotel.address)}</div>
             </div>
             <div class="right"><div class="muted">სტატუსი: ${res.status}</div></div>
           </div>
@@ -1058,20 +1111,22 @@
       `);
       w.document.close();
       w.focus();
+      setTimeout(() => w.print(), 120);
     }
 
     function printConsent(resId, lang = 'ka') {
       const res = getReservationsData().find(r => Number(r.id) === Number(resId));
       if (!res) return;
       const room = findRoomById(res.roomId);
+      const hotel = getHotelIdentity();
       const w = window.open('', '_blank');
       if (!w) return;
       const isKa = lang === 'ka';
       const title = isKa ? 'სტუმრის რეგისტრაციისა და თანხმობის ფორმა' : 'Guest Registration and Consent Form';
       const consentText = isKa ? `
-        <p><strong>სასტუმროს დასახელება:</strong> ______________________________</p>
-        <p><strong>მისამართი:</strong> ________________________________________</p>
-        <p><strong>ტელეფონი / ელფოსტა:</strong> _______________________________</p>
+        <p><strong>სასტუმროს დასახელება:</strong> ${escapeHtml(hotel.name)}</p>
+        <p><strong>მისამართი:</strong> ${escapeHtml(hotel.address)}</p>
+        <p><strong>ტელეფონი / ელფოსტა:</strong> ${escapeHtml(hotel.phone)} / ${escapeHtml(hotel.email)}</p>
         <h4>სტუმრის ინფორმაცია</h4>
         <p><strong>სახელი, გვარი:</strong> ${escapeHtml(res.guestName || '')}</p>
         <p><strong>პირადი ნომერი / პასპორტის №:</strong> ${escapeHtml(res.guestIdNumber || '')}</p>
@@ -1094,9 +1149,9 @@
         <p><strong>თარიღი:</strong> _____________________</p>
         <p><strong>სასტუმროს წარმომადგენლის ხელმოწერა:</strong> __________________.</p>
       ` : `
-        <p><strong>Hotel Name:</strong> ______________________________</p>
-        <p><strong>Address:</strong> ________________________________________</p>
-        <p><strong>Phone / Email:</strong> _______________________________</p>
+        <p><strong>Hotel Name:</strong> ${escapeHtml(hotel.name)}</p>
+        <p><strong>Address:</strong> ${escapeHtml(hotel.address)}</p>
+        <p><strong>Phone / Email:</strong> ${escapeHtml(hotel.phone)} / ${escapeHtml(hotel.email)}</p>
         <h4>Guest Information</h4>
         <p><strong>Full Name:</strong> ${escapeHtml(res.guestName || '')}</p>
         <p><strong>ID / Passport No.:</strong> ${escapeHtml(res.guestIdNumber || '')}</p>
@@ -1146,6 +1201,7 @@
       `);
       w.document.close();
       w.focus();
+      setTimeout(() => w.print(), 120);
     }
 
     function openRoomEdit(roomId) {
