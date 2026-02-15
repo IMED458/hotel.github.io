@@ -577,12 +577,15 @@
           <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
             <h3 class="font-semibold mb-4">კვირის დაკავებულობა</h3>
             <div class="h-56 flex items-end gap-3">
-              ${[70, 72, 79, 81, 88, 91, 84].map(v => `
+              ${[
+                ['ორშ', 70], ['სამ', 72], ['ოთხ', 79], ['ხუთ', 81], ['პარ', 88], ['შაბ', 91], ['კვი', 84]
+              ].map(([d, v]) => `
                 <div class="flex-1">
-                  <div class="h-48 bg-sky-100 dark:bg-sky-900/20 rounded-t-lg relative overflow-hidden">
-                    <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-sky-600 to-sky-400 rounded-t-lg" style="height:${v}%"></div>
+                  <div class="h-44 bg-sky-100 dark:bg-sky-900/20 rounded-lg relative overflow-hidden border border-sky-200/70 dark:border-sky-900/40">
+                    <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-sky-600 to-sky-400 rounded-b-lg" style="height:${v}%"></div>
                   </div>
-                  <div class="text-xs text-center text-gray-500 mt-2">${v}%</div>
+                  <div class="text-xs text-center text-gray-500 mt-2">${d}</div>
+                  <div class="text-xs text-center font-semibold text-gray-700 dark:text-gray-300">${v}%</div>
                 </div>
               `).join('')}
             </div>
@@ -677,7 +680,7 @@
         days.push(d);
       }
 
-      const dayNames = ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
+      const dayNames = ['ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ', 'კვი'];
       const roomWidth = 180;
       const dayWidth = 128;
       const totalWidth = roomWidth + (dayWidth * 7);
@@ -757,49 +760,85 @@
     function renderMonthView(grid, rooms, reservations) {
       const year = calendarDate.getFullYear();
       const month = calendarDate.getMonth();
-      const firstDay = new Date(year, month, 1);
-      const lastDay = new Date(year, month + 1, 0);
-      const daysInMonth = lastDay.getDate();
-      const startDay = firstDay.getDay();
+      const firstDay = new Date(year, month, 1, 12, 0, 0, 0);
+      const lastDay = new Date(year, month + 1, 0, 12, 0, 0, 0);
+      const monthEndExclusive = new Date(year, month + 1, 1, 12, 0, 0, 0);
+      const days = [];
+      for (let day = 1; day <= lastDay.getDate(); day++) {
+        days.push(new Date(year, month, day, 12, 0, 0, 0));
+      }
 
       const dayNames = ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
+      const roomWidth = 180;
+      const dayWidth = 44;
+      const totalWidth = roomWidth + (dayWidth * days.length);
 
-      let html = `
-        <div class="grid grid-cols-7 border-b border-gray-100 dark:border-gray-700">
-          ${dayNames.map(d => `<div class="p-3 bg-gray-50 dark:bg-gray-700/50 text-center text-sm font-medium text-gray-500 dark:text-gray-400">${d}</div>`).join('')}
+      const header = `
+        <div class="border-b border-gray-100 dark:border-gray-700" style="display:grid;grid-template-columns:${roomWidth}px repeat(${days.length}, ${dayWidth}px);min-width:${totalWidth}px;">
+          <div class="p-3 bg-gray-50 dark:bg-gray-700/50 font-medium text-sm text-gray-500 dark:text-gray-400">ნომერი</div>
+          ${days.map((d) => `
+            <div class="p-2 bg-gray-50 dark:bg-gray-700/50 text-center border-l border-gray-100 dark:border-gray-700/40">
+              <div class="text-[10px] text-gray-500 dark:text-gray-400">${dayNames[d.getDay()]}</div>
+              <div class="text-xs font-semibold text-gray-900 dark:text-white ${isToday(d) ? 'text-sky-600' : ''}">${d.getDate()}</div>
+            </div>
+          `).join('')}
         </div>
-        <div class="grid grid-cols-7">
       `;
 
-      for (let i = 0; i < startDay; i++) {
-        html += `<div class="p-2 min-h-[80px] border-b border-r border-gray-50 dark:border-gray-700/30 bg-gray-50/50 dark:bg-gray-800/50"></div>`;
-      }
+      const rows = rooms.map(room => {
+        const roomReservations = reservations
+          .filter(r => Number(r.roomId) === Number(room.id))
+          .map(r => {
+            const cin = parseISODateLocal(r.checkinDate);
+            const cout = parseISODateLocal(r.checkoutDate);
+            if (!cin || !cout) return null;
+            if (cout <= firstDay || cin >= monthEndExclusive) return null;
 
-      for (let day = 1; day <= daysInMonth; day++) {
-        const date = new Date(year, month, day);
-        const dateStr = formatDateISO(date);
-        const dayReservations = reservations.filter(r => (r.checkinDate || '').startsWith(dateStr));
+            const visibleStart = cin > firstDay ? cin : firstDay;
+            const visibleEnd = cout < monthEndExclusive ? cout : monthEndExclusive;
+            if (visibleEnd <= visibleStart) return null;
 
-        html += `
-          <div class="p-2 min-h-[80px] border-b border-r border-gray-50 dark:border-gray-700/30 ${isToday(date) ? 'bg-sky-50 dark:bg-sky-900/20' : ''}">
-            <div class="font-medium text-sm ${isToday(date) ? 'text-sky-600' : 'text-gray-900 dark:text-white'}">${day}</div>
-            ${dayReservations.slice(0, 2).map(r => `
-              <div class="mt-1 text-xs bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 px-1 py-0.5 rounded truncate cursor-pointer" onclick="openReservationDetails(${r.id})">
-                ${escapeHtml(r.guestName || '-')}
-              </div>
-            `).join('')}
-            ${dayReservations.length > 2 ? `<div class="text-xs text-gray-500 mt-1">+${dayReservations.length - 2} მეტი</div>` : ''}
+            const startDayIndex = Math.floor((visibleStart - firstDay) / (1000 * 60 * 60 * 24));
+            const endDayIndex = Math.floor((visibleEnd - firstDay) / (1000 * 60 * 60 * 24));
+            const startsInside = cin >= firstDay && cin < monthEndExclusive;
+            const endsInside = cout > firstDay && cout <= monthEndExclusive;
+            const startPos = startsInside ? (startDayIndex + 0.5) : startDayIndex;
+            const endPos = endsInside ? (endDayIndex + 0.5) : endDayIndex;
+            return { reservation: r, startPos, endPos };
+          })
+          .filter(Boolean)
+          .sort((a, b) => a.startPos - b.startPos || a.endPos - b.endPos);
+
+        const laneEnds = [];
+        const bars = roomReservations.map(item => {
+          let lane = 0;
+          while (lane < laneEnds.length && item.startPos < laneEnds[lane]) lane++;
+          laneEnds[lane] = item.endPos;
+          const left = roomWidth + (item.startPos * dayWidth) + 1;
+          const width = Math.max(24, ((item.endPos - item.startPos) * dayWidth) - 2);
+          const top = 5 + (lane * 34);
+          const booking = item.reservation;
+          const cls = booking.status === 'Checked-in' ? 'checkedin' : booking.status === 'Checked-out' ? 'checkout' : 'reserved';
+          return `<div class="reservation-bar ${cls}" style="left:${left}px;top:${top}px;width:${width}px;" onclick="openReservationDetails(${booking.id})">${escapeHtml(booking.guestName || '-')}</div>`;
+        }).join('');
+
+        const rowMinHeight = Math.max(48, laneEnds.length * 34 + 10);
+        return `
+          <div class="relative border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50/40 dark:hover:bg-gray-700/20" style="display:grid;grid-template-columns:${roomWidth}px repeat(${days.length}, ${dayWidth}px);min-width:${totalWidth}px;min-height:${rowMinHeight}px;">
+            <div class="p-3 flex items-center gap-2 bg-white dark:bg-gray-800 sticky left-0 z-10">
+              <span class="font-medium text-gray-900 dark:text-white">${escapeHtml(room.roomNumber || room.roomName || '')}</span>
+              <span class="text-xs text-gray-500">${escapeHtml(roomTypeLabel(room.roomType || ''))}</span>
+            </div>
+            ${days.map(d => {
+              const dateStr = formatDateISO(d);
+              return `<div class="relative border-l border-gray-100 dark:border-gray-700/30 ${isToday(d) ? 'bg-sky-50/60 dark:bg-sky-900/10' : ''}" onclick="openNewReservation(${room.id}, '${dateStr}')"></div>`;
+            }).join('')}
+            ${bars}
           </div>
         `;
-      }
+      }).join('');
 
-      const remainingCells = (7 - ((startDay + daysInMonth) % 7)) % 7;
-      for (let i = 0; i < remainingCells; i++) {
-        html += `<div class="p-2 min-h-[80px] border-b border-r border-gray-50 dark:border-gray-700/30 bg-gray-50/50 dark:bg-gray-800/50"></div>`;
-      }
-
-      html += '</div>';
-      grid.innerHTML = html;
+      grid.innerHTML = header + rows;
     }
 
     function renderDayView(grid, rooms, reservations) {
@@ -858,7 +897,9 @@
 
     function getStartOfWeek(date) {
       const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      d.setDate(d.getDate() - d.getDay());
+      const day = d.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      d.setDate(d.getDate() + diff);
       return d;
     }
 
@@ -1390,6 +1431,23 @@
       totalEl.value = String(charges.grossTotal);
       if (lateFeeEl) lateFeeEl.textContent = `${config.currency_symbol}${charges.lateCheckoutFee.toLocaleString('en-US')}`;
       updateRoomPriceHint('editRoomId', 'editRoomPriceHint');
+      recalcEditDueAmount();
+    }
+
+    function recalcEditDueAmount() {
+      const total = Number(document.getElementById('editTotalPrice')?.value || 0);
+      const status = document.getElementById('editPaymentStatus')?.value || 'unpaid';
+      const paidInput = document.getElementById('editPaidAmount');
+      let paidAmount = Number(paidInput?.value || 0);
+      if (status === 'paid') paidAmount = total;
+      if (status === 'unpaid') paidAmount = 0;
+      paidAmount = Math.max(0, Math.min(total, paidAmount));
+      if (paidInput && (status === 'paid' || status === 'unpaid')) {
+        paidInput.value = String(paidAmount);
+      }
+      const due = Math.max(0, total - paidAmount);
+      const dueEl = document.getElementById('editDueAmount');
+      if (dueEl) dueEl.value = String(due);
     }
 
     function togglePaidAmountField(statusSelectId, wrapId) {
@@ -1424,6 +1482,7 @@
           <label class="text-xs text-gray-500">დამატებითი გადასახადი (სახელი)<input id="editAdditionalFeeName" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.additionalFeeName || '')}"></label>
           <label class="text-xs text-gray-500">დამატებითი გადასახადი (₾)<input id="editAdditionalFeeAmount" type="number" min="0" step="0.01" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(res.additionalFeeAmount || 0)}"></label>
           <label class="text-xs text-gray-500">სრული თანხა<input id="editTotalPrice" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(res.totalPrice||0)}" readonly></label>
+          <label class="text-xs text-gray-500">დასარჩენი გადასახდელი თანხა<input id="editDueAmount" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Math.max(0, Number(res.totalPrice || 0) - Number(res.paidAmount || 0))}" readonly></label>
           <select id="editConsentLang" class="mt-5 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="ka">ქართული</option><option value="en">ინგლისური</option></select>
         </div>
         <div id="editPaidAmountWrap" class="mt-3 ${(res.paymentStatus === 'partial' || res.paymentStatus === 'advance') ? '' : 'hidden'}">
@@ -1447,8 +1506,14 @@
       document.getElementById('editCheckoutDate')?.addEventListener('change', recalcEditReservationTotal);
       document.getElementById('editCheckoutTime')?.addEventListener('change', recalcEditReservationTotal);
       document.getElementById('editAdditionalFeeAmount')?.addEventListener('input', recalcEditReservationTotal);
+      document.getElementById('editPaymentStatus')?.addEventListener('change', () => {
+        togglePaidAmountField('editPaymentStatus', 'editPaidAmountWrap');
+        recalcEditDueAmount();
+      });
+      document.getElementById('editPaidAmount')?.addEventListener('input', recalcEditDueAmount);
       recalcEditReservationTotal();
       togglePaidAmountField('editPaymentStatus', 'editPaidAmountWrap');
+      recalcEditDueAmount();
     }
 
     function saveReservationEdits(resId) {
