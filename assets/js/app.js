@@ -10,7 +10,6 @@
       hotel_email: 'info@hotel.ge',
       hotel_phone: '+995 32 123 4567',
       hotel_address: 'რუსთაველის გამზირი 1, თბილისი',
-      hotel_logo_url: '',
       default_checkout_time: '12:00',
       late_checkout_hourly_rate: 10,
       extra_bed_rate: 40,
@@ -136,7 +135,7 @@
     }
 
     function getHotelLogoUrl() {
-      return config.hotel_logo_url || DEFAULT_HOTEL_LOGO_PATH;
+      return DEFAULT_HOTEL_LOGO_PATH;
     }
 
     function applyBrandingAssets() {
@@ -1478,11 +1477,7 @@
                   <img id="settingsLogoPreview" src="${escapeHtml(getHotelLogoUrl())}" alt="Logo Preview" class="w-12 h-12 rounded-lg object-cover bg-white border border-gray-200">
                   <span class="text-xs text-gray-500">ფაილის სახელი: <code>Green Tower Hotel.png</code></span>
                 </div>
-                <div class="flex flex-wrap gap-2">
-                  <input id="settingsHotelLogoFile" type="file" accept=".png,.jpg,.jpeg,.webp,.svg,image/png,image/jpeg,image/webp,image/svg+xml" class="text-xs">
-                  <button class="px-3 py-2 rounded-lg bg-sky-600 text-white text-sm" onclick="uploadHotelLogo()">ლოგოს ატვირთვა</button>
-                  <button class="px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-600 text-sm" onclick="resetHotelLogo()">ნაგულისხმევზე დაბრუნება</button>
-                </div>
+                <p class="text-xs text-gray-500">ლოგო იტვირთება მხოლოდ რეპოზიტორიაში არსებული ფაილიდან: <code>assets/branding/Green Tower Hotel.png</code></p>
               </div>
               <button class="mt-4 px-4 py-2 rounded-lg bg-sky-600 text-white" onclick="saveHotelSettings()">შენახვა</button>
             </div>
@@ -1534,41 +1529,12 @@
         hotel_name: document.getElementById('settingsHotelName')?.value.trim() || defaultConfig.hotel_name,
         hotel_email: document.getElementById('settingsHotelEmail')?.value.trim() || defaultConfig.hotel_email,
         hotel_phone: document.getElementById('settingsHotelPhone')?.value.trim() || defaultConfig.hotel_phone,
-        hotel_address: document.getElementById('settingsHotelAddress')?.value.trim() || defaultConfig.hotel_address,
-        hotel_logo_url: config.hotel_logo_url || ''
+        hotel_address: document.getElementById('settingsHotelAddress')?.value.trim() || defaultConfig.hotel_address
       };
       setState('hotelConfig', config);
       if (window.elementSdk?.setConfig) window.elementSdk.setConfig(config);
       applyConfig();
       showToast('პარამეტრები შენახულია');
-    }
-
-    function uploadHotelLogo() {
-      const fileInput = document.getElementById('settingsHotelLogoFile');
-      const file = fileInput?.files?.[0];
-      if (!file) return showToast('ჯერ აირჩიეთ ლოგოს ფაილი', 'warning');
-      const reader = new FileReader();
-      reader.onload = () => {
-        config = { ...config, hotel_logo_url: String(reader.result || '') };
-        setState('hotelConfig', config);
-        if (window.elementSdk?.setConfig) window.elementSdk.setConfig(config);
-        applyBrandingAssets();
-        const preview = document.getElementById('settingsLogoPreview');
-        if (preview) preview.src = getHotelLogoUrl();
-        showToast('ლოგო განახლდა');
-      };
-      reader.onerror = () => showToast('ლოგოს ატვირთვა ვერ მოხერხდა', 'error');
-      reader.readAsDataURL(file);
-    }
-
-    function resetHotelLogo() {
-      config = { ...config, hotel_logo_url: '' };
-      setState('hotelConfig', config);
-      if (window.elementSdk?.setConfig) window.elementSdk.setConfig(config);
-      applyBrandingAssets();
-      const preview = document.getElementById('settingsLogoPreview');
-      if (preview) preview.src = getHotelLogoUrl();
-      showToast('ნაგულისხმევი ლოგო აღდგა');
     }
 
     function savePolicySettings() {
