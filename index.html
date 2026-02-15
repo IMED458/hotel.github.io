@@ -1836,6 +1836,18 @@
       if (!statusEl || !wrapEl) return;
       const show = statusEl.value === 'partial' || statusEl.value === 'advance';
       wrapEl.classList.toggle('hidden', !show);
+      const inputEl = wrapEl.querySelector('input');
+      const totalEl = statusSelectId.startsWith('edit') ? document.getElementById('editTotalPrice') : document.getElementById('newReservationTotal');
+      const total = Number(totalEl?.value || 0);
+      if (inputEl) {
+        if (statusEl.value === 'paid') {
+          inputEl.value = String(total);
+        } else if (statusEl.value === 'unpaid') {
+          inputEl.value = '0';
+        } else if (statusEl.value === 'advance') {
+          inputEl.value = '0';
+        }
+      }
     }
 
     function openReservationDetails(resId) {
@@ -1865,6 +1877,10 @@
           <label class="text-xs text-gray-500">Check-out თარიღი<input id="editCheckoutDate" type="date" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.checkoutDate || '')}"></label>
           <label class="text-xs text-gray-500">Check-out დრო<input id="editCheckoutTime" type="time" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.checkoutTime || policy.checkoutTime)}"></label>
           <label class="text-xs text-gray-500">გადახდის სტატუსი<select id="editPaymentStatus" onchange="togglePaidAmountField('editPaymentStatus','editPaidAmountWrap')" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full"><option value="unpaid" ${res.paymentStatus==='unpaid'?'selected':''}>გადაუხდელი</option><option value="partial" ${res.paymentStatus==='partial'?'selected':''}>ნაწილობრივ</option><option value="advance" ${res.paymentStatus==='advance'?'selected':''}>ავანსი</option><option value="paid" ${res.paymentStatus==='paid'?'selected':''}>გადახდილი</option></select></label>
+          <div id="editPaidAmountWrap" class="${(res.paymentStatus === 'partial' || res.paymentStatus === 'advance') ? '' : 'hidden'}">
+            <label class="text-xs text-gray-500 block">ავანსი / ნაწილობრივი თანხა (₾)</label>
+            <input id="editPaidAmount" type="number" min="0" step="0.01" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(res.paidAmount || 0)}">
+          </div>
           <label class="text-xs text-gray-500">დამატებითი გადასახადი (სახელი)<input id="editAdditionalFeeName" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.additionalFeeName || '')}"></label>
           <label class="text-xs text-gray-500">დამატებითი გადასახადი (₾)<input id="editAdditionalFeeAmount" type="number" min="0" step="0.01" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(res.additionalFeeAmount || 0)}"></label>
           <div id="editExtraBedWrap" class="${roomSupportsExtraBed ? '' : 'hidden'} md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1875,10 +1891,6 @@
           <label class="text-xs text-gray-500">სრული თანხა<input id="editTotalPrice" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(res.totalPrice||0)}" readonly></label>
           <label class="text-xs text-gray-500">დასარჩენი გადასახდელი თანხა<input id="editDueAmount" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Math.max(0, Number(res.totalPrice || 0) - Number(res.paidAmount || 0))}" readonly></label>
           <select id="editConsentLang" class="mt-5 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="ka">ქართული</option><option value="en">ინგლისური</option></select>
-        </div>
-        <div id="editPaidAmountWrap" class="mt-3 ${(res.paymentStatus === 'partial' || res.paymentStatus === 'advance') ? '' : 'hidden'}">
-          <label class="block text-xs text-gray-500 mb-1">ჩარიცხული თანხა (₾)</label>
-          <input id="editPaidAmount" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(res.paidAmount || 0)}">
         </div>
         <div class="mt-2 text-xs text-gray-500">გვიანი Check-out გადასახადი: <strong id="editLateCheckoutFee">${config.currency_symbol}${Number(res.lateCheckoutFee || 0).toLocaleString('en-US')}</strong></div>
         <div class="mt-1 text-xs text-gray-500">Extra Bed გადასახადი: <strong id="editExtraBedFee">${config.currency_symbol}${Number(res.extraBedFee || 0).toLocaleString('en-US')}</strong></div>
@@ -2577,6 +2589,10 @@
             <label class="text-xs text-gray-500">დაბადების თარიღი<input id="newGuestBirthDate" type="date" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full"></label>
             <label class="text-xs text-gray-500">ოთახი<select id="newRoomId" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full">${rooms.map(r => `<option value="${r.id}">${r.roomName} (${roomTypeLabel(r.roomType)})</option>`).join('')}</select></label>
             <label class="text-xs text-gray-500">გადახდის სტატუსი<select id="newPaymentStatus" onchange="togglePaidAmountField('newPaymentStatus','newPaidAmountWrap')" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full"><option value="unpaid">გადაუხდელი</option><option value="partial">ნაწილობრივ</option><option value="advance">ავანსი</option><option value="paid">გადახდილი</option></select></label>
+            <div id="newPaidAmountWrap" class="hidden">
+              <label class="text-xs text-gray-500 block">ავანსი / ნაწილობრივი თანხა (₾)</label>
+              <input id="newPaidAmount" type="number" min="0" step="0.01" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: 150">
+            </div>
             <label class="text-xs text-gray-500">Check-in თარიღი<input id="newCheckinDate" type="date" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${today}"></label>
             <label class="text-xs text-gray-500">Check-out თარიღი<input id="newCheckoutDate" type="date" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${formatDateISO(addDays(new Date(), 1))}"></label>
             <label class="text-xs text-gray-500">Check-out დრო<input id="newCheckoutTime" type="time" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(policy.checkoutTime)}"></label>
@@ -2592,10 +2608,6 @@
           <div class="mt-2 text-xs text-gray-500" id="newRoomPriceHint"></div>
           <div class="mt-1 text-xs text-gray-500">გვიანი Check-out გადასახადი: <strong id="newLateCheckoutFee">${config.currency_symbol}0</strong></div>
           <div class="mt-1 text-xs text-gray-500">Extra Bed გადასახადი: <strong id="newExtraBedFee">${config.currency_symbol}0</strong></div>
-          <div id="newPaidAmountWrap" class="mt-3 hidden">
-            <label class="block text-xs text-gray-500 mb-1">ჩარიცხული თანხა (₾)</label>
-            <input id="newPaidAmount" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: 150">
-          </div>
           <div class="mt-4 flex gap-2">
             <button class="px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="addNewReservation()">შენახვა</button>
             <button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg" onclick="closeModal()">გაუქმება</button>
