@@ -275,95 +275,428 @@
       if (currentPage === 'settings') return renderSettings();
     }
 
-    function renderDashboard() {
+    function getRoomsData() {
       const rooms = allData.filter(d => d.type === 'room');
+      if (rooms.length) return rooms;
+      return [
+        { room_number: '101', room_type: 'standard', status: 'available', price: 120, floor: 1, beds: 1, max_guests: 2 },
+        { room_number: '102', room_type: 'standard', status: 'occupied', price: 125, floor: 1, beds: 1, max_guests: 2 },
+        { room_number: '201', room_type: 'deluxe', status: 'booked', price: 210, floor: 2, beds: 2, max_guests: 3 },
+        { room_number: '202', room_type: 'deluxe', status: 'cleaning', price: 220, floor: 2, beds: 2, max_guests: 3 },
+        { room_number: '301', room_type: 'suite', status: 'maintenance', price: 450, floor: 3, beds: 2, max_guests: 4 }
+      ];
+    }
+
+    function getReservationsData() {
       const reservations = allData.filter(d => d.type === 'reservation');
+      if (reservations.length) return reservations;
+      return [
+        { guest_name: 'გიორგი ქავთარაძე', check_in: '2026-02-15', check_out: '2026-02-18', booking_status: 'checked-in', payment_status: 'paid', total_price: 510, room_number: '102' },
+        { guest_name: 'ანა აბაშიძე', check_in: '2026-02-16', check_out: '2026-02-20', booking_status: 'confirmed', payment_status: 'partial', total_price: 840, room_number: '201' },
+        { guest_name: 'ნინო მელიქიშვილი', check_in: '2026-02-17', check_out: '2026-02-19', booking_status: 'pending', payment_status: 'unpaid', total_price: 240, room_number: '101' },
+        { guest_name: 'Lars Holm', check_in: '2026-02-14', check_out: '2026-02-15', booking_status: 'checked-out', payment_status: 'paid', total_price: 220, room_number: '202' }
+      ];
+    }
+
+    function getGuestsData() {
+      const guests = allData.filter(d => d.type === 'guest');
+      if (guests.length) return guests;
+      return [
+        { name: 'გიორგი ქავთარაძე', email: 'giorgi@example.com', phone: '+995 555 101 101', flagged: false },
+        { name: 'ანა აბაშიძე', email: 'ana@example.com', phone: '+995 555 202 202', flagged: true },
+        { name: 'Nina Voss', email: 'nina@example.com', phone: '+49 170 000 000', flagged: false }
+      ];
+    }
+
+    function statusBadge(status) {
+      const map = {
+        pending: 'bg-amber-100 text-amber-700',
+        confirmed: 'bg-sky-100 text-sky-700',
+        'checked-in': 'bg-violet-100 text-violet-700',
+        'checked-out': 'bg-gray-100 text-gray-700',
+        cancelled: 'bg-red-100 text-red-700',
+        'no-show': 'bg-red-100 text-red-700'
+      };
+      return map[status] || 'bg-gray-100 text-gray-700';
+    }
+
+    function paymentBadge(status) {
+      const map = {
+        paid: 'bg-green-100 text-green-700',
+        partial: 'bg-amber-100 text-amber-700',
+        unpaid: 'bg-red-100 text-red-700'
+      };
+      return map[status] || 'bg-gray-100 text-gray-700';
+    }
+
+    function renderDashboard() {
+      const rooms = getRoomsData();
+      const reservations = getReservationsData();
       const occupied = rooms.filter(r => r.status === 'occupied').length;
-      const occupancy = rooms.length ? Math.round((occupied / rooms.length) * 100) : 78;
-      const el = document.getElementById('page-dashboard');
-      el.innerHTML = `
+      const occupancy = rooms.length ? Math.round((occupied / rooms.length) * 100) : 0;
+      const revenue = reservations.reduce((sum, r) => sum + Number(r.total_price || 0), 0);
+      const today = new Date().toISOString().split('T')[0];
+      const checkinsToday = reservations.filter(r => (r.check_in || '').startsWith(today)).length;
+      const checkoutsToday = reservations.filter(r => (r.check_out || '').startsWith(today)).length;
+
+      document.getElementById('page-dashboard').innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          ${card('დაკავებულობა', occupancy + '%', '🏨')}
-          ${card('დღიური შემოსავალი', `${config.currency_symbol}4,250`, '💵')}
-          ${card('დღეს Check-in', '8', '🛬')}
-          ${card('დღეს Check-out', '5', '🛫')}
+          ${card('დაკავებულობა', `${occupancy}%`, '🏨')}
+          ${card('სულ შემოსავალი', `${config.currency_symbol}${revenue.toLocaleString('en-US')}`, '💵')}
+          ${card('დღეს Check-in', String(checkinsToday), '🛬')}
+          ${card('დღეს Check-out', String(checkoutsToday), '🛫')}
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
           <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
             <h3 class="font-semibold mb-4">კვირის დაკავებულობა</h3>
-            <div class="h-56 flex items-end gap-3">${[72,68,85,79,91,95,88].map(v=>`<div class='flex-1 bg-sky-100 dark:bg-sky-900/20 rounded-t-lg relative'><div class='absolute bottom-0 inset-x-0 bg-sky-500 rounded-t-lg' style='height:${v}%'></div></div>`).join('')}</div>
+            <div class="h-56 flex items-end gap-3">
+              ${[70, 72, 79, 81, 88, 91, 84].map(v => `
+                <div class="flex-1">
+                  <div class="h-48 bg-sky-100 dark:bg-sky-900/20 rounded-t-lg relative overflow-hidden">
+                    <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-sky-600 to-sky-400 rounded-t-lg" style="height:${v}%"></div>
+                  </div>
+                  <div class="text-xs text-center text-gray-500 mt-2">${v}%</div>
+                </div>
+              `).join('')}
+            </div>
           </div>
           <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
             <h3 class="font-semibold mb-4">დღის აქტივობა</h3>
             <div class="space-y-3 text-sm">
-              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">Check-in #205</div>
-              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">ახალი ჯავშანი #1234</div>
-              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">გადახდა მიღებულია</div>
+              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">🔑 Check-in - ნომერი 102 (10:30)</div>
+              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">🧹 Housekeeping task დასრულდა (11:20)</div>
+              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">📝 ახალი ჯავშანი: ანა აბაშიძე (12:05)</div>
+              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">💳 გადახდა მიღებულია ${config.currency_symbol}220 (13:10)</div>
             </div>
           </div>
         </div>
-        <div class="mt-6 bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+        <div class="mt-6 bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 overflow-x-auto">
           <h3 class="font-semibold mb-4">უახლესი ჯავშნები</h3>
-          <div class="text-sm text-gray-500">${reservations.length ? reservations.length + ' ჩანაწერი' : 'ჯავშნები ჯერ არ არის'}</div>
-        </div>
-      `;
-    }
-
-    function renderCalendar() {
-      const el = document.getElementById('page-calendar');
-      el.innerHTML = `
-        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-bold">ნომრების კალენდარი</h2>
-            <div class="flex gap-2">
-              <button onclick="calendarView='day';renderCalendar()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">დღე</button>
-              <button onclick="calendarView='week';renderCalendar()" class="px-3 py-2 rounded-lg bg-sky-100 text-sky-700">კვირა</button>
-              <button onclick="calendarView='month';renderCalendar()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">თვე</button>
-            </div>
-          </div>
-          <div class="text-sm text-gray-500">მიმდინარე რეჟიმი: ${calendarView}</div>
-          <div class="mt-4 grid grid-cols-8 gap-1 text-xs">${Array.from({length: 56}).map(()=>`<div class='h-10 rounded bg-gray-100 dark:bg-gray-700/50'></div>`).join('')}</div>
-        </div>
-      `;
-    }
-
-    function renderRooms() {
-      const rooms = allData.filter(d => d.type === 'room');
-      const sample = rooms.length ? rooms : [{ room_number: '101', room_type: 'standard', price: 120 }, { room_number: '202', room_type: 'deluxe', price: 240 }, { room_number: '301', room_type: 'suite', price: 450 }];
-      document.getElementById('page-rooms').innerHTML = `
-        <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold">ნომრები</h2><button onclick="openModal('new-room')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი ნომერი</button></div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">${sample.map(r => `
-          <div class='bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700'>
-            <div class='text-2xl font-bold'>${r.room_number || '-'}</div>
-            <div class='text-sm text-gray-500 capitalize'>${r.room_type || 'standard'}</div>
-            <div class='mt-2 font-semibold'>${config.currency_symbol}${r.price || 0}/ღამე</div>
-          </div>`).join('')}</div>
-      `;
-    }
-
-    function renderReservations() {
-      const reservations = allData.filter(d => d.type === 'reservation');
-      document.getElementById('page-reservations').innerHTML = `
-        <div class="flex items-center justify-between mb-4"><h2 class="text-xl font-bold">ჯავშნები</h2><button onclick="openModal('new-reservation')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი ჯავშანი</button></div>
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto">
           <table class="w-full text-sm">
-            <thead class="bg-gray-50 dark:bg-gray-700/50"><tr><th class="px-4 py-3 text-left">სტუმარი</th><th class="px-4 py-3 text-left">Check-in</th><th class="px-4 py-3 text-left">Check-out</th><th class="px-4 py-3 text-left">სტატუსი</th></tr></thead>
-            <tbody>${(reservations.slice(0, 12).map(r => `<tr class='border-t border-gray-100 dark:border-gray-700'><td class='px-4 py-3'>${r.guest_name || 'სტუმარი'}</td><td class='px-4 py-3'>${formatDate(r.check_in)}</td><td class='px-4 py-3'>${formatDate(r.check_out)}</td><td class='px-4 py-3'>${r.booking_status || 'pending'}</td></tr>`).join('')) || `<tr><td colspan='4' class='px-4 py-6 text-center text-gray-500'>ჯავშნები არ არის</td></tr>`}</tbody>
+            <thead class="text-left text-gray-500"><tr><th class="pb-3">სტუმარი</th><th class="pb-3">ნომერი</th><th class="pb-3">Check-in</th><th class="pb-3">Check-out</th><th class="pb-3">სტატუსი</th><th class="pb-3">თანხა</th></tr></thead>
+            <tbody>
+              ${reservations.slice(0, 5).map(r => `
+                <tr class="border-t border-gray-100 dark:border-gray-700">
+                  <td class="py-3">${r.guest_name || 'სტუმარი'}</td>
+                  <td class="py-3">${r.room_number || '-'}</td>
+                  <td class="py-3">${formatDate(r.check_in)}</td>
+                  <td class="py-3">${formatDate(r.check_out)}</td>
+                  <td class="py-3"><span class="px-2 py-1 rounded-full text-xs ${statusBadge(r.booking_status)}">${r.booking_status || 'pending'}</span></td>
+                  <td class="py-3 font-semibold">${config.currency_symbol}${Number(r.total_price || 0).toLocaleString('en-US')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
           </table>
         </div>
       `;
     }
 
-    function renderGuests() { simplePage('page-guests', 'სტუმრები', 'სტუმრების CRM ინტერფეისი.'); }
-    function renderCheckin() { simplePage('page-checkin', 'Check-in / Check-out', 'დღის ოპერაციები და სწრაფი სამუშაო ნაკადი.'); }
-    function renderPayments() { simplePage('page-payments', 'გადახდები', 'ინვოისები, გადახდები და ბალანსი.'); }
-    function renderHousekeeping() { simplePage('page-housekeeping', 'Housekeeping', 'დავალებები, სტატუსები, პასუხისმგებელი პირები.'); }
-    function renderPricing() { simplePage('page-pricing', 'ფასები / ტარიფები', 'ტარიფების დინამიური მართვა სეზონების მიხედვით.'); }
-    function renderReports() { simplePage('page-reports', 'რეპორტები', 'დაკავებულობა, ADR, RevPAR და შემოსავლები.'); }
-    function renderSettings() { simplePage('page-settings', 'პარამეტრები', 'სასტუმროს პარამეტრები, მომხმარებლები და პოლიტიკა.'); }
+    function renderCalendar() {
+      const rooms = getRoomsData();
+      const reservations = getReservationsData();
+      const date = calendarDate;
+      const monthLabel = date.toLocaleDateString('ka-GE', { month: 'long', year: 'numeric' });
+      const dayNames = ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
+      const first = new Date(date.getFullYear(), date.getMonth(), 1);
+      const last = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+      const offset = first.getDay();
+      const cells = [];
+      for (let i = 0; i < offset; i++) cells.push(null);
+      for (let d = 1; d <= last.getDate(); d++) cells.push(new Date(date.getFullYear(), date.getMonth(), d));
+      while (cells.length % 7 !== 0) cells.push(null);
 
-    function simplePage(id, title, text) {
-      document.getElementById(id).innerHTML = `<div class='bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700'><h2 class='text-xl font-bold mb-2'>${title}</h2><p class='text-gray-500'>${text}</p></div>`;
+      document.getElementById('page-calendar').innerHTML = `
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h2 class="text-xl font-bold">ნომრების კალენდარი</h2>
+            <div class="flex gap-2">
+              <button onclick="calendarView='day';renderCalendar()" class="px-3 py-2 rounded-lg ${calendarView === 'day' ? 'bg-sky-100 text-sky-700' : 'bg-gray-100 dark:bg-gray-700'}">დღე</button>
+              <button onclick="calendarView='week';renderCalendar()" class="px-3 py-2 rounded-lg ${calendarView === 'week' ? 'bg-sky-100 text-sky-700' : 'bg-gray-100 dark:bg-gray-700'}">კვირა</button>
+              <button onclick="calendarView='month';renderCalendar()" class="px-3 py-2 rounded-lg ${calendarView === 'month' ? 'bg-sky-100 text-sky-700' : 'bg-gray-100 dark:bg-gray-700'}">თვე</button>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 mb-4">
+            <button onclick="calendarDate.setMonth(calendarDate.getMonth()-1);renderCalendar()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">←</button>
+            <div class="font-semibold">${monthLabel}</div>
+            <button onclick="calendarDate.setMonth(calendarDate.getMonth()+1);renderCalendar()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">→</button>
+            <button onclick="calendarDate=new Date();renderCalendar()" class="ml-2 px-3 py-2 rounded-lg bg-sky-50 text-sky-700">დღეს</button>
+          </div>
+          <div class="grid grid-cols-7 gap-1 text-xs mb-1">${dayNames.map(d => `<div class="p-2 text-center font-semibold text-gray-500">${d}</div>`).join('')}</div>
+          <div class="grid grid-cols-7 gap-1 text-sm">
+            ${cells.map(c => c ? `
+              <div class="min-h-[96px] rounded-lg border border-gray-100 dark:border-gray-700 p-2 bg-gray-50/60 dark:bg-gray-700/20">
+                <div class="font-semibold mb-1">${c.getDate()}</div>
+                ${reservations.filter(r => (r.check_in || '').startsWith(c.toISOString().split('T')[0])).slice(0, 2).map(r => `
+                  <div class="text-[11px] px-2 py-1 rounded mb-1 bg-sky-100 text-sky-700 truncate">${r.room_number || '-'} • ${r.guest_name || 'Guest'}</div>
+                `).join('')}
+              </div>
+            ` : `<div class="min-h-[96px] rounded-lg bg-transparent"></div>`).join('')}
+          </div>
+          <div class="mt-4 text-xs text-gray-500">${rooms.length} ნომერი • ${reservations.length} ჯავშანი</div>
+        </div>
+      `;
+    }
+
+    function renderRooms() {
+      const rooms = getRoomsData();
+      document.getElementById('page-rooms').innerHTML = `
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold">ნომრების მართვა</h2>
+          <button onclick="openModal('new-room')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი ნომერი</button>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-xl p-4 mb-6 border border-gray-100 dark:border-gray-700 flex flex-wrap gap-3">
+          <select class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>ყველა ტიპი</option><option>standard</option><option>deluxe</option><option>suite</option></select>
+          <select class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>ყველა სტატუსი</option><option>available</option><option>booked</option><option>occupied</option><option>cleaning</option><option>maintenance</option></select>
+          <select class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>ყველა სართული</option><option>1</option><option>2</option><option>3</option></select>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          ${rooms.map(r => `
+            <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700">
+              <div class="flex items-start justify-between">
+                <div>
+                  <div class="text-2xl font-bold">${r.room_number || '-'}</div>
+                  <div class="text-sm text-gray-500 capitalize">${r.room_type || 'standard'} • სართული ${r.floor || 1}</div>
+                </div>
+                <span class="px-2 py-1 rounded-full text-xs ${r.status === 'available' ? 'bg-green-100 text-green-700' : r.status === 'occupied' ? 'bg-violet-100 text-violet-700' : r.status === 'booked' ? 'bg-sky-100 text-sky-700' : r.status === 'cleaning' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}">${r.status || 'available'}</span>
+              </div>
+              <div class="mt-4 text-sm text-gray-500">🛏️ ${r.beds || 1} საწოლი • 👥 მაქს. ${r.max_guests || 2}</div>
+              <div class="mt-2 font-semibold">${config.currency_symbol}${Number(r.price || 0).toLocaleString('en-US')}/ღამე</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderReservations() {
+      const reservations = getReservationsData();
+      document.getElementById('page-reservations').innerHTML = `
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold">ჯავშნების მართვა</h2>
+          <button onclick="openModal('new-reservation')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი ჯავშანი</button>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-xl p-4 mb-6 border border-gray-100 dark:border-gray-700 flex flex-wrap gap-3">
+          <input type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
+          <input type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
+          <select class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>ყველა სტატუსი</option><option>pending</option><option>confirmed</option><option>checked-in</option><option>checked-out</option><option>cancelled</option></select>
+          <button class="px-3 py-2 rounded-lg bg-sky-600 text-white">ფილტრი</button>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 dark:bg-gray-700/50">
+              <tr>
+                <th class="px-4 py-3 text-left">სტუმარი</th>
+                <th class="px-4 py-3 text-left">ნომერი</th>
+                <th class="px-4 py-3 text-left">Check-in</th>
+                <th class="px-4 py-3 text-left">Check-out</th>
+                <th class="px-4 py-3 text-left">სტატუსი</th>
+                <th class="px-4 py-3 text-left">გადახდა</th>
+                <th class="px-4 py-3 text-left">თანხა</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${reservations.map(r => `
+                <tr class="border-t border-gray-100 dark:border-gray-700">
+                  <td class="px-4 py-3">${r.guest_name || 'სტუმარი'}</td>
+                  <td class="px-4 py-3">${r.room_number || '-'}</td>
+                  <td class="px-4 py-3">${formatDate(r.check_in)}</td>
+                  <td class="px-4 py-3">${formatDate(r.check_out)}</td>
+                  <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${statusBadge(r.booking_status)}">${r.booking_status || 'pending'}</span></td>
+                  <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${paymentBadge(r.payment_status)}">${r.payment_status || 'unpaid'}</span></td>
+                  <td class="px-4 py-3 font-semibold">${config.currency_symbol}${Number(r.total_price || 0).toLocaleString('en-US')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function renderGuests() {
+      const guests = getGuestsData();
+      document.getElementById('page-guests').innerHTML = `
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold">სტუმრების მართვა</h2>
+          <button onclick="showToast('ახალი სტუმრის ფორმა მალე დაემატება')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი სტუმარი</button>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-xl p-4 mb-6 border border-gray-100 dark:border-gray-700">
+          <input type="text" placeholder="სახელი, ტელეფონი, ელფოსტა..." class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          ${guests.map(g => `
+            <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700">
+              <div class="flex items-center gap-3 mb-3">
+                <div class="w-11 h-11 rounded-full bg-sky-600 text-white flex items-center justify-center font-bold">${(g.name || 'G').charAt(0).toUpperCase()}</div>
+                <div>
+                  <div class="font-semibold">${g.name || 'Guest'}</div>
+                  <div class="text-xs text-gray-500">${g.email || '-'}</div>
+                </div>
+              </div>
+              <div class="text-sm text-gray-500">${g.phone || '-'}</div>
+              ${g.flagged ? '<div class="mt-2 text-xs text-red-600">⚠ მონიშნულია</div>' : ''}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderCheckin() {
+      const reservations = getReservationsData();
+      const pendingIn = reservations.filter(r => r.booking_status === 'confirmed' || r.booking_status === 'pending');
+      const pendingOut = reservations.filter(r => r.booking_status === 'checked-in');
+      document.getElementById('page-checkin').innerHTML = `
+        <h2 class="text-xl font-bold mb-6">Check-in / Check-out</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+            <h3 class="font-semibold mb-4">მოლოდინში Check-in</h3>
+            <div class="space-y-3">${pendingIn.map(r => `<div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40 text-sm">${r.guest_name} • ${r.room_number} • ${formatDate(r.check_in)}</div>`).join('') || '<div class="text-sm text-gray-500">არ არის</div>'}</div>
+          </div>
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+            <h3 class="font-semibold mb-4">მოლოდინში Check-out</h3>
+            <div class="space-y-3">${pendingOut.map(r => `<div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40 text-sm">${r.guest_name} • ${r.room_number} • ${formatDate(r.check_out)}</div>`).join('') || '<div class="text-sm text-gray-500">არ არის</div>'}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPayments() {
+      const reservations = getReservationsData();
+      const paid = reservations.filter(r => r.payment_status === 'paid').reduce((s, r) => s + Number(r.total_price || 0), 0);
+      const unpaid = reservations.filter(r => r.payment_status !== 'paid').reduce((s, r) => s + Number(r.total_price || 0), 0);
+      document.getElementById('page-payments').innerHTML = `
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold">გადახდები და ინვოისები</h2>
+          <button onclick="showToast('ახალი გადახდის ფორმა მალე დაემატება')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი გადახდა</button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">მიღებული</p><p class="text-2xl font-bold">${config.currency_symbol}${paid.toLocaleString('en-US')}</p></div>
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">გადასახდელი</p><p class="text-2xl font-bold text-red-500">${config.currency_symbol}${unpaid.toLocaleString('en-US')}</p></div>
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">Refund</p><p class="text-2xl font-bold text-amber-500">${config.currency_symbol}0</p></div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 dark:bg-gray-700/50"><tr><th class="px-4 py-3 text-left">სტუმარი</th><th class="px-4 py-3 text-left">ინვოისი</th><th class="px-4 py-3 text-left">თანხა</th><th class="px-4 py-3 text-left">სტატუსი</th></tr></thead>
+            <tbody>${reservations.map((r, i) => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="px-4 py-3">${r.guest_name}</td><td class="px-4 py-3">INV-${1000 + i}</td><td class="px-4 py-3">${config.currency_symbol}${Number(r.total_price || 0).toLocaleString('en-US')}</td><td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${paymentBadge(r.payment_status)}">${r.payment_status || 'unpaid'}</span></td></tr>`).join('')}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function renderHousekeeping() {
+      const rooms = getRoomsData();
+      const clean = rooms.filter(r => r.status === 'available').length;
+      const dirty = rooms.filter(r => r.status === 'cleaning').length || 3;
+      const maintenance = rooms.filter(r => r.status === 'maintenance').length;
+      document.getElementById('page-housekeeping').innerHTML = `
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold">Housekeeping</h2>
+          <button onclick="showToast('დავალება დამატებულია')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი დავალება</button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4"><p class="text-sm text-green-700">სუფთა</p><p class="text-2xl font-bold">${clean}</p></div>
+          <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4"><p class="text-sm text-amber-700">დასუფთავება</p><p class="text-2xl font-bold">${dirty}</p></div>
+          <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4"><p class="text-sm text-red-700">რემონტი</p><p class="text-2xl font-bold">${maintenance}</p></div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700"><h3 class="font-semibold mb-4">To Do</h3><div class="space-y-2 text-sm"><div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">101 - Linen შეცვლა</div><div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">202 - Deep clean</div></div></div>
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700"><h3 class="font-semibold mb-4">In Progress</h3><div class="space-y-2 text-sm"><div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">301 - Bathroom repair</div></div></div>
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700"><h3 class="font-semibold mb-4">Done</h3><div class="space-y-2 text-sm"><div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">102 - მზადაა</div></div></div>
+        </div>
+      `;
+    }
+
+    function renderPricing() {
+      document.getElementById('page-pricing').innerHTML = `
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold">ფასები და ტარიფები</h2>
+          <button onclick="showToast('ტარიფი დამატებულია')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი ტარიფი</button>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700"><h3 class="font-semibold">Standard</h3><p class="text-sm text-gray-500 mt-1">საბაზისო ოთახი</p><div class="mt-4 space-y-2 text-sm"><div class="flex justify-between"><span>Base</span><span>${config.currency_symbol}120</span></div><div class="flex justify-between"><span>Weekend</span><span>${config.currency_symbol}150</span></div><div class="flex justify-between"><span>High season</span><span>${config.currency_symbol}180</span></div></div></div>
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700"><h3 class="font-semibold">Deluxe</h3><p class="text-sm text-gray-500 mt-1">გაუმჯობესებული ოთახი</p><div class="mt-4 space-y-2 text-sm"><div class="flex justify-between"><span>Base</span><span>${config.currency_symbol}220</span></div><div class="flex justify-between"><span>Weekend</span><span>${config.currency_symbol}260</span></div><div class="flex justify-between"><span>High season</span><span>${config.currency_symbol}320</span></div></div></div>
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700"><h3 class="font-semibold">Suite</h3><p class="text-sm text-gray-500 mt-1">ლუქსი</p><div class="mt-4 space-y-2 text-sm"><div class="flex justify-between"><span>Base</span><span>${config.currency_symbol}450</span></div><div class="flex justify-between"><span>Weekend</span><span>${config.currency_symbol}520</span></div><div class="flex justify-between"><span>High season</span><span>${config.currency_symbol}650</span></div></div></div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <h3 class="font-semibold mb-4">დამატებითი გადასახადები</h3>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
+            <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">დამატებითი სტუმარი: ${config.currency_symbol}30</div>
+            <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">საუზმე: ${config.currency_symbol}25</div>
+            <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">პარკინგი: ${config.currency_symbol}15</div>
+            <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">გვიანი check-out: ${config.currency_symbol}50</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderReports() {
+      document.getElementById('page-reports').innerHTML = `
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold">რეპორტები და ანალიტიკა</h2>
+          <div class="flex gap-2"><select class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>ბოლო თვე</option><option>ბოლო კვარტალი</option></select><button class="px-3 py-2 rounded-lg bg-sky-600 text-white">PDF</button></div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">დაკავებულობა</p><p class="text-2xl font-bold">72.4%</p></div>
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">ADR</p><p class="text-2xl font-bold">${config.currency_symbol}185</p></div>
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">RevPAR</p><p class="text-2xl font-bold">${config.currency_symbol}134</p></div>
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">No-show</p><p class="text-2xl font-bold">4.2%</p></div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700"><h3 class="font-semibold mb-4">შემოსავალი თვეების მიხედვით</h3><div class="h-52 flex items-end gap-2">${[60, 72, 80, 76, 84, 92, 95, 88, 79, 82, 90, 97].map(v => `<div class="flex-1 bg-sky-100 dark:bg-sky-900/20 rounded-t relative"><div class="absolute bottom-0 inset-x-0 bg-sky-500 rounded-t" style="height:${v}%"></div></div>`).join('')}</div></div>
+          <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700"><h3 class="font-semibold mb-4">ჯავშნების წყარო</h3><div class="space-y-3 text-sm"><div class="flex justify-between"><span>Booking.com</span><span>45%</span></div><div class="flex justify-between"><span>Airbnb</span><span>22%</span></div><div class="flex justify-between"><span>Direct</span><span>18%</span></div><div class="flex justify-between"><span>Expedia</span><span>15%</span></div></div></div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <h3 class="font-semibold mb-4">ნომრის ტიპების შესრულება</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm"><thead><tr class="text-left text-gray-500"><th class="pb-2">ტიპი</th><th class="pb-2">დაკავებულობა</th><th class="pb-2">ADR</th><th class="pb-2">შემოსავალი</th></tr></thead><tbody><tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-3">Standard</td><td class="py-3">78%</td><td class="py-3">${config.currency_symbol}125</td><td class="py-3">${config.currency_symbol}42,500</td></tr><tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-3">Deluxe</td><td class="py-3">68%</td><td class="py-3">${config.currency_symbol}210</td><td class="py-3">${config.currency_symbol}38,220</td></tr><tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-3">Suite</td><td class="py-3">52%</td><td class="py-3">${config.currency_symbol}450</td><td class="py-3">${config.currency_symbol}46,800</td></tr></tbody></table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSettings() {
+      document.getElementById('page-settings').innerHTML = `
+        <h2 class="text-xl font-bold mb-6">პარამეტრები</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 space-y-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+              <h3 class="font-semibold mb-4">სასტუმროს ინფორმაცია</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(config.hotel_name || 'Grand Hotel')}">
+                <input class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="info@hotel.ge">
+                <input class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="+995 32 123 4567">
+                <input class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="რუსთაველის გამზირი 1, თბილისი">
+              </div>
+              <button class="mt-4 px-4 py-2 rounded-lg bg-sky-600 text-white" onclick="showToast('პარამეტრები შენახულია')">შენახვა</button>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+              <h3 class="font-semibold mb-4">პოლიტიკა</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="time" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="14:00">
+                <input type="time" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="12:00">
+                <input type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="24">
+                <input type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="30">
+              </div>
+            </div>
+          </div>
+          <div class="space-y-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+              <h3 class="font-semibold mb-4">სწრაფი პარამეტრები</h3>
+              <div class="space-y-3 text-sm">
+                <div class="flex justify-between"><span>ელ. შეტყობინებები</span><span class="text-green-600">ჩართული</span></div>
+                <div class="flex justify-between"><span>SMS შეტყობინებები</span><span class="text-gray-500">გამორთული</span></div>
+                <div class="flex justify-between"><span>ავტო-სინქი</span><span class="text-green-600">ჩართული</span></div>
+              </div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+              <h3 class="font-semibold mb-4">Audit Log</h3>
+              <div class="space-y-2 text-xs text-gray-500">
+                <div>ჯავშანი #1234 შეიქმნა • 5 წთ წინ</div>
+                <div>Check-in ნომერი 102 • 17 წთ წინ</div>
+                <div>ფასი განახლდა (Suite) • 1 სთ წინ</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
     }
 
     function renderChannels() {
