@@ -569,24 +569,33 @@
             const cin = parseISODateLocal(r.checkinDate);
             const cout = parseISODateLocal(r.checkoutDate);
             if (!cin || !cout) return null;
-            const stayEnd = cout > cin ? addDays(cout, -1) : cin;
+            const weekAfterEnd = addDays(weekEnd, 1);
+            if (cout <= startOfWeek || cin >= weekAfterEnd) return null;
+
             const visibleStart = cin > startOfWeek ? cin : startOfWeek;
-            const visibleEnd = stayEnd < weekEnd ? stayEnd : weekEnd;
-            if (visibleEnd < visibleStart) return null;
-            const startIndex = Math.floor((visibleStart - startOfWeek) / (1000 * 60 * 60 * 24)) + 1;
-            const endIndex = Math.floor((visibleEnd - startOfWeek) / (1000 * 60 * 60 * 24)) + 1;
-            return { reservation: r, start: startIndex, end: endIndex };
+            const visibleEnd = cout < weekAfterEnd ? cout : weekAfterEnd;
+            if (visibleEnd <= visibleStart) return null;
+
+            const startDayIndex = Math.floor((visibleStart - startOfWeek) / (1000 * 60 * 60 * 24));
+            const endDayIndex = Math.floor((visibleEnd - startOfWeek) / (1000 * 60 * 60 * 24));
+
+            const startsInsideWeek = cin >= startOfWeek && cin < weekAfterEnd;
+            const endsInsideWeek = cout > startOfWeek && cout <= weekAfterEnd;
+
+            const startPos = startsInsideWeek ? (startDayIndex + 0.5) : startDayIndex;
+            const endPos = endsInsideWeek ? (endDayIndex + 0.5) : endDayIndex;
+            return { reservation: r, startPos, endPos };
           })
           .filter(Boolean)
-          .sort((a, b) => a.start - b.start || a.end - b.end);
+          .sort((a, b) => a.startPos - b.startPos || a.endPos - b.endPos);
 
         const laneEnds = [];
         const bars = roomReservations.map(item => {
           let lane = 0;
-          while (lane < laneEnds.length && item.start <= laneEnds[lane]) lane++;
-          laneEnds[lane] = item.end;
-          const left = roomWidth + ((item.start - 1) * dayWidth) + 1;
-          const width = Math.max(24, ((item.end - item.start + 1) * dayWidth) - 2);
+          while (lane < laneEnds.length && item.startPos < laneEnds[lane]) lane++;
+          laneEnds[lane] = item.endPos;
+          const left = roomWidth + (item.startPos * dayWidth) + 1;
+          const width = Math.max(24, ((item.endPos - item.startPos) * dayWidth) - 2);
           const top = 5 + (lane * 34);
           const booking = item.reservation;
           const cls = booking.status === 'Checked-in' ? 'checkedin' : booking.status === 'Checked-out' ? 'checkout' : 'reserved';
