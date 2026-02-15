@@ -36,7 +36,7 @@
       connectedAt: '',
       lastSyncAt: ''
     };
-    const DEFAULT_HOTEL_LOGO_PATH = 'assets/branding/Green%20Tower%20Hotel.png';
+    const DEFAULT_HOTEL_LOGO_PATH = 'Green%20Tower%20Hotel.png';
 
     let config = { ...defaultConfig };
     let allData = [];
@@ -1477,7 +1477,7 @@
                   <img id="settingsLogoPreview" src="${escapeHtml(getHotelLogoUrl())}" alt="Logo Preview" class="w-12 h-12 rounded-lg object-cover bg-white border border-gray-200">
                   <span class="text-xs text-gray-500">ფაილის სახელი: <code>Green Tower Hotel.png</code></span>
                 </div>
-                <p class="text-xs text-gray-500">ლოგო იტვირთება მხოლოდ რეპოზიტორიაში არსებული ფაილიდან: <code>assets/branding/Green Tower Hotel.png</code></p>
+                <p class="text-xs text-gray-500">ლოგო იტვირთება მხოლოდ რეპოზიტორიაში არსებული ფაილიდან: <code>Green Tower Hotel.png</code></p>
               </div>
               <button class="mt-4 px-4 py-2 rounded-lg bg-sky-600 text-white" onclick="saveHotelSettings()">შენახვა</button>
             </div>
