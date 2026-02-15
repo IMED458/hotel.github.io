@@ -114,7 +114,6 @@
         <section id="page-guests" class="page-section hidden"></section>
         <section id="page-checkin" class="page-section hidden"></section>
         <section id="page-payments" class="page-section hidden"></section>
-        <section id="page-housekeeping" class="page-section hidden"></section>
         <section id="page-pricing" class="page-section hidden"></section>
         <section id="page-channels" class="page-section hidden"></section>
         <section id="page-reports" class="page-section hidden"></section>
@@ -140,7 +139,7 @@
     const NAV_ITEMS = [
       ['dashboard', 'დეშბორდი'], ['calendar', 'კალენდარი'], ['rooms', 'ნომრები'], ['reservations', 'ჯავშნები'],
       ['guests', 'სტუმრები'], ['checkin', 'Check-in / Check-out'], ['payments', 'გადახდები / ინვოისები'],
-      ['housekeeping', 'დასუფთავება'], ['pricing', 'ფასები / ტარიფები'], ['channels', 'არხების მენეჯერი'],
+      ['pricing', 'ფასები / ტარიფები'], ['channels', 'Channel Manager'],
       ['reports', 'რეპორტები'], ['settings', 'პარამეტრები']
     ];
 
@@ -295,7 +294,6 @@
       if (currentPage === 'guests') return renderGuests();
       if (currentPage === 'checkin') return renderCheckin();
       if (currentPage === 'payments') return renderPayments();
-      if (currentPage === 'housekeeping') return renderHousekeeping();
       if (currentPage === 'pricing') return renderPricing();
       if (currentPage === 'channels') return renderChannels();
       if (currentPage === 'reports') return renderReports();
@@ -346,7 +344,7 @@
       return map[v] || v || '-';
     }
     function paymentStatusLabel(v) {
-      const map = { unpaid: 'გადაუხდელი', partial: 'ნაწილობრივ', paid: 'გადახდილი' };
+      const map = { unpaid: 'გადაუხდელი', partial: 'ნაწილობრივ', paid: 'გადახდილი', advance: 'ავანსი' };
       return map[v] || v || '-';
     }
     function paymentMethodLabel(v) {
@@ -377,7 +375,7 @@
           rooms.push({
             id: i - 100,
             roomNumber: String(i),
-            roomName: `ნომერი ${i}`,
+            roomName: `Room ${i}`,
             roomType,
             basePrice,
             floor: Math.floor(i / 100),
@@ -388,6 +386,17 @@
         }
         setState('rooms', rooms);
       }
+      const existingRooms = getState('rooms', []);
+      if (Array.isArray(existingRooms) && existingRooms.length) {
+        const migratedRooms = existingRooms.map(r => {
+          const num = String(r.roomNumber || '').trim();
+          if (typeof r.roomName === 'string' && /^ნომერი\s+\d+$/i.test(r.roomName) && num) {
+            return { ...r, roomName: `Room ${num}` };
+          }
+          return r;
+        });
+        setState('rooms', migratedRooms);
+      }
       if (!Array.isArray(getState('reservations', null))) {
         const today = new Date();
         const reservations = [
@@ -397,6 +406,17 @@
         ];
         setState('reservations', reservations);
         setState('nextReservationId', 4);
+      }
+      const existingReservations = getState('reservations', []);
+      if (Array.isArray(existingReservations) && existingReservations.length) {
+        const migratedReservations = existingReservations.map(r => {
+          const total = Number(r.totalPrice || 0);
+          if (r.paymentStatus === 'paid') return { ...r, paidAmount: total };
+          if (r.paymentStatus === 'unpaid') return { ...r, paidAmount: 0 };
+          if (typeof r.paidAmount === 'undefined') return { ...r, paidAmount: 0 };
+          return { ...r, paidAmount: Number(r.paidAmount || 0) };
+        });
+        setState('reservations', migratedReservations);
       }
       if (!Array.isArray(getState('guests', null))) setState('guests', []);
       if (!Array.isArray(getState('payments', null))) setState('payments', []);
@@ -435,6 +455,7 @@
       const map = {
         paid: 'bg-green-100 text-green-700',
         partial: 'bg-amber-100 text-amber-700',
+        advance: 'bg-indigo-100 text-indigo-700',
         unpaid: 'bg-red-100 text-red-700'
       };
       return map[status] || 'bg-gray-100 text-gray-700';
@@ -895,9 +916,10 @@
     function renderPayments() {
       ensureHotelState();
       const reservations = getReservationsData();
+      syncPaymentsFromReservations();
       const payments = getPaymentsData();
-      const paid = reservations.filter(r => r.paymentStatus === 'paid').reduce((s, r) => s + Number(r.totalPrice || 0), 0);
-      const unpaid = reservations.filter(r => r.paymentStatus !== 'paid').reduce((s, r) => s + Number(r.totalPrice || 0), 0);
+      const paid = reservations.reduce((s, r) => s + normalizeReservationPayment(r), 0);
+      const unpaid = reservations.reduce((s, r) => s + reservationDueAmount(r), 0);
       document.getElementById('page-payments').innerHTML = `
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-bold">გადახდები და ინვოისები</h2>
@@ -1115,15 +1137,21 @@
       const checkinDate = document.getElementById('newCheckinDate').value;
       const checkoutDate = document.getElementById('newCheckoutDate').value;
       const paymentStatus = document.getElementById('newPaymentStatus').value;
+      let paidAmount = Number(document.getElementById('newPaidAmount')?.value || 0);
       if (!guestName || !checkinDate || !checkoutDate) return showToast('შეავსეთ აუცილებელი ველები', 'error');
       const room = findRoomById(roomId);
       const nights = calculateNights(checkinDate, checkoutDate);
       const totalPrice = nights * Number(room?.basePrice || 0);
+      if (paymentStatus === 'paid') paidAmount = totalPrice;
+      if (paymentStatus === 'unpaid') paidAmount = 0;
+      paidAmount = Math.max(0, Math.min(totalPrice, paidAmount));
       const nextId = Number(getState('nextReservationId', 1));
       const reservations = getReservationsData();
-      reservations.push({ id: nextId, guestName, guestPhone, guestEmail, guestIdNumber, guestCitizenship, guestBirthDate, roomId, checkinDate, checkoutDate, status: 'Reserved', paymentStatus, totalPrice });
+      const createdReservation = { id: nextId, guestName, guestPhone, guestEmail, guestIdNumber, guestCitizenship, guestBirthDate, roomId, checkinDate, checkoutDate, status: 'Reserved', paymentStatus, paidAmount, totalPrice };
+      reservations.push(createdReservation);
       setReservationsData(reservations);
       setState('nextReservationId', nextId + 1);
+      upsertPaymentFromReservation(createdReservation);
       if (guestIdNumber) {
         const guests = getGuestsData();
         const idx = guests.findIndex(g => g.guestIdNumber === guestIdNumber);
@@ -1142,6 +1170,56 @@
       return Math.max(0, nights * Number(room?.basePrice || 0));
     }
 
+    function normalizeReservationPayment(res) {
+      const total = Number(res.totalPrice || 0);
+      let paidAmount = Number(res.paidAmount || 0);
+      if (res.paymentStatus === 'paid') paidAmount = total;
+      if (res.paymentStatus === 'unpaid') paidAmount = 0;
+      paidAmount = Math.max(0, Math.min(total, paidAmount));
+      return paidAmount;
+    }
+
+    function reservationDueAmount(res) {
+      const total = Number(res.totalPrice || 0);
+      const paidAmount = normalizeReservationPayment(res);
+      return Math.max(0, total - paidAmount);
+    }
+
+    function upsertPaymentFromReservation(reservation) {
+      const payments = getPaymentsData();
+      const idx = payments.findIndex(p => Number(p.reservationId) === Number(reservation.id));
+      const paidAmount = normalizeReservationPayment(reservation);
+      const shouldExist = paidAmount > 0 && ['paid', 'partial', 'advance'].includes(reservation.paymentStatus);
+      if (!shouldExist) {
+        if (idx !== -1) {
+          payments.splice(idx, 1);
+          setPaymentsData(payments);
+        }
+        return;
+      }
+      const base = {
+        reservationId: reservation.id,
+        guestName: reservation.guestName || 'სტუმარი',
+        amount: paidAmount,
+        method: idx !== -1 ? (payments[idx].method || 'card') : 'card',
+        status: reservation.paymentStatus,
+        createdAt: idx !== -1 ? (payments[idx].createdAt || new Date().toISOString()) : new Date().toISOString()
+      };
+      if (idx !== -1) {
+        payments[idx] = { ...payments[idx], ...base };
+      } else {
+        const nextId = Number(getState('nextPaymentId', 1));
+        payments.push({ id: nextId, ...base });
+        setState('nextPaymentId', nextId + 1);
+      }
+      setPaymentsData(payments);
+    }
+
+    function syncPaymentsFromReservations() {
+      const reservations = getReservationsData();
+      reservations.forEach(upsertPaymentFromReservation);
+    }
+
     function recalcEditReservationTotal() {
       const roomId = Number(document.getElementById('editRoomId')?.value);
       const checkinDate = document.getElementById('editCheckinDate')?.value;
@@ -1149,6 +1227,14 @@
       const totalEl = document.getElementById('editTotalPrice');
       if (!roomId || !checkinDate || !checkoutDate || !totalEl) return;
       totalEl.value = String(computeReservationTotal(roomId, checkinDate, checkoutDate));
+    }
+
+    function togglePaidAmountField(statusSelectId, wrapId) {
+      const statusEl = document.getElementById(statusSelectId);
+      const wrapEl = document.getElementById(wrapId);
+      if (!statusEl || !wrapEl) return;
+      const show = statusEl.value === 'partial' || statusEl.value === 'advance';
+      wrapEl.classList.toggle('hidden', !show);
     }
 
     function openReservationDetails(resId) {
@@ -1169,9 +1255,13 @@
           <select id="editStatus" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option ${res.status==='Reserved'?'selected':''} value="Reserved">დაჯავშნილი</option><option ${res.status==='Checked-in'?'selected':''} value="Checked-in">Check-in</option><option ${res.status==='Checked-out'?'selected':''} value="Checked-out">Check-out</option><option ${res.status==='Cancelled'?'selected':''} value="Cancelled">გაუქმებული</option></select>
           <input id="editCheckinDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(res.checkinDate || '')}">
           <input id="editCheckoutDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(res.checkoutDate || '')}">
-          <select id="editPaymentStatus" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid" ${res.paymentStatus==='unpaid'?'selected':''}>გადაუხდელი</option><option value="partial" ${res.paymentStatus==='partial'?'selected':''}>ნაწილობრივ</option><option value="paid" ${res.paymentStatus==='paid'?'selected':''}>გადახდილი</option></select>
+          <select id="editPaymentStatus" onchange="togglePaidAmountField('editPaymentStatus','editPaidAmountWrap')" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid" ${res.paymentStatus==='unpaid'?'selected':''}>გადაუხდელი</option><option value="partial" ${res.paymentStatus==='partial'?'selected':''}>ნაწილობრივ</option><option value="advance" ${res.paymentStatus==='advance'?'selected':''}>ავანსი</option><option value="paid" ${res.paymentStatus==='paid'?'selected':''}>გადახდილი</option></select>
           <input id="editTotalPrice" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(res.totalPrice||0)}">
           <select id="editConsentLang" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="ka">ქართული</option><option value="en">ინგლისური</option></select>
+        </div>
+        <div id="editPaidAmountWrap" class="mt-3 ${(res.paymentStatus === 'partial' || res.paymentStatus === 'advance') ? '' : 'hidden'}">
+          <label class="block text-xs text-gray-500 mb-1">ჩარიცხული თანხა (₾)</label>
+          <input id="editPaidAmount" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(res.paidAmount || 0)}">
         </div>
         <div class="flex gap-2 mt-4 flex-wrap">
           <button class="px-3 py-2 rounded bg-sky-600 text-white" onclick="saveReservationEdits(${res.id})">შენახვა</button>
@@ -1187,6 +1277,7 @@
       document.getElementById('editCheckinDate')?.addEventListener('change', recalcEditReservationTotal);
       document.getElementById('editCheckoutDate')?.addEventListener('change', recalcEditReservationTotal);
       recalcEditReservationTotal();
+      togglePaidAmountField('editPaymentStatus', 'editPaidAmountWrap');
     }
 
     function saveReservationEdits(resId) {
@@ -1196,11 +1287,16 @@
       const nextRoomId = Number(document.getElementById('editRoomId').value);
       const nextCheckinDate = document.getElementById('editCheckinDate').value;
       const nextCheckoutDate = document.getElementById('editCheckoutDate').value;
+      const nextPaymentStatus = document.getElementById('editPaymentStatus').value;
       if (nextCheckoutDate <= nextCheckinDate) {
         showToast('Check-out თარიღი უნდა იყოს Check-in თარიღის შემდეგ', 'error');
         return;
       }
       const recalculatedTotal = computeReservationTotal(nextRoomId, nextCheckinDate, nextCheckoutDate);
+      let paidAmount = Number(document.getElementById('editPaidAmount')?.value || 0);
+      if (nextPaymentStatus === 'paid') paidAmount = recalculatedTotal;
+      if (nextPaymentStatus === 'unpaid') paidAmount = 0;
+      paidAmount = Math.max(0, Math.min(recalculatedTotal, paidAmount));
       reservations[idx] = {
         ...reservations[idx],
         guestName: document.getElementById('editGuestName').value.trim(),
@@ -1213,10 +1309,12 @@
         status: document.getElementById('editStatus').value,
         checkinDate: nextCheckinDate,
         checkoutDate: nextCheckoutDate,
-        paymentStatus: document.getElementById('editPaymentStatus').value,
+        paymentStatus: nextPaymentStatus,
+        paidAmount,
         totalPrice: recalculatedTotal
       };
       setReservationsData(reservations);
+      upsertPaymentFromReservation(reservations[idx]);
       showToast('ჯავშანი განახლდა');
       closeModal();
       renderCurrentPage();
@@ -1278,7 +1376,7 @@
       const nights = calculateNights(res.checkinDate, res.checkoutDate);
       const baseTotal = nights * Number(room?.basePrice || 0);
       const grossTotal = Number(res.totalPrice || baseTotal);
-      const advance = 0;
+      const advance = normalizeReservationPayment(res);
       const dueTotal = Math.max(0, grossTotal - advance);
       return { nights, baseTotal, lateCheckoutFee: 0, grossTotal, advance, dueTotal };
     }
@@ -1491,7 +1589,7 @@
       if (!roomNumber) return showToast('ნომრის ნომერი აუცილებელია', 'error');
       const rooms = getRoomsData();
       const nextId = rooms.length ? Math.max(...rooms.map(r => Number(r.id))) + 1 : 1;
-      rooms.push({ id: nextId, roomNumber, roomName: roomName || `ნომერი ${roomNumber}`, roomType, basePrice, floor, beds, maxGuests, status });
+      rooms.push({ id: nextId, roomNumber, roomName: roomName || `Room ${roomNumber}`, roomType, basePrice, floor, beds, maxGuests, status });
       setRoomsData(rooms);
       closeModal();
       showToast('ნომერი დაემატა');
@@ -1567,6 +1665,9 @@
       setPaymentsData(payments);
       setState('nextPaymentId', nextId + 1);
       reservation.paymentStatus = status;
+      if (status === 'paid') reservation.paidAmount = Number(reservation.totalPrice || 0);
+      else if (status === 'unpaid') reservation.paidAmount = 0;
+      else reservation.paidAmount = Math.max(0, Math.min(Number(reservation.totalPrice || 0), amount));
       setReservationsData(reservations);
       closeModal();
       showToast('გადახდა დაემატა');
@@ -1582,7 +1683,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <input id="editPaymentAmount" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(payment.amount || 0)}">
           <select id="editPaymentMethod" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option ${payment.method==='cash'?'selected':''} value="cash">ნაღდი</option><option ${payment.method==='card'?'selected':''} value="card">ბარათი</option><option ${payment.method==='bank'?'selected':''} value="bank">ბანკი</option></select>
-          <select id="editPaymentStatusField" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid" ${payment.status==='unpaid'?'selected':''}>გადაუხდელი</option><option value="partial" ${payment.status==='partial'?'selected':''}>ნაწილობრივ</option><option value="paid" ${payment.status==='paid'?'selected':''}>გადახდილი</option></select>
+          <select id="editPaymentStatusField" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid" ${payment.status==='unpaid'?'selected':''}>გადაუხდელი</option><option value="partial" ${payment.status==='partial'?'selected':''}>ნაწილობრივ</option><option value="advance" ${payment.status==='advance'?'selected':''}>ავანსი</option><option value="paid" ${payment.status==='paid'?'selected':''}>გადახდილი</option></select>
         </div>
         <button class="mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="savePaymentEdits(${payment.id})">შენახვა</button>
       `;
@@ -1601,7 +1702,12 @@
       setPaymentsData(payments);
       const reservations = getReservationsData();
       const r = reservations.find(x => Number(x.id) === Number(payments[idx].reservationId));
-      if (r) r.paymentStatus = payments[idx].status;
+      if (r) {
+        r.paymentStatus = payments[idx].status;
+        if (payments[idx].status === 'paid') r.paidAmount = Number(r.totalPrice || 0);
+        else if (payments[idx].status === 'unpaid') r.paidAmount = 0;
+        else r.paidAmount = Math.max(0, Math.min(Number(r.totalPrice || 0), Number(payments[idx].amount || 0)));
+      }
       setReservationsData(reservations);
       closeModal();
       showToast('გადახდა განახლდა');
@@ -1782,21 +1888,26 @@
             <input id="newGuestCitizenship" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მოქალაქეობა">
             <input id="newGuestBirthDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
             <select id="newRoomId" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${rooms.map(r => `<option value="${r.id}">${r.roomName} (${roomTypeLabel(r.roomType)})</option>`).join('')}</select>
-            <select id="newPaymentStatus" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid">გადაუხდელი</option><option value="partial">ნაწილობრივ</option><option value="paid">გადახდილი</option></select>
+            <select id="newPaymentStatus" onchange="togglePaidAmountField('newPaymentStatus','newPaidAmountWrap')" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid">გადაუხდელი</option><option value="partial">ნაწილობრივ</option><option value="advance">ავანსი</option><option value="paid">გადახდილი</option></select>
             <input id="newCheckinDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${today}">
             <input id="newCheckoutDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${formatDateISO(addDays(new Date(), 1))}">
+          </div>
+          <div id="newPaidAmountWrap" class="mt-3 hidden">
+            <label class="block text-xs text-gray-500 mb-1">ჩარიცხული თანხა (₾)</label>
+            <input id="newPaidAmount" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: 150">
           </div>
           <div class="mt-4 flex gap-2">
             <button class="px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="addNewReservation()">შენახვა</button>
             <button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg" onclick="closeModal()">გაუქმება</button>
           </div>
         `;
+        togglePaidAmountField('newPaymentStatus', 'newPaidAmountWrap');
       } else if (type === 'new-room') {
         title.textContent = 'ახალი ნომერი';
         content.innerHTML = `
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <label class="text-xs text-gray-500">ნომერი<input id="newRoomNumber" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: 101"></label>
-            <label class="text-xs text-gray-500">სახელი<input id="newRoomName" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: ნომერი 101"></label>
+            <label class="text-xs text-gray-500">სახელი<input id="newRoomName" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: Room 101"></label>
             <label class="text-xs text-gray-500">ტიპი<select id="newRoomType" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="Single">ერთადგილიანი</option><option value="Double">ორადგილიანი</option><option value="Triple">სამადგილიანი</option><option value="Family">ოჯახური</option><option value="Suite">ლუქსი</option></select></label>
             <label class="text-xs text-gray-500">ღამის ფასი<input id="newRoomPrice" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="₾"></label>
             <label class="text-xs text-gray-500">სართული<input id="newRoomFloor" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="1"></label>
@@ -1827,7 +1938,7 @@
             <select id="newPaymentReservationId" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${reservations.map(r => `<option value="${r.id}">#${r.id} • ${escapeHtml(r.guestName)} • ოთახი ${escapeHtml(findRoomById(r.roomId)?.roomNumber || '-')}</option>`).join('')}</select>
             <input id="newPaymentAmount" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="თანხა">
             <select id="newPaymentMethod" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="cash">ნაღდი</option><option value="card">ბარათი</option><option value="bank">ბანკი</option></select>
-            <select id="newPaymentStatusField" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid">გადაუხდელი</option><option value="partial">ნაწილობრივ</option><option value="paid">გადახდილი</option></select>
+            <select id="newPaymentStatusField" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid">გადაუხდელი</option><option value="partial">ნაწილობრივ</option><option value="advance">ავანსი</option><option value="paid">გადახდილი</option></select>
           </div>
           <button class='mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg' onclick='addPaymentFromModal()'>შენახვა</button>
         `;
