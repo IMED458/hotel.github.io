@@ -65,6 +65,8 @@
     .timeline-room { position: sticky; left: 0; z-index: 2; background: #f8fafc; font-size: 12px; padding: 0 8px; justify-content: flex-start; font-weight: 600; }
     .timeline-row { position: relative; }
     .reservation-bar { position: absolute; top: 5px; height: 32px; border-radius: 8px; padding: 0 8px; display: flex; align-items: center; font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%); }
+    .reservation-bar[draggable="true"] { cursor: grab; }
+    .reservation-bar[draggable="true"]:active { cursor: grabbing; }
     .reservation-bar.reserved { background: #dbeafe; border: 1px solid #60a5fa; color: #1e3a8a; }
     .reservation-bar.checkedin { background: #dcfce7; border: 1px solid #4ade80; color: #14532d; }
     .reservation-bar.checkout { background: #fee2e2; border: 1px solid #f87171; color: #7f1d1d; }
@@ -72,6 +74,7 @@
     :root { --calendar-room-width: 180px; --calendar-week-day-width: 128px; }
     .consent-print { padding: 18px; border: 1px solid #d1d5db; font-size: 13px; line-height: 1.5; }
     body.calendar-fullscreen-open { overflow: hidden; }
+    .calendar-drop-target.drop-active { box-shadow: inset 0 0 0 2px #38bdf8; background-color: rgba(56, 189, 248, 0.18); }
     #modal-container.calendar-context #modal-dialog {
       inset: 0 0 0 auto !important;
       transform: none !important;
@@ -218,6 +221,7 @@
     let calendarView = 'week';
     let sidebarCollapsed = false;
     let calendarFullscreen = false;
+    let draggedReservationId = null;
     let roomFilters = { roomType: '', minPrice: '', maxPrice: '', fromDate: '', toDate: '' };
     let calendarFilters = { roomType: '', maxPrice: '' };
     const GEO_MONTHS = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
@@ -927,7 +931,7 @@
           const top = barTopBase + (lane * barStep);
           const booking = item.reservation;
           const cls = booking.status === 'Checked-in' ? 'checkedin' : booking.status === 'Checked-out' ? 'checkout' : 'reserved';
-          return `<div class="reservation-bar ${cls}" style="left:${left}px;top:${top}px;width:${width}px;" onclick="openReservationDetails(${booking.id})">${escapeHtml(booking.guestName || '-')}</div>`;
+          return `<div class="reservation-bar ${cls}" draggable="true" ondragstart="handleReservationDragStart(event, ${booking.id})" ondragend="handleReservationDragEnd()" style="left:${left}px;top:${top}px;width:${width}px;" onclick="openReservationDetails(${booking.id})">${escapeHtml(booking.guestName || '-')}</div>`;
         }).join('');
 
         const rowMinHeight = Math.max(48, laneEnds.length * 34 + 10);
@@ -938,7 +942,7 @@
             </div>
             ${days.map(d => {
               const dateStr = formatDateISO(d);
-              return `<div class="relative border-l border-gray-300 dark:border-gray-600/40 ${isToday(d) ? 'bg-amber-100/70 dark:bg-amber-900/20' : ''}" onclick="openNewReservation(${room.id}, '${dateStr}')"></div>`;
+              return `<div class="calendar-drop-target relative border-l border-gray-300 dark:border-gray-600/40 ${isToday(d) ? 'bg-amber-100/70 dark:bg-amber-900/20' : ''}" onclick="openNewReservation(${room.id}, '${dateStr}')" ondragover="handleCalendarCellDragOver(event)" ondrop="handleCalendarCellDrop(event, ${room.id}, '${dateStr}')"></div>`;
             }).join('')}
             ${bars}
           </div>
@@ -1025,7 +1029,7 @@
           const top = barTopBase + (lane * barStep);
           const booking = item.reservation;
           const cls = booking.status === 'Checked-in' ? 'checkedin' : booking.status === 'Checked-out' ? 'checkout' : 'reserved';
-          return `<div class="reservation-bar ${cls}" style="left:${left}px;top:${top}px;width:${width}px;" onclick="openReservationDetails(${booking.id})">${escapeHtml(booking.guestName || '-')}</div>`;
+          return `<div class="reservation-bar ${cls}" draggable="true" ondragstart="handleReservationDragStart(event, ${booking.id})" ondragend="handleReservationDragEnd()" style="left:${left}px;top:${top}px;width:${width}px;" onclick="openReservationDetails(${booking.id})">${escapeHtml(booking.guestName || '-')}</div>`;
         }).join('');
 
         const rowMinHeight = Math.max(44, laneEnds.length * barStep + 10);
@@ -1036,7 +1040,7 @@
             </div>
             ${days.map(d => {
               const dateStr = formatDateISO(d);
-              return `<div class="relative border-l border-gray-300 dark:border-gray-600/40 ${isToday(d) ? 'bg-amber-100/70 dark:bg-amber-900/20' : ''}" onclick="openNewReservation(${room.id}, '${dateStr}')"></div>`;
+              return `<div class="calendar-drop-target relative border-l border-gray-300 dark:border-gray-600/40 ${isToday(d) ? 'bg-amber-100/70 dark:bg-amber-900/20' : ''}" onclick="openNewReservation(${room.id}, '${dateStr}')" ondragover="handleCalendarCellDragOver(event)" ondrop="handleCalendarCellDrop(event, ${room.id}, '${dateStr}')"></div>`;
             }).join('')}
             ${bars}
           </div>
@@ -1125,6 +1129,83 @@
       if (outEl && dateStr) outEl.value = formatDateISO(addDays(parseISODateLocal(dateStr) || new Date(), 1));
       updateRoomPriceHint('newRoomId', 'newRoomPriceHint');
       recalcNewReservationTotal();
+    }
+
+    function clearCalendarDropHighlights() {
+      document.querySelectorAll('.calendar-drop-target.drop-active').forEach((el) => el.classList.remove('drop-active'));
+    }
+
+    function handleReservationDragStart(event, reservationId) {
+      draggedReservationId = Number(reservationId);
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', String(reservationId));
+    }
+
+    function handleReservationDragEnd() {
+      draggedReservationId = null;
+      clearCalendarDropHighlights();
+    }
+
+    function handleCalendarCellDragOver(event) {
+      if (draggedReservationId == null) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      clearCalendarDropHighlights();
+      event.currentTarget.classList.add('drop-active');
+    }
+
+    function handleCalendarCellDrop(event, roomId, dateStr) {
+      event.preventDefault();
+      const resId = Number(event.dataTransfer.getData('text/plain') || draggedReservationId || 0);
+      clearCalendarDropHighlights();
+      if (!resId) return;
+      moveReservationByDrag(resId, roomId, dateStr);
+      draggedReservationId = null;
+    }
+
+    function moveReservationByDrag(reservationId, targetRoomId, targetDate) {
+      const reservations = getReservationsData();
+      const idx = reservations.findIndex((r) => Number(r.id) === Number(reservationId));
+      if (idx === -1) return;
+      const current = reservations[idx];
+      const durationNights = calculateNights(current.checkinDate, current.checkoutDate);
+      const newCheckinDate = targetDate;
+      const newCheckoutDate = formatDateISO(addDays(parseISODateLocal(targetDate) || new Date(), durationNights));
+      if (!isRoomAvailableInRange(targetRoomId, newCheckinDate, newCheckoutDate, reservationId)) {
+        showToast('არჩეულ თარიღში/ნომერში კონფლიქტია', 'warning');
+        renderCurrentPage();
+        return;
+      }
+      const charges = computeReservationCharges({
+        roomId: Number(targetRoomId),
+        checkinDate: newCheckinDate,
+        checkoutDate: newCheckoutDate,
+        checkoutTime: current.checkoutTime || getPolicySettings().checkoutTime,
+        additionalFeeAmount: Number(current.additionalFeeAmount || 0),
+        extraBedEnabled: !!current.extraBedEnabled,
+        extraBedQty: Number(current.extraBedQty || 0)
+      });
+      let nextPaidAmount = Number(current.paidAmount || 0);
+      if (current.paymentStatus === 'paid') nextPaidAmount = charges.grossTotal;
+      if (current.paymentStatus === 'unpaid') nextPaidAmount = 0;
+      nextPaidAmount = Math.max(0, Math.min(charges.grossTotal, nextPaidAmount));
+      reservations[idx] = {
+        ...current,
+        roomId: Number(targetRoomId),
+        checkinDate: newCheckinDate,
+        checkoutDate: newCheckoutDate,
+        nightlyRate: charges.nightlyRate,
+        lateCheckoutFee: charges.lateCheckoutFee,
+        extraBedEnabled: charges.extraBedEnabled,
+        extraBedQty: charges.extraBedQty,
+        extraBedFee: charges.extraBedFee,
+        totalPrice: charges.grossTotal,
+        paidAmount: nextPaidAmount
+      };
+      setReservationsData(reservations);
+      upsertPaymentFromReservation(reservations[idx]);
+      showToast('ჯავშანი გადაადგილდა');
+      renderCurrentPage();
     }
 
     function getDashboardAvailabilityParams() {
