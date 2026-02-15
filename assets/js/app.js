@@ -1818,6 +1818,21 @@
       }
     }
 
+    function togglePaymentModalAmountField(statusSelectId, wrapId, sourceInputId, targetInputId) {
+      const statusEl = document.getElementById(statusSelectId);
+      const wrapEl = document.getElementById(wrapId);
+      const sourceEl = document.getElementById(sourceInputId);
+      const targetEl = document.getElementById(targetInputId);
+      if (!statusEl || !wrapEl || !sourceEl || !targetEl) return;
+      const isSplit = statusEl.value === 'partial' || statusEl.value === 'advance';
+      wrapEl.classList.toggle('hidden', !isSplit);
+      if (isSplit) {
+        if (!targetEl.value) targetEl.value = sourceEl.value || '0';
+      } else if (statusEl.value === 'unpaid') {
+        sourceEl.value = '0';
+      }
+    }
+
     function openReservationDetails(resId) {
       const res = getReservationsData().find(r => Number(r.id) === Number(resId));
       if (!res) return;
@@ -2353,12 +2368,18 @@
 
     function addPaymentFromModal() {
       const reservationId = Number(document.getElementById('newPaymentReservationId').value);
-      const amount = Number(document.getElementById('newPaymentAmount').value || 0);
       const method = document.getElementById('newPaymentMethod').value;
       const status = document.getElementById('newPaymentStatusField').value;
+      const baseAmount = Number(document.getElementById('newPaymentAmount').value || 0);
+      const splitAmount = Number(document.getElementById('newPaymentAdvanceAmount')?.value || 0);
       const reservations = getReservationsData();
       const reservation = reservations.find(r => Number(r.id) === Number(reservationId));
       if (!reservation) return showToast('აირჩიეთ ჯავშანი', 'error');
+      let amount = baseAmount;
+      if (status === 'partial' || status === 'advance') amount = splitAmount;
+      if (status === 'paid') amount = Number(reservation.totalPrice || baseAmount || 0);
+      if (status === 'unpaid') amount = 0;
+      amount = Math.max(0, amount);
       const payments = getPaymentsData();
       const nextId = Number(getState('nextPaymentId', 1));
       payments.push({ id: nextId, reservationId, guestName: reservation.guestName, amount, method, status, createdAt: new Date().toISOString() });
@@ -2381,32 +2402,47 @@
       document.getElementById('modal-title').textContent = 'გადახდის რედაქტირება';
       document.getElementById('modal-content').innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <input id="editPaymentAmount" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(payment.amount || 0)}">
+          <label class="text-xs text-gray-500">გადახდის თანხა (₾)
+            <input id="editPaymentAmount" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(payment.amount || 0)}">
+          </label>
           <select id="editPaymentMethod" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option ${payment.method==='cash'?'selected':''} value="cash">ნაღდი</option><option ${payment.method==='card'?'selected':''} value="card">ბარათი</option><option ${payment.method==='bank'?'selected':''} value="bank">ბანკი</option></select>
-          <select id="editPaymentStatusField" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid" ${payment.status==='unpaid'?'selected':''}>გადაუხდელი</option><option value="partial" ${payment.status==='partial'?'selected':''}>ნაწილობრივ</option><option value="advance" ${payment.status==='advance'?'selected':''}>ავანსი</option><option value="paid" ${payment.status==='paid'?'selected':''}>გადახდილი</option></select>
+          <select id="editPaymentStatusField" onchange="togglePaymentModalAmountField('editPaymentStatusField','editPaymentAdvanceWrap','editPaymentAmount','editPaymentAdvanceAmount')" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid" ${payment.status==='unpaid'?'selected':''}>გადაუხდელი</option><option value="partial" ${payment.status==='partial'?'selected':''}>ნაწილობრივ</option><option value="advance" ${payment.status==='advance'?'selected':''}>ავანსი</option><option value="paid" ${payment.status==='paid'?'selected':''}>გადახდილი</option></select>
+          <div id="editPaymentAdvanceWrap" class="hidden md:col-span-2">
+            <label class="text-xs text-gray-500 block">ავანსი / ნაწილობრივი თანხა (₾)</label>
+            <input id="editPaymentAdvanceAmount" type="number" min="0" step="0.01" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(payment.amount || 0)}">
+          </div>
         </div>
         <button class="mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="savePaymentEdits(${payment.id})">შენახვა</button>
       `;
+      togglePaymentModalAmountField('editPaymentStatusField', 'editPaymentAdvanceWrap', 'editPaymentAmount', 'editPaymentAdvanceAmount');
     }
 
     function savePaymentEdits(paymentId) {
       const payments = getPaymentsData();
       const idx = payments.findIndex(p => Number(p.id) === Number(paymentId));
       if (idx === -1) return;
+      const status = document.getElementById('editPaymentStatusField').value;
+      const baseAmount = Number(document.getElementById('editPaymentAmount').value || 0);
+      const splitAmount = Number(document.getElementById('editPaymentAdvanceAmount')?.value || 0);
+      const reservations = getReservationsData();
+      const reservation = reservations.find(x => Number(x.id) === Number(payments[idx].reservationId));
+      let amount = baseAmount;
+      if (status === 'partial' || status === 'advance') amount = splitAmount;
+      if (status === 'paid' && reservation) amount = Number(reservation.totalPrice || 0);
+      if (status === 'unpaid') amount = 0;
+      amount = Math.max(0, amount);
       payments[idx] = {
         ...payments[idx],
-        amount: Number(document.getElementById('editPaymentAmount').value || 0),
+        amount,
         method: document.getElementById('editPaymentMethod').value,
-        status: document.getElementById('editPaymentStatusField').value
+        status
       };
       setPaymentsData(payments);
-      const reservations = getReservationsData();
-      const r = reservations.find(x => Number(x.id) === Number(payments[idx].reservationId));
-      if (r) {
-        r.paymentStatus = payments[idx].status;
-        if (payments[idx].status === 'paid') r.paidAmount = Number(r.totalPrice || 0);
-        else if (payments[idx].status === 'unpaid') r.paidAmount = 0;
-        else r.paidAmount = Math.max(0, Math.min(Number(r.totalPrice || 0), Number(payments[idx].amount || 0)));
+      if (reservation) {
+        reservation.paymentStatus = payments[idx].status;
+        if (payments[idx].status === 'paid') reservation.paidAmount = Number(reservation.totalPrice || 0);
+        else if (payments[idx].status === 'unpaid') reservation.paidAmount = 0;
+        else reservation.paidAmount = Math.max(0, Math.min(Number(reservation.totalPrice || 0), Number(payments[idx].amount || 0)));
       }
       setReservationsData(reservations);
       closeModal();
@@ -2704,10 +2740,15 @@
             <select id="newPaymentReservationId" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${reservations.map(r => `<option value="${r.id}">#${r.id} • ${escapeHtml(r.guestName)} • ოთახი ${escapeHtml(findRoomById(r.roomId)?.roomNumber || '-')}</option>`).join('')}</select>
             <input id="newPaymentAmount" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="თანხა">
             <select id="newPaymentMethod" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="cash">ნაღდი</option><option value="card">ბარათი</option><option value="bank">ბანკი</option></select>
-            <select id="newPaymentStatusField" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid">გადაუხდელი</option><option value="partial">ნაწილობრივ</option><option value="advance">ავანსი</option><option value="paid">გადახდილი</option></select>
+            <select id="newPaymentStatusField" onchange="togglePaymentModalAmountField('newPaymentStatusField','newPaymentAdvanceWrap','newPaymentAmount','newPaymentAdvanceAmount')" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid">გადაუხდელი</option><option value="partial">ნაწილობრივ</option><option value="advance">ავანსი</option><option value="paid">გადახდილი</option></select>
+            <div id="newPaymentAdvanceWrap" class="hidden md:col-span-2">
+              <label class="text-xs text-gray-500 block">ავანსი / ნაწილობრივი თანხა (₾)</label>
+              <input id="newPaymentAdvanceAmount" type="number" min="0" step="0.01" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" placeholder="ჩაწერე თანხა">
+            </div>
           </div>
           <button class='mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg' onclick='addPaymentFromModal()'>შენახვა</button>
         `;
+        togglePaymentModalAmountField('newPaymentStatusField', 'newPaymentAdvanceWrap', 'newPaymentAmount', 'newPaymentAdvanceAmount');
       } else if (type === 'custom') {
         return;
       } else {
