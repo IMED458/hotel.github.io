@@ -71,6 +71,7 @@
     .booking-chip { display: block; width: 100%; padding: 4px 8px; font-size: 11px; font-weight: 600; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%); }
     :root { --calendar-room-width: 180px; --calendar-week-day-width: 128px; }
     .consent-print { padding: 18px; border: 1px solid #d1d5db; font-size: 13px; line-height: 1.5; }
+    body.calendar-fullscreen-open { overflow: hidden; }
   </style>
 </head>
 <body class="h-full bg-gray-50 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-100">
@@ -199,6 +200,7 @@
     let calendarDate = new Date();
     let calendarView = 'week';
     let sidebarCollapsed = false;
+    let calendarFullscreen = false;
     let roomFilters = { roomType: '', minPrice: '', maxPrice: '', fromDate: '', toDate: '' };
     let calendarFilters = { roomType: '', maxPrice: '' };
     const GEO_MONTHS = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
@@ -336,6 +338,10 @@
 
     function navigateTo(page) {
       currentPage = page;
+      if (page !== 'calendar' && calendarFullscreen) {
+        calendarFullscreen = false;
+        document.body.classList.remove('calendar-fullscreen-open');
+      }
       document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden'));
       const pageEl = document.getElementById(`page-${page}`);
       if (pageEl) pageEl.classList.remove('hidden');
@@ -644,6 +650,8 @@
       const today = todayISO();
       const checkinsToday = reservations.filter(r => (r.checkinDate || '').startsWith(today)).length;
       const checkoutsToday = reservations.filter(r => (r.checkoutDate || '').startsWith(today)).length;
+      const defaultFrom = today;
+      const defaultTo = formatDateISO(addDays(new Date(), 1));
 
       document.getElementById('page-dashboard').innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -669,13 +677,32 @@
               `).join('')}
             </div>
           </div>
-          <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
-            <h3 class="font-semibold mb-4">დღის აქტივობა</h3>
-            <div class="space-y-3 text-sm">
-              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">Check-in - ნომერი 102 (10:30)</div>
-              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">ნომრის მომზადება დასრულდა (11:20)</div>
-              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">ახალი ჯავშანი: ანა აბაშიძე (12:05)</div>
-              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">გადახდა მიღებულია ${config.currency_symbol}220 (13:10)</div>
+          <div class="space-y-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+              <h3 class="font-semibold mb-4">დღის აქტივობა</h3>
+              <div class="space-y-3 text-sm">
+                <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">Check-in - ნომერი 102 (10:30)</div>
+                <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">ნომრის მომზადება დასრულდა (11:20)</div>
+                <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">ახალი ჯავშანი: ანა აბაშიძე (12:05)</div>
+                <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">გადახდა მიღებულია ${config.currency_symbol}220 (13:10)</div>
+              </div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+              <h3 class="font-semibold mb-4">Availability Checker</h3>
+              <div class="grid grid-cols-1 gap-2 text-sm">
+                <input id="dashAvailFrom" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${defaultFrom}">
+                <input id="dashAvailTo" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${defaultTo}">
+                <select id="dashAvailType" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
+                  <option value="">ყველა ტიპი</option>
+                  ${getRoomTypes().map((t) => `<option value="${t}">${roomTypeLabel(t)}</option>`).join('')}
+                </select>
+                <input id="dashAvailMaxPrice" type="number" min="0" step="0.01" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაქს. ფასი">
+                <div class="flex gap-2">
+                  <button onclick="runDashboardAvailabilityCheck()" class="flex-1 px-3 py-2 rounded-lg bg-sky-600 text-white">შემოწმება</button>
+                  <button onclick="openAvailableRoomsFromDashboard()" class="flex-1 px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700">ნახვა ნომრებში</button>
+                </div>
+              </div>
+              <div id="dashAvailabilityResult" class="mt-3 text-sm text-gray-500"></div>
             </div>
           </div>
         </div>
@@ -698,6 +725,7 @@
           </table>
         </div>
       `;
+      runDashboardAvailabilityCheck();
     }
 
     function renderCalendar() {
@@ -708,9 +736,12 @@
         const priceOk = !calendarFilters.maxPrice || Number(r.basePrice || 0) <= Number(calendarFilters.maxPrice);
         return typeOk && priceOk;
       });
+      const shellClasses = calendarFullscreen
+        ? 'fixed inset-3 z-[80] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden'
+        : 'bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden';
 
       document.getElementById('page-calendar').innerHTML = `
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <div id="calendar-shell" class="${shellClasses}">
           <div class="p-6 border-b border-gray-100 dark:border-gray-700">
             <div class="flex items-center justify-between mb-4">
               <h2 class="text-xl font-bold text-gray-900 dark:text-white">ნომრების კალენდარი</h2>
@@ -718,6 +749,7 @@
                 <button onclick="changeCalendarView('day')" class="calendar-view-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors ${calendarView === 'day' ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400' : ''}" data-view="day">დღე</button>
                 <button onclick="changeCalendarView('week')" class="calendar-view-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors ${calendarView === 'week' ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400' : ''}" data-view="week">კვირა</button>
                 <button onclick="changeCalendarView('month')" class="calendar-view-btn px-4 py-2 text-sm font-medium rounded-lg transition-colors ${calendarView === 'month' ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400' : ''}" data-view="month">თვე</button>
+                <button onclick="toggleCalendarFullscreen()" class="px-4 py-2 text-sm font-medium rounded-lg bg-gray-100 dark:bg-gray-700">${calendarFullscreen ? 'სრული ეკრანიდან გამოსვლა' : 'სრული ეკრანი'}</button>
               </div>
             </div>
             <div class="flex items-center gap-4">
@@ -758,6 +790,12 @@
       } else {
         renderDayView(grid, filteredRooms, reservations);
       }
+    }
+
+    function toggleCalendarFullscreen() {
+      calendarFullscreen = !calendarFullscreen;
+      document.body.classList.toggle('calendar-fullscreen-open', calendarFullscreen);
+      renderCalendar();
     }
 
     function applyCalendarFilters() {
@@ -1049,6 +1087,56 @@
       if (outEl && dateStr) outEl.value = formatDateISO(addDays(parseISODateLocal(dateStr) || new Date(), 1));
       updateRoomPriceHint('newRoomId', 'newRoomPriceHint');
       recalcNewReservationTotal();
+    }
+
+    function getDashboardAvailabilityParams() {
+      return {
+        fromDate: document.getElementById('dashAvailFrom')?.value || '',
+        toDate: document.getElementById('dashAvailTo')?.value || '',
+        roomType: document.getElementById('dashAvailType')?.value || '',
+        maxPrice: document.getElementById('dashAvailMaxPrice')?.value || ''
+      };
+    }
+
+    function findAvailableRooms(params) {
+      const rooms = getRoomsData();
+      return rooms.filter((r) => {
+        const typeOk = !params.roomType || r.roomType === params.roomType;
+        const priceOk = !params.maxPrice || Number(r.basePrice || 0) <= Number(params.maxPrice);
+        const availOk = (!params.fromDate || !params.toDate) ? true : isRoomAvailableInRange(r.id, params.fromDate, params.toDate);
+        return typeOk && priceOk && availOk;
+      });
+    }
+
+    function runDashboardAvailabilityCheck() {
+      const params = getDashboardAvailabilityParams();
+      const resultEl = document.getElementById('dashAvailabilityResult');
+      if (!resultEl) return;
+      if (params.fromDate && params.toDate && params.toDate <= params.fromDate) {
+        resultEl.innerHTML = '<span class="text-red-500">თარიღები არასწორია (გასვლის თარიღი უნდა იყოს შემდეგი დღე)</span>';
+        return;
+      }
+      const available = findAvailableRooms(params);
+      if (!available.length) {
+        resultEl.innerHTML = '<span class="text-red-500">მოცემულ პირობებზე თავისუფალი ოთახი არ არის</span>';
+        return;
+      }
+      resultEl.innerHTML = `
+        <div class="text-green-600 dark:text-green-400 mb-1">თავისუფალია ${available.length} ოთახი</div>
+        <div class="text-xs text-gray-500">${available.slice(0, 5).map((r) => `${r.roomNumber} (${roomTypeLabel(r.roomType)})`).join(', ')}${available.length > 5 ? ' ...' : ''}</div>
+      `;
+    }
+
+    function openAvailableRoomsFromDashboard() {
+      const params = getDashboardAvailabilityParams();
+      roomFilters = {
+        roomType: params.roomType || '',
+        minPrice: '',
+        maxPrice: params.maxPrice || '',
+        fromDate: params.fromDate || '',
+        toDate: params.toDate || ''
+      };
+      navigateTo('rooms');
     }
 
     function applyRoomFilters() {
