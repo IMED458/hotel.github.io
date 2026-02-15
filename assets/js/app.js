@@ -324,6 +324,34 @@
       const map = { cash: 'ნაღდი', card: 'ბარათი', bank: 'ბანკი' };
       return map[v] || v || '-';
     }
+    function getReservationSourceInfo(reservation) {
+      const raw = String(
+        reservation?.source ||
+        reservation?.channel ||
+        reservation?.channelName ||
+        reservation?.ota ||
+        reservation?.platform ||
+        ''
+      ).toLowerCase().trim();
+
+      if (raw.includes('booking')) return { abbr: 'B', cls: 'channel-logo-booking', title: 'Booking.com' };
+      if (raw.includes('tripadvisor') || raw.includes('trip advisor') || raw.includes('trip')) return { abbr: 'TA', cls: 'channel-logo-tripadvisor', title: 'Tripadvisor' };
+      if (raw.includes('airbnb') || raw.includes('air bnb')) return { abbr: 'A', cls: 'channel-logo-airbnb', title: 'Airbnb' };
+      if (raw.includes('expedia')) return { abbr: 'E', cls: 'channel-logo-expedia', title: 'Expedia' };
+      if (raw.includes('agoda')) return { abbr: 'AG', cls: 'channel-logo-agoda', title: 'Agoda' };
+      if (raw.includes('hotels.com') || raw.includes('hotelscom') || raw.includes('hotel.com')) return { abbr: 'H', cls: 'channel-logo-hotelscom', title: 'Hotels.com' };
+      if (!raw || raw.includes('direct') || raw.includes('walkin') || raw.includes('walk-in')) return { abbr: 'D', cls: 'channel-logo-direct', title: 'Direct' };
+      return { abbr: 'OT', cls: 'channel-logo-other', title: reservation?.source || reservation?.channel || 'OTA' };
+    }
+    function renderReservationBarContent(reservation) {
+      const source = getReservationSourceInfo(reservation);
+      return `
+        <div class="reservation-bar-content">
+          <span class="channel-logo-badge ${source.cls}" title="${escapeHtml(source.title)}">${escapeHtml(source.abbr)}</span>
+          <span class="reservation-guest-name">${escapeHtml(reservation?.guestName || '-')}</span>
+        </div>
+      `;
+    }
     function getState(key, fallback) {
       try {
         const v = localStorage.getItem(key);
@@ -763,7 +791,7 @@
           const top = barTopBase + (lane * barStep);
           const booking = item.reservation;
           const cls = booking.status === 'Checked-in' ? 'checkedin' : booking.status === 'Checked-out' ? 'checkout' : 'reserved';
-          return `<div class="reservation-bar ${cls}" draggable="true" ondragstart="handleReservationDragStart(event, ${booking.id})" ondragend="handleReservationDragEnd()" style="left:${left}px;top:${top}px;width:${width}px;" onclick="openReservationDetails(${booking.id})">${escapeHtml(booking.guestName || '-')}</div>`;
+          return `<div class="reservation-bar ${cls}" draggable="true" ondragstart="handleReservationDragStart(event, ${booking.id})" ondragend="handleReservationDragEnd()" style="left:${left}px;top:${top}px;width:${width}px;" onclick="openReservationDetails(${booking.id})">${renderReservationBarContent(booking)}</div>`;
         }).join('');
 
         const rowMinHeight = Math.max(48, laneEnds.length * 34 + 10);
@@ -862,7 +890,7 @@
           const top = barTopBase + (lane * barStep);
           const booking = item.reservation;
           const cls = booking.status === 'Checked-in' ? 'checkedin' : booking.status === 'Checked-out' ? 'checkout' : 'reserved';
-          return `<div class="reservation-bar ${cls}" draggable="true" ondragstart="handleReservationDragStart(event, ${booking.id})" ondragend="handleReservationDragEnd()" style="left:${left}px;top:${top}px;width:${width}px;" onclick="openReservationDetails(${booking.id})">${escapeHtml(booking.guestName || '-')}</div>`;
+          return `<div class="reservation-bar ${cls}" draggable="true" ondragstart="handleReservationDragStart(event, ${booking.id})" ondragend="handleReservationDragEnd()" style="left:${left}px;top:${top}px;width:${width}px;" onclick="openReservationDetails(${booking.id})">${renderReservationBarContent(booking)}</div>`;
         }).join('');
 
         const rowMinHeight = Math.max(44, laneEnds.length * barStep + 10);
