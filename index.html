@@ -592,6 +592,15 @@
         setState('reservations', migratedReservations);
       }
       if (!Array.isArray(getState('guests', null))) setState('guests', []);
+      const existingGuests = getState('guests', []);
+      if (Array.isArray(existingGuests)) {
+        const migratedGuests = existingGuests.map((g) => ({
+          ...g,
+          guestIdNumber: String(g.guestIdNumber || '').trim(),
+          blacklisted: !!g.blacklisted
+        }));
+        setState('guests', migratedGuests);
+      }
       if (!Array.isArray(getState('payments', null))) setState('payments', []);
       if (!getState('nextPaymentId', null)) setState('nextPaymentId', 1);
       if (!getState('monthlyRates', null)) {
@@ -1326,7 +1335,10 @@
               <div class="lg:col-span-3 text-xs ${r.supportsExtraBed ? 'text-emerald-600' : 'text-gray-400'}">${r.supportsExtraBed ? `ხელმისაწვდომია (მაქს ${Number(r.maxExtraBeds || 1)})` : 'მიუწვდომელია'}</div>
               <div class="lg:col-span-1 font-semibold lg:text-right">${config.currency_symbol}${Number(r.basePrice || 0).toLocaleString('en-US')}</div>
               <div class="lg:col-span-1 lg:text-right">
-                <button class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 dark:bg-gray-700" onclick="openRoomEdit(${r.id})">რედაქტირება</button>
+                <div class="flex lg:justify-end gap-2">
+                  <button class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 dark:bg-gray-700" onclick="openRoomEdit(${r.id})">რედაქტირება</button>
+                  <button class="px-3 py-1.5 text-xs rounded-lg bg-red-100 text-red-700" onclick="deleteRoom(${r.id})">წაშლა</button>
+                </div>
               </div>
             </div>
           `).join('') || '<div class="py-8 text-center text-gray-500">ფილტრზე ოთახი ვერ მოიძებნა</div>'}
@@ -1394,7 +1406,7 @@
           <button onclick="openModal('new-guest')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი სტუმარი</button>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          ${guests.map(g => `
+          ${guests.map((g, idx) => `
             <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700">
               <div class="flex items-center gap-3 mb-3">
                 <div class="w-11 h-11 rounded-full bg-sky-600 text-white flex items-center justify-center font-bold">${(g.guestName || 'G').charAt(0).toUpperCase()}</div>
@@ -1405,7 +1417,11 @@
               </div>
               <div class="text-sm text-gray-500">${g.guestPhone || '-'}</div>
               ${g.flagged ? '<div class="mt-2 text-xs text-red-600">⚠ მონიშნულია</div>' : ''}
-              <button class="mt-3 px-3 py-2 text-xs rounded-lg bg-gray-100 dark:bg-gray-700" onclick="openGuestEdit('${escapeHtml(g.guestIdNumber || '')}')">რედაქტირება</button>
+              ${g.blacklisted ? '<div class="mt-2 inline-flex px-2 py-1 rounded-full text-xs bg-red-100 text-red-700">შავი სია</div>' : ''}
+              <div class="mt-3 flex gap-2">
+                <button class="px-3 py-2 text-xs rounded-lg bg-gray-100 dark:bg-gray-700" onclick="openGuestEdit('${escapeHtml(g.guestIdNumber || '')}', ${idx})">რედაქტირება</button>
+                <button class="px-3 py-2 text-xs rounded-lg bg-red-100 text-red-700" onclick="deleteGuest('${escapeHtml(g.guestIdNumber || '')}', ${idx})">წაშლა</button>
+              </div>
             </div>
           `).join('')}
         </div>
@@ -1465,7 +1481,7 @@
                 <td class="px-4 py-3">${config.currency_symbol}${Number(p.amount || 0).toLocaleString('en-US')}</td>
                 <td class="px-4 py-3">${paymentMethodLabel(p.method || '-')}</td>
                 <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${paymentBadge(p.status)}">${paymentStatusLabel(p.status)}</span></td>
-                <td class="px-4 py-3"><div class="flex gap-2"><button class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" onclick="openPaymentEdit(${p.id})">რედაქტირება</button><button class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" onclick="printPaymentInvoice(${p.id})">ინვოისი</button></div></td>
+                <td class="px-4 py-3"><div class="flex gap-2"><button class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" onclick="openPaymentEdit(${p.id})">რედაქტირება</button><button class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" onclick="printPaymentInvoice(${p.id})">ინვოისი</button><button class="px-2 py-1 rounded bg-red-100 text-red-700 text-xs" onclick="deletePayment(${p.id})">წაშლა</button></div></td>
               </tr>
             `).join('') || '<tr><td colspan="6" class="px-4 py-6 text-center text-gray-500">გადახდები არ არის</td></tr>'}</tbody>
           </table>
@@ -1674,13 +1690,55 @@
     function autoFillGuestById() {
       const id = document.getElementById('newGuestIdNumber')?.value.trim();
       if (!id) return;
-      const guest = getGuestsData().find(g => g.guestIdNumber === id);
+      const guest = findKnownGuestById(id);
       if (!guest) return;
+      if (guest.blacklisted) {
+        showToast('ეს სტუმარი შავ სიაშია და რეგისტრაცია ბლოკირებულია', 'error');
+        return;
+      }
       document.getElementById('newGuestName').value = guest.guestName || '';
       document.getElementById('newGuestPhone').value = guest.guestPhone || '';
       document.getElementById('newGuestEmail').value = guest.guestEmail || '';
       document.getElementById('newGuestCitizenship').value = guest.guestCitizenship || '';
       document.getElementById('newGuestBirthDate').value = guest.guestBirthDate || '';
+    }
+
+    function autoFillGuestModalById() {
+      const id = document.getElementById('newGuestModalId')?.value.trim();
+      if (!id) return;
+      const guest = findKnownGuestById(id);
+      if (!guest) return;
+      if (guest.blacklisted) showToast('ეს სტუმარი შავ სიაშია', 'warning');
+      const nameEl = document.getElementById('newGuestModalName');
+      const phoneEl = document.getElementById('newGuestModalPhone');
+      const emailEl = document.getElementById('newGuestModalEmail');
+      const citEl = document.getElementById('newGuestModalCitizenship');
+      const birthEl = document.getElementById('newGuestModalBirthDate');
+      if (nameEl) nameEl.value = guest.guestName || '';
+      if (phoneEl) phoneEl.value = guest.guestPhone || '';
+      if (emailEl) emailEl.value = guest.guestEmail || '';
+      if (citEl) citEl.value = guest.guestCitizenship || '';
+      if (birthEl) birthEl.value = guest.guestBirthDate || '';
+    }
+
+    function findKnownGuestById(guestIdNumber) {
+      const id = String(guestIdNumber || '').trim();
+      if (!id) return null;
+      const guest = getGuestsData().find((g) => String(g.guestIdNumber || '').trim() === id);
+      if (guest) return guest;
+      const latestReservation = getReservationsData()
+        .filter((r) => String(r.guestIdNumber || '').trim() === id)
+        .sort((a, b) => String(b.checkinDate || '').localeCompare(String(a.checkinDate || '')))[0];
+      if (!latestReservation) return null;
+      return {
+        guestName: latestReservation.guestName || '',
+        guestPhone: latestReservation.guestPhone || '',
+        guestEmail: latestReservation.guestEmail || '',
+        guestIdNumber: id,
+        guestCitizenship: latestReservation.guestCitizenship || '',
+        guestBirthDate: latestReservation.guestBirthDate || '',
+        blacklisted: false
+      };
     }
 
     function addNewReservation() {
@@ -1700,6 +1758,10 @@
       let paidAmount = Number(document.getElementById('newPaidAmount')?.value || 0);
       if (!guestName || !checkinDate || !checkoutDate) return showToast('შეავსეთ აუცილებელი ველები', 'error');
       if (checkoutDate <= checkinDate) return showToast('Check-out თარიღი უნდა იყოს Check-in თარიღის შემდეგ', 'error');
+      if (guestIdNumber) {
+        const knownGuest = findKnownGuestById(guestIdNumber);
+        if (knownGuest?.blacklisted) return showToast('სტუმარი შავ სიაშია და რეგისტრაცია შეუძლებელია', 'error');
+      }
       const extraBedEnabled = !!document.getElementById('newExtraBedEnabled')?.checked;
       const extraBedQty = Math.max(0, Number(document.getElementById('newExtraBedQty')?.value || 0));
       const charges = computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled, extraBedQty });
@@ -1741,7 +1803,8 @@
         const guests = getGuestsData();
         const idx = guests.findIndex(g => g.guestIdNumber === guestIdNumber);
         const guestPayload = { guestName, guestPhone, guestEmail, guestIdNumber, guestCitizenship, guestBirthDate };
-        if (idx === -1) guests.push(guestPayload); else guests[idx] = { ...guests[idx], ...guestPayload };
+        if (idx === -1) guests.push({ ...guestPayload, blacklisted: false });
+        else guests[idx] = { ...guests[idx], ...guestPayload };
         setGuestsData(guests);
       }
       closeModal();
@@ -2320,7 +2383,10 @@
           <label class="text-xs text-gray-500">Extra Bed მაქს რაოდენობა<input id="editRoomMaxExtraBeds" type="number" min="0" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.maxExtraBeds || 0)}"></label>
           <label class="text-xs text-gray-500">სტატუსი<select id="editRoomStatus" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="available" ${room.status==='available'?'selected':''}>ხელმისაწვდომი</option><option value="booked" ${room.status==='booked'?'selected':''}>დაჯავშნილი</option><option value="occupied" ${room.status==='occupied'?'selected':''}>დაკავებული</option><option value="cleaning" ${room.status==='cleaning'?'selected':''}>დასუფთავება</option><option value="maintenance" ${room.status==='maintenance'?'selected':''}>რემონტი</option></select></label>
         </div>
-        <button class="mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="saveRoomEdits(${room.id})">შენახვა</button>
+        <div class="mt-4 flex gap-2">
+          <button class="px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="saveRoomEdits(${room.id})">შენახვა</button>
+          <button class="px-4 py-2 bg-red-100 text-red-700 rounded-lg" onclick="deleteRoom(${room.id})">წაშლა</button>
+        </div>
       `;
     }
 
@@ -2346,6 +2412,21 @@
       closeModal();
       showToast('ნომერი განახლდა');
       renderCurrentPage();
+    }
+
+    function deleteRoom(roomId) {
+      const id = Number(roomId);
+      const room = findRoomById(id);
+      if (!room) return showToast('ნომერი ვერ მოიძებნა', 'error');
+      const hasActiveReservations = getReservationsData().some((r) => Number(r.roomId) === id && isReservationBlocking(r));
+      if (hasActiveReservations) return showToast('ამ ნომერზე აქტიური ჯავშანია და წაშლა ვერ მოხერხდა', 'error');
+      if (!window.confirm(`დარწმუნებული ხართ რომ გსურთ ნომრის წაშლა? (${room.roomNumber})`)) return;
+      const rooms = getRoomsData().filter((r) => Number(r.id) !== id);
+      setRoomsData(rooms);
+      syncCurrentMonthRatesFromRooms();
+      closeModal();
+      showToast('ნომერი წაიშალა');
+      renderRooms();
     }
 
     function addRoomFromModal() {
@@ -2377,18 +2458,21 @@
       const guestIdNumber = document.getElementById('newGuestModalId').value.trim();
       const guestCitizenship = document.getElementById('newGuestModalCitizenship').value.trim();
       const guestBirthDate = document.getElementById('newGuestModalBirthDate').value;
+      const blacklisted = !!document.getElementById('newGuestModalBlacklisted')?.checked;
       if (!guestName) return showToast('სახელი აუცილებელია', 'error');
       const guests = getGuestsData();
-      guests.push({ guestName, guestPhone, guestEmail, guestIdNumber, guestCitizenship, guestBirthDate, flagged: false });
+      const idx = guestIdNumber ? guests.findIndex(g => String(g.guestIdNumber || '') === guestIdNumber) : -1;
+      if (idx === -1) guests.push({ guestName, guestPhone, guestEmail, guestIdNumber, guestCitizenship, guestBirthDate, flagged: false, blacklisted });
+      else guests[idx] = { ...guests[idx], guestName, guestPhone, guestEmail, guestIdNumber, guestCitizenship, guestBirthDate, blacklisted };
       setGuestsData(guests);
       closeModal();
-      showToast('სტუმარი დაემატა');
+      showToast(idx === -1 ? 'სტუმარი დაემატა' : 'სტუმარი განახლდა');
       renderGuests();
     }
 
-    function openGuestEdit(guestIdNumber) {
+    function openGuestEdit(guestIdNumber, idxHint = null) {
       const guests = getGuestsData();
-      const idx = guests.findIndex(g => String(g.guestIdNumber || '') === String(guestIdNumber || ''));
+      const idx = Number.isInteger(idxHint) ? idxHint : guests.findIndex(g => String(g.guestIdNumber || '') === String(guestIdNumber || ''));
       if (idx === -1) return;
       const g = guests[idx];
       openModal('custom');
@@ -2401,8 +2485,12 @@
           <label class="text-xs text-gray-500">პირადი ნომერი / პასპორტი<input id="editGuestModalId" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(g.guestIdNumber || '')}"></label>
           <label class="text-xs text-gray-500">მოქალაქეობა<input id="editGuestModalCitizenship" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(g.guestCitizenship || '')}"></label>
           <label class="text-xs text-gray-500">დაბადების თარიღი<input id="editGuestModalBirthDate" type="date" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(g.guestBirthDate || '')}"></label>
+          <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="editGuestModalBlacklisted" type="checkbox" class="rounded" ${g.blacklisted ? 'checked' : ''}> შავი სია</label>
         </div>
-        <button class="mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="saveGuestEdits('${escapeHtml(g.guestIdNumber || '')}', ${idx})">შენახვა</button>
+        <div class="mt-4 flex gap-2">
+          <button class="px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="saveGuestEdits('${escapeHtml(g.guestIdNumber || '')}', ${idx})">შენახვა</button>
+          <button class="px-4 py-2 bg-red-100 text-red-700 rounded-lg" onclick="deleteGuest('${escapeHtml(g.guestIdNumber || '')}', ${idx})">წაშლა</button>
+        </div>
       `;
     }
 
@@ -2417,11 +2505,26 @@
         guestEmail: document.getElementById('editGuestModalEmail').value.trim(),
         guestIdNumber: document.getElementById('editGuestModalId').value.trim(),
         guestCitizenship: document.getElementById('editGuestModalCitizenship').value.trim(),
-        guestBirthDate: document.getElementById('editGuestModalBirthDate').value
+        guestBirthDate: document.getElementById('editGuestModalBirthDate').value,
+        blacklisted: !!document.getElementById('editGuestModalBlacklisted')?.checked
       };
       setGuestsData(guests);
       closeModal();
       showToast('სტუმარი განახლდა');
+      renderGuests();
+    }
+
+    function deleteGuest(guestIdNumber, idxHint = null) {
+      const id = String(guestIdNumber || '').trim();
+      if (!window.confirm('დარწმუნებული ხართ რომ გსურთ სტუმრის წაშლა?')) return;
+      const guests = getGuestsData();
+      let nextGuests = guests;
+      if (id) nextGuests = guests.filter((g) => String(g.guestIdNumber || '').trim() !== id);
+      else if (Number.isInteger(idxHint) && idxHint >= 0 && idxHint < guests.length) nextGuests = guests.filter((_, i) => i !== idxHint);
+      if (nextGuests.length === guests.length) return showToast('სტუმარი ვერ მოიძებნა', 'error');
+      setGuestsData(nextGuests);
+      closeModal();
+      showToast('სტუმარი წაიშალა');
       renderGuests();
     }
 
@@ -2485,6 +2588,30 @@
       setReservationsData(reservations);
       closeModal();
       showToast('გადახდა განახლდა');
+      renderPayments();
+    }
+
+    function deletePayment(paymentId) {
+      const id = Number(paymentId);
+      const payments = getPaymentsData();
+      const payment = payments.find((p) => Number(p.id) === id);
+      if (!payment) return showToast('გადახდა ვერ მოიძებნა', 'error');
+      if (!window.confirm('გსურთ გადახდის/ინვოისის წაშლა?')) return;
+      const nextPayments = payments.filter((p) => Number(p.id) !== id);
+      setPaymentsData(nextPayments);
+      const reservations = getReservationsData();
+      const reservation = reservations.find((r) => Number(r.id) === Number(payment.reservationId));
+      if (reservation) {
+        const related = nextPayments.filter((p) => Number(p.reservationId) === Number(reservation.id));
+        const totalPaid = related.reduce((sum, p) => sum + Math.max(0, Number(p.amount || 0)), 0);
+        reservation.paidAmount = Math.max(0, Math.min(Number(reservation.totalPrice || 0), totalPaid));
+        if (reservation.paidAmount <= 0) reservation.paymentStatus = 'unpaid';
+        else if (reservation.paidAmount >= Number(reservation.totalPrice || 0)) reservation.paymentStatus = 'paid';
+        else reservation.paymentStatus = 'partial';
+        setReservationsData(reservations);
+      }
+      closeModal();
+      showToast('გადახდა წაიშალა');
       renderPayments();
     }
 
@@ -2739,9 +2866,10 @@
             <input id="newGuestModalName" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="სახელი *">
             <input id="newGuestModalPhone" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="ტელეფონი">
             <input id="newGuestModalEmail" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="ელფოსტა">
-            <input id="newGuestModalId" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="პირადი ნომერი / პასპორტი">
+            <input id="newGuestModalId" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="პირადი ნომერი / პასპორტი" onblur="autoFillGuestModalById()">
             <input id="newGuestModalCitizenship" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მოქალაქეობა">
             <input id="newGuestModalBirthDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
+            <label class="md:col-span-2 text-xs text-gray-500 flex items-center gap-2"><input id="newGuestModalBlacklisted" type="checkbox" class="rounded"> შავი სია</label>
           </div>
           <button class='mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg' onclick='addGuestFromModal()'>შენახვა</button>
         `;
