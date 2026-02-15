@@ -344,11 +344,9 @@
       return { icon: 'https://cdn.simpleicons.org/googlemaps/6B7280', title: reservation?.source || reservation?.channel || 'OTA' };
     }
     function renderReservationBarContent(reservation) {
-      const source = getReservationSourceInfo(reservation);
       return `
         <div class="reservation-bar-content">
           <span class="reservation-guest-name">${escapeHtml(reservation?.guestName || '-')}</span>
-          <span class="channel-logo-badge" title="${escapeHtml(source.title)}"><img class="channel-logo-image" src="${escapeHtml(source.icon)}" alt="${escapeHtml(source.title)}"></span>
         </div>
       `;
     }
