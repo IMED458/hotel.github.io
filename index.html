@@ -877,7 +877,7 @@
           <div class="p-3 bg-gray-100 dark:bg-gray-700 font-medium text-sm text-gray-500 dark:text-gray-400 sticky left-0 z-50 border-r border-gray-300 dark:border-gray-600">ნომერი</div>
           ${days.map((d, idx) => `
             <div class="p-3 ${isToday(d) ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-gray-50 dark:bg-gray-700/50'} text-center border-l border-gray-300 dark:border-gray-600/50">
-              <div class="text-xs text-gray-500 dark:text-gray-400">${dayNames[idx]}</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap leading-none">${dayNames[idx]}</div>
               <div class="text-sm font-semibold text-gray-900 dark:text-white ${isToday(d) ? 'text-amber-700 dark:text-amber-300' : ''}">${d.getDate()}</div>
             </div>
           `).join('')}
@@ -966,10 +966,11 @@
       }
 
       const dayNames = ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
+      const dayNamesCompact = ['კ', 'ო', 'ს', 'ო', 'ხ', 'პ', 'შ'];
       const shellWidth = document.getElementById('calendar-shell')?.clientWidth || grid.parentElement?.clientWidth || window.innerWidth || 1280;
       const availableWidth = Math.max(720, shellWidth - 12);
       const roomWidth = availableWidth >= 1200 ? 170 : availableWidth >= 992 ? 150 : 130;
-      const dayWidth = Math.max(16, Math.floor((availableWidth - roomWidth) / days.length));
+      const dayWidth = Math.max(18, Math.floor((availableWidth - roomWidth) / days.length));
       const totalWidth = roomWidth + (dayWidth * days.length);
       const dayFontClass = dayWidth <= 20 ? 'text-[9px]' : dayWidth <= 24 ? 'text-[10px]' : 'text-xs';
 
@@ -978,7 +979,7 @@
           <div class="p-3 bg-gray-100 dark:bg-gray-700 font-medium text-sm text-gray-500 dark:text-gray-400 sticky left-0 z-50 border-r border-gray-300 dark:border-gray-600">ნომერი</div>
           ${days.map((d) => `
             <div class="p-2 ${isToday(d) ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-gray-50 dark:bg-gray-700/50'} text-center border-l border-gray-300 dark:border-gray-600/50">
-              <div class="${dayFontClass} text-gray-500 dark:text-gray-400">${dayNames[d.getDay()]}</div>
+              <div class="${dayFontClass} text-gray-500 dark:text-gray-400 whitespace-nowrap leading-none">${dayWidth <= 24 ? dayNamesCompact[d.getDay()] : dayNames[d.getDay()]}</div>
               <div class="${dayFontClass} font-semibold text-gray-900 dark:text-white ${isToday(d) ? 'text-amber-700 dark:text-amber-300' : ''}">${d.getDate()}</div>
             </div>
           `).join('')}
