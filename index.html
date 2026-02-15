@@ -170,6 +170,7 @@
       hotel_address: 'რუსთაველის გამზირი 1, თბილისი',
       default_checkout_time: '12:00',
       late_checkout_hourly_rate: 10,
+      extra_bed_rate: 40,
       default_additional_fee_name: '',
       default_additional_fee_amount: 0,
       currency_symbol: '₾',
@@ -409,11 +410,13 @@
     function getPolicySettings() {
       const checkoutTime = String(config.default_checkout_time || defaultConfig.default_checkout_time || '12:00');
       const lateHourly = Number(config.late_checkout_hourly_rate ?? defaultConfig.late_checkout_hourly_rate ?? 0);
+      const extraBedRate = Number(config.extra_bed_rate ?? defaultConfig.extra_bed_rate ?? 0);
       const feeName = String(config.default_additional_fee_name || '').trim();
       const feeAmount = Math.max(0, Number(config.default_additional_fee_amount || 0));
       return {
         checkoutTime,
         lateCheckoutHourlyRate: Math.max(0, lateHourly),
+        extraBedRate: Math.max(0, extraBedRate),
         defaultAdditionalFeeName: feeName,
         defaultAdditionalFeeAmount: feeAmount
       };
@@ -499,6 +502,8 @@
           if (i >= 109 && i <= 110) { roomType = 'Triple'; basePrice = 220; }
           if (i === 111) { roomType = 'Family'; basePrice = 300; }
           if (i === 112) { roomType = 'Suite'; basePrice = 450; }
+          const supportsExtraBed = ['Double', 'Triple', 'Family', 'Suite'].includes(roomType);
+          const maxExtraBeds = roomType === 'Suite' || roomType === 'Family' ? 2 : supportsExtraBed ? 1 : 0;
           rooms.push({
             id: i - 100,
             roomNumber: String(i),
@@ -508,6 +513,8 @@
             floor: Math.floor(i / 100),
             beds: roomType === 'Single' ? 1 : 2,
             maxGuests: roomType === 'Single' ? 1 : roomType === 'Double' ? 2 : roomType === 'Triple' ? 3 : 4,
+            supportsExtraBed,
+            maxExtraBeds,
             status: 'available'
           });
         }
@@ -518,9 +525,17 @@
         const migratedRooms = existingRooms.map(r => {
           const num = String(r.roomNumber || '').trim();
           if (typeof r.roomName === 'string' && /^ნომერი\s+\d+$/i.test(r.roomName) && num) {
-            return { ...r, roomName: `Room ${num}` };
+            const supportsExtraBed = typeof r.supportsExtraBed === 'boolean' ? r.supportsExtraBed : ['Double', 'Triple', 'Family', 'Suite'].includes(r.roomType);
+            const maxExtraBeds = Number.isFinite(Number(r.maxExtraBeds))
+              ? Number(r.maxExtraBeds)
+              : (r.roomType === 'Suite' || r.roomType === 'Family' ? 2 : supportsExtraBed ? 1 : 0);
+            return { ...r, roomName: `Room ${num}`, supportsExtraBed, maxExtraBeds };
           }
-          return r;
+          const supportsExtraBed = typeof r.supportsExtraBed === 'boolean' ? r.supportsExtraBed : ['Double', 'Triple', 'Family', 'Suite'].includes(r.roomType);
+          const maxExtraBeds = Number.isFinite(Number(r.maxExtraBeds))
+            ? Number(r.maxExtraBeds)
+            : (r.roomType === 'Suite' || r.roomType === 'Family' ? 2 : supportsExtraBed ? 1 : 0);
+          return { ...r, supportsExtraBed, maxExtraBeds };
         });
         setState('rooms', migratedRooms);
       }
@@ -548,7 +563,10 @@
             checkoutTime: r.checkoutTime || policy.checkoutTime,
             additionalFeeName: r.additionalFeeName || '',
             additionalFeeAmount: Math.max(0, Number(r.additionalFeeAmount || 0)),
-            lateCheckoutFee: Math.max(0, Number(r.lateCheckoutFee || 0))
+            lateCheckoutFee: Math.max(0, Number(r.lateCheckoutFee || 0)),
+            extraBedEnabled: !!r.extraBedEnabled,
+            extraBedQty: Math.max(0, Number(r.extraBedQty || 0)),
+            extraBedFee: Math.max(0, Number(r.extraBedFee || 0))
           };
         });
         setState('reservations', migratedReservations);
@@ -1200,6 +1218,7 @@
                 <span class="px-2 py-1 rounded-full text-xs ${r.status === 'available' ? 'bg-green-100 text-green-700' : r.status === 'occupied' ? 'bg-violet-100 text-violet-700' : r.status === 'booked' ? 'bg-sky-100 text-sky-700' : r.status === 'cleaning' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}">${roomStatusLabel(r.status || 'available')}</span>
               </div>
               <div class="mt-4 text-sm text-gray-500">${r.beds || 1} საწოლი • მაქს. ${r.maxGuests || 2} სტუმარი</div>
+              <div class="mt-1 text-xs ${r.supportsExtraBed ? 'text-emerald-600' : 'text-gray-400'}">${r.supportsExtraBed ? `Extra Bed ხელმისაწვდომია (მაქს ${Number(r.maxExtraBeds || 1)})` : 'Extra Bed მიუწვდომელია'}</div>
               <div class="mt-2 font-semibold">${config.currency_symbol}${Number(r.basePrice || 0).toLocaleString('en-US')}/ღამე</div>
               <button class="mt-3 px-3 py-2 text-xs rounded-lg bg-gray-100 dark:bg-gray-700" onclick="openRoomEdit(${r.id})">რედაქტირება</button>
             </div>
@@ -1456,6 +1475,10 @@
                   <label class="block mb-1 text-gray-500">გვიანი Check-out ტარიფი (₾ / საათი)</label>
                   <input id="policyLateHourlyRate" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(policy.lateCheckoutHourlyRate || 0)}">
                 </div>
+                <div>
+                  <label class="block mb-1 text-gray-500">Extra Bed ტარიფი (₾ / ღამე)</label>
+                  <input id="policyExtraBedRate" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(policy.extraBedRate || 0)}">
+                </div>
               </div>
               <p class="mt-3 text-xs text-gray-500">ჯავშნის ჩექაუთის დრო ამ სტანდარტულ დროზე გვიან თუა, სისტემა ავტომატურად ამატებს ტარიფს საათობრივად.</p>
               <button class="mt-4 px-4 py-2 rounded-lg bg-sky-600 text-white" onclick="savePolicySettings()">პოლიტიკის შენახვა</button>
@@ -1500,10 +1523,12 @@
     function savePolicySettings() {
       const checkoutTime = document.getElementById('policyCheckoutTime')?.value || defaultConfig.default_checkout_time;
       const lateCheckoutHourlyRate = Math.max(0, Number(document.getElementById('policyLateHourlyRate')?.value || 0));
+      const extraBedRate = Math.max(0, Number(document.getElementById('policyExtraBedRate')?.value || 0));
       config = {
         ...config,
         default_checkout_time: checkoutTime,
-        late_checkout_hourly_rate: lateCheckoutHourlyRate
+        late_checkout_hourly_rate: lateCheckoutHourlyRate,
+        extra_bed_rate: extraBedRate
       };
       setState('hotelConfig', config);
       if (window.elementSdk?.setConfig) window.elementSdk.setConfig(config);
@@ -1568,14 +1593,39 @@
       let paidAmount = Number(document.getElementById('newPaidAmount')?.value || 0);
       if (!guestName || !checkinDate || !checkoutDate) return showToast('შეავსეთ აუცილებელი ველები', 'error');
       if (checkoutDate <= checkinDate) return showToast('Check-out თარიღი უნდა იყოს Check-in თარიღის შემდეგ', 'error');
-      const charges = computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount });
+      const extraBedEnabled = !!document.getElementById('newExtraBedEnabled')?.checked;
+      const extraBedQty = Math.max(0, Number(document.getElementById('newExtraBedQty')?.value || 0));
+      const charges = computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled, extraBedQty });
       const totalPrice = charges.grossTotal;
       if (paymentStatus === 'paid') paidAmount = totalPrice;
       if (paymentStatus === 'unpaid') paidAmount = 0;
       paidAmount = Math.max(0, Math.min(totalPrice, paidAmount));
       const nextId = Number(getState('nextReservationId', 1));
       const reservations = getReservationsData();
-      const createdReservation = { id: nextId, guestName, guestPhone, guestEmail, guestIdNumber, guestCitizenship, guestBirthDate, roomId, checkinDate, checkoutDate, checkoutTime, status: 'Reserved', paymentStatus, paidAmount, additionalFeeName, additionalFeeAmount, nightlyRate: charges.nightlyRate, lateCheckoutFee: charges.lateCheckoutFee, totalPrice };
+      const createdReservation = {
+        id: nextId,
+        guestName,
+        guestPhone,
+        guestEmail,
+        guestIdNumber,
+        guestCitizenship,
+        guestBirthDate,
+        roomId,
+        checkinDate,
+        checkoutDate,
+        checkoutTime,
+        status: 'Reserved',
+        paymentStatus,
+        paidAmount,
+        additionalFeeName,
+        additionalFeeAmount,
+        extraBedEnabled: charges.extraBedEnabled,
+        extraBedQty: charges.extraBedQty,
+        nightlyRate: charges.nightlyRate,
+        lateCheckoutFee: charges.lateCheckoutFee,
+        extraBedFee: charges.extraBedFee,
+        totalPrice
+      };
       reservations.push(createdReservation);
       setReservationsData(reservations);
       setState('nextReservationId', nextId + 1);
@@ -1592,20 +1642,46 @@
       renderCurrentPage();
     }
 
-    function computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount }) {
+    function computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled = false, extraBedQty = 0 }) {
       const room = findRoomById(Number(roomId));
       const nights = calculateNights(checkinDate, checkoutDate);
       const nightlyRate = Number(room?.basePrice || 0);
       const baseTotal = Math.max(0, nights * nightlyRate);
       const lateCheckoutFee = calculateLateCheckoutFee(checkoutTime);
       const extraFee = Math.max(0, Number(additionalFeeAmount || 0));
-      const grossTotal = baseTotal + lateCheckoutFee + extraFee;
-      return { nights, nightlyRate, baseTotal, lateCheckoutFee, extraFee, grossTotal };
+      const policy = getPolicySettings();
+      const roomAllowsExtraBed = !!room?.supportsExtraBed;
+      const safeExtraQty = roomAllowsExtraBed && extraBedEnabled ? Math.max(1, Math.min(Number(room?.maxExtraBeds || 1), Number(extraBedQty || 1))) : 0;
+      const extraBedFee = safeExtraQty > 0 ? (safeExtraQty * nights * Number(policy.extraBedRate || 0)) : 0;
+      const grossTotal = baseTotal + lateCheckoutFee + extraFee + extraBedFee;
+      return { nights, nightlyRate, baseTotal, lateCheckoutFee, extraFee, extraBedEnabled: safeExtraQty > 0, extraBedQty: safeExtraQty, extraBedFee, grossTotal };
     }
 
-    function computeReservationTotal(roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount) {
-      const charges = computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount });
+    function computeReservationTotal(roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled, extraBedQty) {
+      const charges = computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled, extraBedQty });
       return charges.grossTotal;
+    }
+
+    function updateExtraBedOptions(selectId, wrapId, checkId, qtyId, feeLabelId) {
+      const roomId = Number(document.getElementById(selectId)?.value || 0);
+      const room = findRoomById(roomId);
+      const wrap = document.getElementById(wrapId);
+      const checkEl = document.getElementById(checkId);
+      const qtyEl = document.getElementById(qtyId);
+      if (!wrap || !checkEl || !qtyEl) return;
+      const enabled = !!room?.supportsExtraBed;
+      wrap.classList.toggle('hidden', !enabled);
+      if (!enabled) {
+        checkEl.checked = false;
+        qtyEl.value = '1';
+      }
+      const maxBeds = Math.max(1, Number(room?.maxExtraBeds || 1));
+      qtyEl.innerHTML = Array.from({ length: maxBeds }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('');
+      qtyEl.disabled = !checkEl.checked || !enabled;
+      const feeLabel = document.getElementById(feeLabelId);
+      if (feeLabel) {
+        feeLabel.textContent = enabled ? `Extra Bed ტარიფი: ${config.currency_symbol}${Number(getPolicySettings().extraBedRate || 0)} / ღამე` : 'Extra Bed ამ ნომერზე მიუწვდომელია';
+      }
     }
 
     function updateRoomPriceHint(selectId, outputId) {
@@ -1622,12 +1698,16 @@
       const checkoutDate = document.getElementById('newCheckoutDate')?.value;
       const checkoutTime = document.getElementById('newCheckoutTime')?.value || getPolicySettings().checkoutTime;
       const additionalFeeAmount = Number(document.getElementById('newAdditionalFeeAmount')?.value || 0);
+      const extraBedEnabled = !!document.getElementById('newExtraBedEnabled')?.checked;
+      const extraBedQty = Math.max(0, Number(document.getElementById('newExtraBedQty')?.value || 0));
       const totalEl = document.getElementById('newReservationTotal');
       const lateFeeEl = document.getElementById('newLateCheckoutFee');
+      const extraBedFeeEl = document.getElementById('newExtraBedFee');
       if (!totalEl || !roomId || !checkinDate || !checkoutDate) return;
-      const charges = computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount });
+      const charges = computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled, extraBedQty });
       totalEl.value = String(charges.grossTotal);
       if (lateFeeEl) lateFeeEl.textContent = `${config.currency_symbol}${charges.lateCheckoutFee.toLocaleString('en-US')}`;
+      if (extraBedFeeEl) extraBedFeeEl.textContent = `${config.currency_symbol}${charges.extraBedFee.toLocaleString('en-US')}`;
     }
 
     function normalizeReservationPayment(res) {
@@ -1686,12 +1766,16 @@
       const checkoutDate = document.getElementById('editCheckoutDate')?.value;
       const checkoutTime = document.getElementById('editCheckoutTime')?.value || getPolicySettings().checkoutTime;
       const additionalFeeAmount = Number(document.getElementById('editAdditionalFeeAmount')?.value || 0);
+      const extraBedEnabled = !!document.getElementById('editExtraBedEnabled')?.checked;
+      const extraBedQty = Math.max(0, Number(document.getElementById('editExtraBedQty')?.value || 0));
       const totalEl = document.getElementById('editTotalPrice');
       const lateFeeEl = document.getElementById('editLateCheckoutFee');
+      const extraBedFeeEl = document.getElementById('editExtraBedFee');
       if (!roomId || !checkinDate || !checkoutDate || !totalEl) return;
-      const charges = computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount });
+      const charges = computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled, extraBedQty });
       totalEl.value = String(charges.grossTotal);
       if (lateFeeEl) lateFeeEl.textContent = `${config.currency_symbol}${charges.lateCheckoutFee.toLocaleString('en-US')}`;
+      if (extraBedFeeEl) extraBedFeeEl.textContent = `${config.currency_symbol}${charges.extraBedFee.toLocaleString('en-US')}`;
       updateRoomPriceHint('editRoomId', 'editRoomPriceHint');
       recalcEditDueAmount();
     }
@@ -1710,6 +1794,8 @@
       const due = Math.max(0, total - paidAmount);
       const dueEl = document.getElementById('editDueAmount');
       if (dueEl) dueEl.value = String(due);
+      const dueSummary = document.getElementById('editDueSummary');
+      if (dueSummary) dueSummary.textContent = `ჯამური გადასახდელი თანხა: ${config.currency_symbol}${due.toLocaleString('en-US')}`;
     }
 
     function togglePaidAmountField(statusSelectId, wrapId) {
@@ -1725,6 +1811,7 @@
       if (!res) return;
       const room = findRoomById(res.roomId);
       const policy = getPolicySettings();
+      const roomSupportsExtraBed = !!room?.supportsExtraBed;
       openModal('custom');
       document.getElementById('modal-title').textContent = 'ჯავშნის დეტალები';
       document.getElementById('modal-content').innerHTML = `
@@ -1743,6 +1830,11 @@
           <label class="text-xs text-gray-500">გადახდის სტატუსი<select id="editPaymentStatus" onchange="togglePaidAmountField('editPaymentStatus','editPaidAmountWrap')" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full"><option value="unpaid" ${res.paymentStatus==='unpaid'?'selected':''}>გადაუხდელი</option><option value="partial" ${res.paymentStatus==='partial'?'selected':''}>ნაწილობრივ</option><option value="advance" ${res.paymentStatus==='advance'?'selected':''}>ავანსი</option><option value="paid" ${res.paymentStatus==='paid'?'selected':''}>გადახდილი</option></select></label>
           <label class="text-xs text-gray-500">დამატებითი გადასახადი (სახელი)<input id="editAdditionalFeeName" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.additionalFeeName || '')}"></label>
           <label class="text-xs text-gray-500">დამატებითი გადასახადი (₾)<input id="editAdditionalFeeAmount" type="number" min="0" step="0.01" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(res.additionalFeeAmount || 0)}"></label>
+          <div id="editExtraBedWrap" class="${roomSupportsExtraBed ? '' : 'hidden'} md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3">
+            <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="editExtraBedEnabled" type="checkbox" class="rounded" ${res.extraBedEnabled ? 'checked' : ''}> Extra Bed</label>
+            <label class="text-xs text-gray-500">Extra Bed რაოდენობა<select id="editExtraBedQty" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full"></select></label>
+            <div class="text-xs text-gray-500 mt-6" id="editExtraBedRateInfo"></div>
+          </div>
           <label class="text-xs text-gray-500">სრული თანხა<input id="editTotalPrice" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(res.totalPrice||0)}" readonly></label>
           <label class="text-xs text-gray-500">დასარჩენი გადასახდელი თანხა<input id="editDueAmount" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Math.max(0, Number(res.totalPrice || 0) - Number(res.paidAmount || 0))}" readonly></label>
           <select id="editConsentLang" class="mt-5 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="ka">ქართული</option><option value="en">ინგლისური</option></select>
@@ -1752,7 +1844,9 @@
           <input id="editPaidAmount" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(res.paidAmount || 0)}">
         </div>
         <div class="mt-2 text-xs text-gray-500">გვიანი Check-out გადასახადი: <strong id="editLateCheckoutFee">${config.currency_symbol}${Number(res.lateCheckoutFee || 0).toLocaleString('en-US')}</strong></div>
+        <div class="mt-1 text-xs text-gray-500">Extra Bed გადასახადი: <strong id="editExtraBedFee">${config.currency_symbol}${Number(res.extraBedFee || 0).toLocaleString('en-US')}</strong></div>
         <div class="mt-1 text-xs text-gray-500" id="editRoomPriceHint"></div>
+        <div class="mt-2 text-sm font-semibold text-red-600" id="editDueSummary"></div>
         <div class="flex gap-2 mt-4 flex-wrap">
           <button class="px-3 py-2 rounded bg-sky-600 text-white" onclick="saveReservationEdits(${res.id})">შენახვა</button>
           <button class="px-3 py-2 rounded bg-emerald-600 text-white" onclick="checkInReservation(${res.id})">Check-in</button>
@@ -1768,11 +1862,28 @@
       document.getElementById('editCheckoutDate')?.addEventListener('change', recalcEditReservationTotal);
       document.getElementById('editCheckoutTime')?.addEventListener('change', recalcEditReservationTotal);
       document.getElementById('editAdditionalFeeAmount')?.addEventListener('input', recalcEditReservationTotal);
+      document.getElementById('editRoomId')?.addEventListener('change', () => {
+        updateExtraBedOptions('editRoomId', 'editExtraBedWrap', 'editExtraBedEnabled', 'editExtraBedQty', 'editExtraBedRateInfo');
+        recalcEditReservationTotal();
+      });
+      document.getElementById('editExtraBedEnabled')?.addEventListener('change', () => {
+        const qty = document.getElementById('editExtraBedQty');
+        if (qty) qty.disabled = !document.getElementById('editExtraBedEnabled')?.checked;
+        recalcEditReservationTotal();
+      });
+      document.getElementById('editExtraBedQty')?.addEventListener('change', recalcEditReservationTotal);
       document.getElementById('editPaymentStatus')?.addEventListener('change', () => {
         togglePaidAmountField('editPaymentStatus', 'editPaidAmountWrap');
         recalcEditDueAmount();
       });
       document.getElementById('editPaidAmount')?.addEventListener('input', recalcEditDueAmount);
+      updateExtraBedOptions('editRoomId', 'editExtraBedWrap', 'editExtraBedEnabled', 'editExtraBedQty', 'editExtraBedRateInfo');
+      if (document.getElementById('editExtraBedQty')) {
+        document.getElementById('editExtraBedQty').value = String(Math.max(1, Number(res.extraBedQty || 1)));
+      }
+      if (document.getElementById('editExtraBedQty')) {
+        document.getElementById('editExtraBedQty').disabled = !document.getElementById('editExtraBedEnabled')?.checked;
+      }
       recalcEditReservationTotal();
       togglePaidAmountField('editPaymentStatus', 'editPaidAmountWrap');
       recalcEditDueAmount();
@@ -1789,11 +1900,13 @@
       const nextCheckoutTime = document.getElementById('editCheckoutTime')?.value || getPolicySettings().checkoutTime;
       const nextAdditionalFeeName = document.getElementById('editAdditionalFeeName')?.value.trim() || '';
       const nextAdditionalFeeAmount = Math.max(0, Number(document.getElementById('editAdditionalFeeAmount')?.value || 0));
+      const nextExtraBedEnabled = !!document.getElementById('editExtraBedEnabled')?.checked;
+      const nextExtraBedQty = Math.max(0, Number(document.getElementById('editExtraBedQty')?.value || 0));
       if (nextCheckoutDate <= nextCheckinDate) {
         showToast('Check-out თარიღი უნდა იყოს Check-in თარიღის შემდეგ', 'error');
         return;
       }
-      const charges = computeReservationCharges({ roomId: nextRoomId, checkinDate: nextCheckinDate, checkoutDate: nextCheckoutDate, checkoutTime: nextCheckoutTime, additionalFeeAmount: nextAdditionalFeeAmount });
+      const charges = computeReservationCharges({ roomId: nextRoomId, checkinDate: nextCheckinDate, checkoutDate: nextCheckoutDate, checkoutTime: nextCheckoutTime, additionalFeeAmount: nextAdditionalFeeAmount, extraBedEnabled: nextExtraBedEnabled, extraBedQty: nextExtraBedQty });
       const recalculatedTotal = charges.grossTotal;
       let paidAmount = Number(document.getElementById('editPaidAmount')?.value || 0);
       if (nextPaymentStatus === 'paid') paidAmount = recalculatedTotal;
@@ -1816,8 +1929,11 @@
         paidAmount,
         additionalFeeName: nextAdditionalFeeName,
         additionalFeeAmount: nextAdditionalFeeAmount,
+        extraBedEnabled: charges.extraBedEnabled,
+        extraBedQty: charges.extraBedQty,
         nightlyRate: charges.nightlyRate,
         lateCheckoutFee: charges.lateCheckoutFee,
+        extraBedFee: charges.extraBedFee,
         totalPrice: recalculatedTotal
       };
       setReservationsData(reservations);
@@ -1878,18 +1994,20 @@
 
     function getReservationFinancials(resId) {
       const res = getReservationsData().find(r => Number(r.id) === Number(resId));
-      if (!res) return { nights: 0, nightlyRate: 0, baseTotal: 0, lateCheckoutFee: 0, additionalFeeName: '', additionalFeeAmount: 0, grossTotal: 0, advance: 0, dueTotal: 0 };
+      if (!res) return { nights: 0, nightlyRate: 0, baseTotal: 0, lateCheckoutFee: 0, extraBedFee: 0, extraBedQty: 0, additionalFeeName: '', additionalFeeAmount: 0, grossTotal: 0, advance: 0, dueTotal: 0 };
       const room = findRoomById(res.roomId);
       const nights = calculateNights(res.checkinDate, res.checkoutDate);
       const nightlyRate = Number(res.nightlyRate || room?.basePrice || 0);
       const baseTotal = nights * nightlyRate;
       const lateCheckoutFee = Number(res.lateCheckoutFee || calculateLateCheckoutFee(res.checkoutTime));
+      const extraBedFee = Number(res.extraBedFee || 0);
+      const extraBedQty = Math.max(0, Number(res.extraBedQty || 0));
       const additionalFeeAmount = Math.max(0, Number(res.additionalFeeAmount || 0));
       const additionalFeeName = String(res.additionalFeeName || '').trim();
-      const grossTotal = Number(res.totalPrice || (baseTotal + lateCheckoutFee + additionalFeeAmount));
+      const grossTotal = Number(res.totalPrice || (baseTotal + lateCheckoutFee + extraBedFee + additionalFeeAmount));
       const advance = normalizeReservationPayment(res);
       const dueTotal = Math.max(0, grossTotal - advance);
-      return { nights, nightlyRate, baseTotal, lateCheckoutFee, additionalFeeName, additionalFeeAmount, grossTotal, advance, dueTotal };
+      return { nights, nightlyRate, baseTotal, lateCheckoutFee, extraBedFee, extraBedQty, additionalFeeName, additionalFeeAmount, grossTotal, advance, dueTotal };
     }
 
     function printInvoice(resId) {
@@ -1945,6 +2063,7 @@
               <tbody>
                 <tr><td>სასტუმრო — ღამეები</td><td class="right">${financials.nights}</td><td class="right">${financials.nightlyRate}₾</td><td class="right">${financials.baseTotal}₾</td></tr>
                 <tr><td>გვიანი Check-out</td><td class="right">1</td><td class="right">${financials.lateCheckoutFee}₾</td><td class="right">${financials.lateCheckoutFee}₾</td></tr>
+                ${financials.extraBedFee > 0 ? `<tr><td>Extra Bed</td><td class="right">${financials.extraBedQty}</td><td class="right">${getPolicySettings().extraBedRate}₾ x ${financials.nights} ღამე</td><td class="right">${financials.extraBedFee}₾</td></tr>` : ''}
                 ${financials.additionalFeeAmount > 0 ? `<tr><td>${escapeHtml(financials.additionalFeeName || 'დამატებითი გადასახადი')}</td><td class="right">1</td><td class="right">${financials.additionalFeeAmount}₾</td><td class="right">${financials.additionalFeeAmount}₾</td></tr>` : ''}
                 <tr><td>ავანსი</td><td class="right">1</td><td class="right">-</td><td class="right">-${financials.advance}₾</td></tr>
               </tbody>
@@ -2066,6 +2185,8 @@
           <label class="text-xs text-gray-500">სართული<input id="editRoomFloor" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.floor || 1)}"></label>
           <label class="text-xs text-gray-500">საწოლები<input id="editRoomBeds" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.beds || 1)}"></label>
           <label class="text-xs text-gray-500">მაქს სტუმრები<input id="editRoomMaxGuests" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.maxGuests || 1)}"></label>
+          <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="editRoomSupportsExtraBed" type="checkbox" class="rounded" ${room.supportsExtraBed ? 'checked' : ''}> Extra Bed მხარდაჭერა</label>
+          <label class="text-xs text-gray-500">Extra Bed მაქს რაოდენობა<input id="editRoomMaxExtraBeds" type="number" min="0" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.maxExtraBeds || 0)}"></label>
           <label class="text-xs text-gray-500">სტატუსი<select id="editRoomStatus" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="available" ${room.status==='available'?'selected':''}>ხელმისაწვდომი</option><option value="booked" ${room.status==='booked'?'selected':''}>დაჯავშნილი</option><option value="occupied" ${room.status==='occupied'?'selected':''}>დაკავებული</option><option value="cleaning" ${room.status==='cleaning'?'selected':''}>დასუფთავება</option><option value="maintenance" ${room.status==='maintenance'?'selected':''}>რემონტი</option></select></label>
         </div>
         <button class="mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="saveRoomEdits(${room.id})">შენახვა</button>
@@ -2085,6 +2206,8 @@
         floor: Number(document.getElementById('editRoomFloor').value || 1),
         beds: Number(document.getElementById('editRoomBeds').value || 1),
         maxGuests: Number(document.getElementById('editRoomMaxGuests').value || 1),
+        supportsExtraBed: !!document.getElementById('editRoomSupportsExtraBed').checked,
+        maxExtraBeds: Math.max(0, Number(document.getElementById('editRoomMaxExtraBeds').value || 0)),
         status: document.getElementById('editRoomStatus').value
       };
       setRoomsData(rooms);
@@ -2102,11 +2225,13 @@
       const floor = Number(document.getElementById('newRoomFloor').value || 1);
       const beds = Number(document.getElementById('newRoomBeds').value || 1);
       const maxGuests = Number(document.getElementById('newRoomMaxGuests').value || 1);
+      const supportsExtraBed = !!document.getElementById('newRoomSupportsExtraBed').checked;
+      const maxExtraBeds = Math.max(0, Number(document.getElementById('newRoomMaxExtraBeds').value || 0));
       const status = document.getElementById('newRoomStatus').value;
       if (!roomNumber) return showToast('ნომრის ნომერი აუცილებელია', 'error');
       const rooms = getRoomsData();
       const nextId = rooms.length ? Math.max(...rooms.map(r => Number(r.id))) + 1 : 1;
-      rooms.push({ id: nextId, roomNumber, roomName: roomName || `Room ${roomNumber}`, roomType, basePrice, floor, beds, maxGuests, status });
+      rooms.push({ id: nextId, roomNumber, roomName: roomName || `Room ${roomNumber}`, roomType, basePrice, floor, beds, maxGuests, supportsExtraBed, maxExtraBeds, status });
       setRoomsData(rooms);
       syncCurrentMonthRatesFromRooms();
       closeModal();
@@ -2413,10 +2538,16 @@
             <label class="text-xs text-gray-500">Check-out დრო<input id="newCheckoutTime" type="time" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(policy.checkoutTime)}"></label>
             <label class="text-xs text-gray-500">დამატებითი გადასახადი (სახელი)<input id="newAdditionalFeeName" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(policy.defaultAdditionalFeeName)}" placeholder="მაგ: City Fee"></label>
             <label class="text-xs text-gray-500">დამატებითი გადასახადი (₾)<input id="newAdditionalFeeAmount" type="number" min="0" step="0.01" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(policy.defaultAdditionalFeeAmount || 0)}"></label>
+            <div id="newExtraBedWrap" class="md:col-span-2 hidden grid grid-cols-1 md:grid-cols-3 gap-3">
+              <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="newExtraBedEnabled" type="checkbox" class="rounded"> Extra Bed</label>
+              <label class="text-xs text-gray-500">Extra Bed რაოდენობა<select id="newExtraBedQty" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full"><option value="1">1</option></select></label>
+              <div class="text-xs text-gray-500 mt-6" id="newExtraBedRateInfo"></div>
+            </div>
             <label class="text-xs text-gray-500">სრული თანხა<input id="newReservationTotal" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="0" readonly></label>
           </div>
           <div class="mt-2 text-xs text-gray-500" id="newRoomPriceHint"></div>
           <div class="mt-1 text-xs text-gray-500">გვიანი Check-out გადასახადი: <strong id="newLateCheckoutFee">${config.currency_symbol}0</strong></div>
+          <div class="mt-1 text-xs text-gray-500">Extra Bed გადასახადი: <strong id="newExtraBedFee">${config.currency_symbol}0</strong></div>
           <div id="newPaidAmountWrap" class="mt-3 hidden">
             <label class="block text-xs text-gray-500 mb-1">ჩარიცხული თანხა (₾)</label>
             <input id="newPaidAmount" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: 150">
@@ -2428,13 +2559,22 @@
         `;
         document.getElementById('newRoomId')?.addEventListener('change', () => {
           updateRoomPriceHint('newRoomId', 'newRoomPriceHint');
+          updateExtraBedOptions('newRoomId', 'newExtraBedWrap', 'newExtraBedEnabled', 'newExtraBedQty', 'newExtraBedRateInfo');
           recalcNewReservationTotal();
         });
         document.getElementById('newCheckinDate')?.addEventListener('change', recalcNewReservationTotal);
         document.getElementById('newCheckoutDate')?.addEventListener('change', recalcNewReservationTotal);
         document.getElementById('newCheckoutTime')?.addEventListener('change', recalcNewReservationTotal);
         document.getElementById('newAdditionalFeeAmount')?.addEventListener('input', recalcNewReservationTotal);
+        document.getElementById('newExtraBedEnabled')?.addEventListener('change', () => {
+          const qty = document.getElementById('newExtraBedQty');
+          if (qty) qty.disabled = !document.getElementById('newExtraBedEnabled')?.checked;
+          recalcNewReservationTotal();
+        });
+        document.getElementById('newExtraBedQty')?.addEventListener('change', recalcNewReservationTotal);
         updateRoomPriceHint('newRoomId', 'newRoomPriceHint');
+        updateExtraBedOptions('newRoomId', 'newExtraBedWrap', 'newExtraBedEnabled', 'newExtraBedQty', 'newExtraBedRateInfo');
+        if (document.getElementById('newExtraBedQty')) document.getElementById('newExtraBedQty').disabled = true;
         recalcNewReservationTotal();
         togglePaidAmountField('newPaymentStatus', 'newPaidAmountWrap');
       } else if (type === 'new-room') {
@@ -2448,6 +2588,8 @@
             <label class="text-xs text-gray-500">სართული<input id="newRoomFloor" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="1"></label>
             <label class="text-xs text-gray-500">საწოლების რაოდენობა<input id="newRoomBeds" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="1"></label>
             <label class="text-xs text-gray-500">მაქსიმალური სტუმრები<input id="newRoomMaxGuests" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="2"></label>
+            <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="newRoomSupportsExtraBed" type="checkbox" class="rounded"> Extra Bed მხარდაჭერა</label>
+            <label class="text-xs text-gray-500">Extra Bed მაქს რაოდენობა<input id="newRoomMaxExtraBeds" type="number" min="0" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="0"></label>
             <label class="text-xs text-gray-500">სტატუსი<select id="newRoomStatus" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="available">ხელმისაწვდომი</option><option value="booked">დაჯავშნილი</option><option value="occupied">დაკავებული</option><option value="cleaning">დასუფთავება</option><option value="maintenance">რემონტი</option></select></label>
           </div>
           <button class='mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg' onclick='addRoomFromModal()'>შენახვა</button>
