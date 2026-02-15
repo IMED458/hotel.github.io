@@ -334,20 +334,20 @@
         ''
       ).toLowerCase().trim();
 
-      if (raw.includes('booking')) return { abbr: 'B', cls: 'channel-logo-booking', title: 'Booking.com' };
-      if (raw.includes('tripadvisor') || raw.includes('trip advisor') || raw.includes('trip')) return { abbr: 'TA', cls: 'channel-logo-tripadvisor', title: 'Tripadvisor' };
-      if (raw.includes('airbnb') || raw.includes('air bnb')) return { abbr: 'A', cls: 'channel-logo-airbnb', title: 'Airbnb' };
-      if (raw.includes('expedia')) return { abbr: 'E', cls: 'channel-logo-expedia', title: 'Expedia' };
-      if (raw.includes('agoda')) return { abbr: 'AG', cls: 'channel-logo-agoda', title: 'Agoda' };
-      if (raw.includes('hotels.com') || raw.includes('hotelscom') || raw.includes('hotel.com')) return { abbr: 'H', cls: 'channel-logo-hotelscom', title: 'Hotels.com' };
-      if (!raw || raw.includes('direct') || raw.includes('walkin') || raw.includes('walk-in')) return { abbr: 'D', cls: 'channel-logo-direct', title: 'Direct' };
-      return { abbr: 'OT', cls: 'channel-logo-other', title: reservation?.source || reservation?.channel || 'OTA' };
+      if (raw.includes('booking')) return { icon: 'https://cdn.simpleicons.org/bookingdotcom/1D4ED8', title: 'Booking.com' };
+      if (raw.includes('tripadvisor') || raw.includes('trip advisor') || raw.includes('trip')) return { icon: 'https://cdn.simpleicons.org/tripadvisor/16A34A', title: 'Tripadvisor' };
+      if (raw.includes('airbnb') || raw.includes('air bnb')) return { icon: 'https://cdn.simpleicons.org/airbnb/EF4444', title: 'Airbnb' };
+      if (raw.includes('expedia')) return { icon: 'https://cdn.simpleicons.org/expedia/F59E0B', title: 'Expedia' };
+      if (raw.includes('agoda')) return { icon: 'https://cdn.simpleicons.org/agoda/8B5CF6', title: 'Agoda' };
+      if (raw.includes('hotels.com') || raw.includes('hotelscom') || raw.includes('hotel.com')) return { icon: 'https://cdn.simpleicons.org/hotelsdotcom/0F172A', title: 'Hotels.com' };
+      if (!raw || raw.includes('direct') || raw.includes('walkin') || raw.includes('walk-in')) return { icon: 'https://cdn.simpleicons.org/homeadvisor/475569', title: 'Direct' };
+      return { icon: 'https://cdn.simpleicons.org/googlemaps/6B7280', title: reservation?.source || reservation?.channel || 'OTA' };
     }
     function renderReservationBarContent(reservation) {
       const source = getReservationSourceInfo(reservation);
       return `
         <div class="reservation-bar-content">
-          <span class="channel-logo-badge ${source.cls}" title="${escapeHtml(source.title)}">${escapeHtml(source.abbr)}</span>
+          <span class="channel-logo-badge" title="${escapeHtml(source.title)}"><img class="channel-logo-image" src="${escapeHtml(source.icon)}" alt="${escapeHtml(source.title)}"></span>
           <span class="reservation-guest-name">${escapeHtml(reservation?.guestName || '-')}</span>
         </div>
       `;
