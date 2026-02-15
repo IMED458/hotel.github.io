@@ -54,7 +54,7 @@
     .timeline-cell { border-right: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; min-height: 42px; font-size: 11px; display: flex; align-items: center; justify-content: center; }
     .timeline-room { position: sticky; left: 0; z-index: 2; background: #f8fafc; font-size: 12px; padding: 0 8px; justify-content: flex-start; font-weight: 600; }
     .timeline-row { position: relative; }
-    .reservation-bar { position: absolute; top: 5px; height: 32px; border-radius: 8px; padding: 0 8px; display: flex; align-items: center; font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+    .reservation-bar { position: absolute; top: 5px; height: 32px; border-radius: 8px; padding: 0 8px; display: flex; align-items: center; font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%); }
     .reservation-bar.reserved { background: #dbeafe; border: 1px solid #60a5fa; color: #1e3a8a; }
     .reservation-bar.checkedin { background: #dcfce7; border: 1px solid #4ade80; color: #14532d; }
     .reservation-bar.checkout { background: #fee2e2; border: 1px solid #f87171; color: #7f1d1d; }
@@ -349,6 +349,8 @@
         setState('nextReservationId', 4);
       }
       if (!Array.isArray(getState('guests', null))) setState('guests', []);
+      if (!Array.isArray(getState('payments', null))) setState('payments', []);
+      if (!getState('nextPaymentId', null)) setState('nextPaymentId', 1);
       if (!getState('monthlyRates', null)) {
         const rates = {};
         for (let m = 1; m <= 12; m++) rates[m] = { Single: 120, Double: 170, Triple: 220, Family: 300, Suite: 450 };
@@ -361,6 +363,8 @@
     function setReservationsData(items) { setState('reservations', items); }
     function getGuestsData() { return getState('guests', []); }
     function setGuestsData(items) { setState('guests', items); }
+    function getPaymentsData() { return getState('payments', []); }
+    function setPaymentsData(items) { setState('payments', items); }
     function getMonthlyRates() { return getState('monthlyRates', {}); }
     function findRoomById(id) { return getRoomsData().find(r => Number(r.id) === Number(id)); }
     function formatReservationStatus(s) { return s === 'Checked-in' ? 'checked-in' : s === 'Checked-out' ? 'checked-out' : s === 'Cancelled' ? 'cancelled' : 'confirmed'; }
@@ -510,11 +514,6 @@
           <h2 class="text-xl font-bold">ნომრების მართვა</h2>
           <button onclick="openModal('new-room')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი ნომერი</button>
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded-xl p-4 mb-6 border border-gray-100 dark:border-gray-700 flex flex-wrap gap-3">
-          <select class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>ყველა ტიპი</option><option>Single</option><option>Double</option><option>Triple</option><option>Family</option><option>Suite</option></select>
-          <select class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>ყველა სტატუსი</option><option>available</option><option>booked</option><option>occupied</option><option>cleaning</option><option>maintenance</option></select>
-          <select class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>ყველა სართული</option><option>1</option><option>2</option><option>3</option></select>
-        </div>
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           ${rooms.map(r => `
             <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700">
@@ -527,6 +526,7 @@
               </div>
               <div class="mt-4 text-sm text-gray-500">🛏️ ${r.beds || 1} საწოლი • 👥 მაქს. ${r.maxGuests || 2}</div>
               <div class="mt-2 font-semibold">${config.currency_symbol}${Number(r.basePrice || 0).toLocaleString('en-US')}/ღამე</div>
+              <button class="mt-3 px-3 py-2 text-xs rounded-lg bg-gray-100 dark:bg-gray-700" onclick="openRoomEdit(${r.id})">რედაქტირება</button>
             </div>
           `).join('')}
         </div>
@@ -570,7 +570,13 @@
                   <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${statusBadge(formatReservationStatus(r.status))}">${r.status || 'Reserved'}</span></td>
                   <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${paymentBadge(r.paymentStatus)}">${r.paymentStatus || 'unpaid'}</span></td>
                   <td class="px-4 py-3 font-semibold">${config.currency_symbol}${Number(r.totalPrice || 0).toLocaleString('en-US')}</td>
-                  <td class="px-4 py-3"><div class="flex gap-2"><button class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" onclick="printInvoice(${r.id})">ინვოისი</button><button class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" onclick="printConsent(${r.id}, 'ka')">თანხმობა</button></div></td>
+                  <td class="px-4 py-3">
+                    <div class="flex gap-2 flex-wrap">
+                      <button class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" onclick="openReservationDetails(${r.id})">დეტალები</button>
+                      <button class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" onclick="printInvoice(${r.id})">ინვოისი</button>
+                      <button class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" onclick="printConsent(${r.id}, 'ka')">თანხმობა</button>
+                    </div>
+                  </td>
                 </tr>
               `).join('')}
             </tbody>
@@ -584,10 +590,7 @@
       document.getElementById('page-guests').innerHTML = `
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-bold">სტუმრების მართვა</h2>
-          <button onclick="showToast('ახალი სტუმრის ფორმა მალე დაემატება')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი სტუმარი</button>
-        </div>
-        <div class="bg-white dark:bg-gray-800 rounded-xl p-4 mb-6 border border-gray-100 dark:border-gray-700">
-          <input type="text" placeholder="სახელი, ტელეფონი, ელფოსტა..." class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
+          <button onclick="openModal('new-guest')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი სტუმარი</button>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           ${guests.map(g => `
@@ -616,7 +619,14 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
             <h3 class="font-semibold mb-4">მოლოდინში Check-in</h3>
-            <div class="space-y-3">${pendingIn.map(r => `<div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40 text-sm">${r.guestName} • ${findRoomById(r.roomId)?.roomNumber || '-'} • ${formatDate(r.checkinDate)}</div>`).join('') || '<div class="text-sm text-gray-500">არ არის</div>'}</div>
+            <div class="space-y-3">${pendingIn.map(r => `
+              <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40 text-sm">
+                <div>${r.guestName} • ${findRoomById(r.roomId)?.roomNumber || '-'} • ${formatDate(r.checkinDate)}</div>
+                <div class="mt-2 flex gap-2">
+                  <button class="px-2 py-1 rounded bg-white dark:bg-gray-800 text-xs" onclick="printConsent(${r.id}, 'ka')">თანხმობა KA</button>
+                  <button class="px-2 py-1 rounded bg-white dark:bg-gray-800 text-xs" onclick="printConsent(${r.id}, 'en')">Consent EN</button>
+                </div>
+              </div>`).join('') || '<div class="text-sm text-gray-500">არ არის</div>'}</div>
           </div>
           <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
             <h3 class="font-semibold mb-4">მოლოდინში Check-out</h3>
@@ -627,13 +637,15 @@
     }
 
     function renderPayments() {
+      ensureHotelState();
       const reservations = getReservationsData();
+      const payments = getPaymentsData();
       const paid = reservations.filter(r => r.paymentStatus === 'paid').reduce((s, r) => s + Number(r.totalPrice || 0), 0);
       const unpaid = reservations.filter(r => r.paymentStatus !== 'paid').reduce((s, r) => s + Number(r.totalPrice || 0), 0);
       document.getElementById('page-payments').innerHTML = `
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-bold">გადახდები და ინვოისები</h2>
-          <button onclick="showToast('ახალი გადახდის ფორმა მალე დაემატება')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი გადახდა</button>
+          <button onclick="openModal('new-payment')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი გადახდა</button>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">მიღებული</p><p class="text-2xl font-bold">${config.currency_symbol}${paid.toLocaleString('en-US')}</p></div>
@@ -642,8 +654,17 @@
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto">
           <table class="w-full text-sm">
-            <thead class="bg-gray-50 dark:bg-gray-700/50"><tr><th class="px-4 py-3 text-left">სტუმარი</th><th class="px-4 py-3 text-left">ინვოისი</th><th class="px-4 py-3 text-left">თანხა</th><th class="px-4 py-3 text-left">სტატუსი</th></tr></thead>
-            <tbody>${reservations.map((r, i) => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="px-4 py-3">${r.guestName}</td><td class="px-4 py-3">INV-${1000 + i}</td><td class="px-4 py-3">${config.currency_symbol}${Number(r.totalPrice || 0).toLocaleString('en-US')}</td><td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${paymentBadge(r.paymentStatus)}">${r.paymentStatus || 'unpaid'}</span></td></tr>`).join('')}</tbody>
+            <thead class="bg-gray-50 dark:bg-gray-700/50"><tr><th class="px-4 py-3 text-left">სტუმარი</th><th class="px-4 py-3 text-left">ჯავშანი</th><th class="px-4 py-3 text-left">თანხა</th><th class="px-4 py-3 text-left">მეთოდი</th><th class="px-4 py-3 text-left">სტატუსი</th><th class="px-4 py-3 text-left">მოქმედებები</th></tr></thead>
+            <tbody>${payments.map(p => `
+              <tr class="border-t border-gray-100 dark:border-gray-700">
+                <td class="px-4 py-3">${p.guestName}</td>
+                <td class="px-4 py-3">#${p.reservationId}</td>
+                <td class="px-4 py-3">${config.currency_symbol}${Number(p.amount || 0).toLocaleString('en-US')}</td>
+                <td class="px-4 py-3">${p.method || '-'}</td>
+                <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${paymentBadge(p.status)}">${p.status}</span></td>
+                <td class="px-4 py-3"><div class="flex gap-2"><button class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" onclick="openPaymentEdit(${p.id})">რედაქტირება</button><button class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" onclick="printPaymentInvoice(${p.id})">ინვოისი</button></div></td>
+              </tr>
+            `).join('') || '<tr><td colspan="6" class="px-4 py-6 text-center text-gray-500">გადახდები არ არის</td></tr>'}</tbody>
           </table>
         </div>
       `;
@@ -738,12 +759,33 @@
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
               <h3 class="font-semibold mb-4">პოლიტიკა</h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="time" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="14:00">
-                <input type="time" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="12:00">
-                <input type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="24">
-                <input type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="30">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <label class="block mb-1 text-gray-500">Check-in დრო (სტუმრის მიღების სტანდარტული დრო)</label>
+                  <input type="time" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="14:00">
+                </div>
+                <div>
+                  <label class="block mb-1 text-gray-500">Check-out დრო (სტუმრის გასვლის ბოლო დრო)</label>
+                  <input type="time" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="12:00">
+                </div>
+                <div>
+                  <label class="block mb-1 text-gray-500">უფასო გაუქმების ვადა (საათი)</label>
+                  <input type="number" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="24">
+                </div>
+                <div>
+                  <label class="block mb-1 text-gray-500">სავალდებულო ავანსი (%)</label>
+                  <input type="number" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="30">
+                </div>
+                <div>
+                  <label class="block mb-1 text-gray-500">გვიანი Check-out (საათი/ტარიფი)</label>
+                  <input class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="12:00 შემდეგ • 10₾ / საათი">
+                </div>
+                <div>
+                  <label class="block mb-1 text-gray-500">No-show ჯარიმა (ღამეების რაოდენობა)</label>
+                  <input type="number" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="1">
+                </div>
               </div>
+              <button class="mt-4 px-4 py-2 rounded-lg bg-sky-600 text-white" onclick="showToast('პოლიტიკა შენახულია')">პოლიტიკის შენახვა</button>
             </div>
           </div>
           <div class="space-y-6">
@@ -831,57 +873,364 @@
       openModal('custom');
       document.getElementById('modal-title').textContent = 'ჯავშნის დეტალები';
       document.getElementById('modal-content').innerHTML = `
-        <div class="space-y-2 text-sm">
-          <div><strong>სტუმარი:</strong> ${escapeHtml(res.guestName || '-')}</div>
-          <div><strong>ოთახი:</strong> ${escapeHtml(room?.roomName || room?.roomNumber || '-')} (${escapeHtml(room?.roomType || '-')})</div>
-          <div><strong>ვადები:</strong> ${formatDate(res.checkinDate)} - ${formatDate(res.checkoutDate)}</div>
-          <div class="flex gap-2 mt-4">
-            <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printInvoice(${res.id})">ინვოისის ბეჭდვა</button>
-            <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printConsent(${res.id}, 'ka')">თანხმობის ბეჭდვა</button>
-          </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+          <input id="editGuestName" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(res.guestName || '')}" placeholder="სტუმრის სახელი">
+          <input id="editGuestPhone" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(res.guestPhone || '')}" placeholder="ტელეფონი">
+          <input id="editGuestEmail" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(res.guestEmail || '')}" placeholder="ელფოსტა">
+          <input id="editGuestIdNumber" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(res.guestIdNumber || '')}" placeholder="პირადი ნომერი / პასპორტი">
+          <input id="editGuestCitizenship" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(res.guestCitizenship || '')}" placeholder="მოქალაქეობა">
+          <input id="editGuestBirthDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(res.guestBirthDate || '')}">
+          <select id="editRoomId" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${getRoomsData().map(r => `<option value="${r.id}" ${Number(r.id)===Number(res.roomId)?'selected':''}>${r.roomName} (${r.roomType})</option>`).join('')}</select>
+          <select id="editStatus" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option ${res.status==='Reserved'?'selected':''}>Reserved</option><option ${res.status==='Checked-in'?'selected':''}>Checked-in</option><option ${res.status==='Checked-out'?'selected':''}>Checked-out</option><option ${res.status==='Cancelled'?'selected':''}>Cancelled</option></select>
+          <input id="editCheckinDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(res.checkinDate || '')}">
+          <input id="editCheckoutDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(res.checkoutDate || '')}">
+          <select id="editPaymentStatus" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid" ${res.paymentStatus==='unpaid'?'selected':''}>unpaid</option><option value="partial" ${res.paymentStatus==='partial'?'selected':''}>partial</option><option value="paid" ${res.paymentStatus==='paid'?'selected':''}>paid</option></select>
+          <input id="editTotalPrice" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(res.totalPrice||0)}">
+          <select id="editConsentLang" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="ka">ქართული</option><option value="en">English</option></select>
         </div>
+        <div class="flex gap-2 mt-4 flex-wrap">
+          <button class="px-3 py-2 rounded bg-sky-600 text-white" onclick="saveReservationEdits(${res.id})">შენახვა</button>
+          <button class="px-3 py-2 rounded bg-red-600 text-white" onclick="deleteReservation(${res.id})">წაშლა</button>
+          <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printInvoice(${res.id})">ინვოისის ბეჭდვა</button>
+          <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printConsent(${res.id}, document.getElementById('editConsentLang').value)">თანხმობის ბეჭდვა</button>
+        </div>
+        <div class="mt-3 text-xs text-gray-500">ოთახი: ${escapeHtml(room?.roomName || room?.roomNumber || '-')} (${escapeHtml(room?.roomType || '-')})</div>
       `;
+    }
+
+    function saveReservationEdits(resId) {
+      const reservations = getReservationsData();
+      const idx = reservations.findIndex(r => Number(r.id) === Number(resId));
+      if (idx === -1) return;
+      reservations[idx] = {
+        ...reservations[idx],
+        guestName: document.getElementById('editGuestName').value.trim(),
+        guestPhone: document.getElementById('editGuestPhone').value.trim(),
+        guestEmail: document.getElementById('editGuestEmail').value.trim(),
+        guestIdNumber: document.getElementById('editGuestIdNumber').value.trim(),
+        guestCitizenship: document.getElementById('editGuestCitizenship').value.trim(),
+        guestBirthDate: document.getElementById('editGuestBirthDate').value,
+        roomId: Number(document.getElementById('editRoomId').value),
+        status: document.getElementById('editStatus').value,
+        checkinDate: document.getElementById('editCheckinDate').value,
+        checkoutDate: document.getElementById('editCheckoutDate').value,
+        paymentStatus: document.getElementById('editPaymentStatus').value,
+        totalPrice: Number(document.getElementById('editTotalPrice').value || 0)
+      };
+      setReservationsData(reservations);
+      showToast('ჯავშანი განახლდა');
+      closeModal();
+      renderCurrentPage();
+    }
+
+    function deleteReservation(resId) {
+      if (!confirm('ნამდვილად გსურთ ჯავშნის წაშლა?')) return;
+      const reservations = getReservationsData().filter(r => Number(r.id) !== Number(resId));
+      setReservationsData(reservations);
+      showToast('ჯავშანი წაიშალა', 'warning');
+      closeModal();
+      renderCurrentPage();
+    }
+
+    function getReservationFinancials(resId) {
+      const res = getReservationsData().find(r => Number(r.id) === Number(resId));
+      if (!res) return { nights: 0, baseTotal: 0, lateCheckoutFee: 0, grossTotal: 0, advance: 0, dueTotal: 0 };
+      const room = findRoomById(res.roomId);
+      const nights = calculateNights(res.checkinDate, res.checkoutDate);
+      const baseTotal = nights * Number(room?.basePrice || 0);
+      const grossTotal = Number(res.totalPrice || baseTotal);
+      const advance = 0;
+      const dueTotal = Math.max(0, grossTotal - advance);
+      return { nights, baseTotal, lateCheckoutFee: 0, grossTotal, advance, dueTotal };
     }
 
     function printInvoice(resId) {
       const res = getReservationsData().find(r => Number(r.id) === Number(resId));
       if (!res) return;
       const room = findRoomById(res.roomId);
-      const invoiceNo = `INV-${res.id}-${Date.now()}`;
-      const w = window.open('', '_blank', 'width=900,height=900');
-      w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ინვოისი ${invoiceNo}</title></head><body style="font-family:Arial,sans-serif;padding:24px"><h2>ინვოისი</h2><div>№ ${invoiceNo}</div><hr><div><strong>სტუმარი:</strong> ${escapeHtml(res.guestName)}</div><div><strong>ოთახი:</strong> ${escapeHtml(room?.roomNumber || '-')} (${escapeHtml(room?.roomType || '-')})</div><div><strong>პერიოდი:</strong> ${formatDate(res.checkinDate)} - ${formatDate(res.checkoutDate)}</div><div><strong>თანხა:</strong> ${config.currency_symbol}${Number(res.totalPrice || 0).toLocaleString('en-US')}</div><hr><div style="margin-top:18px">ხელმოწერა: _______________________</div></body></html>`);
+      const financials = getReservationFinancials(resId);
+      const invoiceNo = `INV-${res.id}-${new Date().getTime()}`;
+      const w = window.open('', '_blank');
+      if (!w) return;
+      w.document.write(`
+        <!DOCTYPE html>
+        <html lang="ka">
+        <head>
+          <meta charset="UTF-8">
+          <title>ინვოისი ${invoiceNo}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 32px; color: #0f172a; }
+            h1 { margin: 0 0 8px; }
+            .muted { color: #64748b; }
+            .row { display: flex; justify-content: space-between; gap: 16px; }
+            .box { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-top: 16px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+            th, td { padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+            th { background: #f1f5f9; }
+            .total { font-size: 18px; font-weight: 700; }
+            .right { text-align: right; }
+            @media print { .no-print { display: none; } }
+          </style>
+        </head>
+        <body>
+          <div class="row">
+            <div>
+              <h1>სასტუმრო — ინვოისი</h1>
+              <div class="muted">ინვოისის №: ${invoiceNo}</div>
+              <div class="muted">თარიღი: ${formatDate(new Date())}</div>
+            </div>
+            <div class="right"><div class="muted">სტატუსი: ${res.status}</div></div>
+          </div>
+          <div class="box">
+            <div><strong>სტუმარი:</strong> ${escapeHtml(res.guestName)}</div>
+            <div><strong>ტელეფონი:</strong> ${escapeHtml(res.guestPhone || '-')}</div>
+            <div><strong>ოთახი:</strong> ${escapeHtml(room ? (room.roomName || room.roomNumber) : '-')} (${escapeHtml(room?.roomType || '-')})</div>
+            <div><strong>თარიღები:</strong> ${formatDate(res.checkinDate)} — ${formatDate(res.checkoutDate)}</div>
+          </div>
+          <div class="box">
+            <table>
+              <thead><tr><th>აღწერა</th><th class="right">რაოდენობა</th><th class="right">ფასი</th><th class="right">ჯამი</th></tr></thead>
+              <tbody>
+                <tr><td>სასტუმრო — ღამეები</td><td class="right">${financials.nights}</td><td class="right">${Number(room?.basePrice || 0)}₾</td><td class="right">${financials.baseTotal}₾</td></tr>
+                <tr><td>ავანსი</td><td class="right">1</td><td class="right">-</td><td class="right">-${financials.advance}₾</td></tr>
+              </tbody>
+            </table>
+            <div class="row" style="margin-top: 12px;"><div></div><div class="total">სრული: ${financials.grossTotal}₾ | ავანსი: ${financials.advance}₾ | დასარჩენი: ${financials.dueTotal}₾</div></div>
+          </div>
+          <div class="no-print" style="margin-top: 16px;"><button onclick="window.print()">ბეჭდვა</button></div>
+        </body>
+        </html>
+      `);
       w.document.close();
       w.focus();
-      w.print();
     }
 
     function printConsent(resId, lang = 'ka') {
       const res = getReservationsData().find(r => Number(r.id) === Number(resId));
       if (!res) return;
       const room = findRoomById(res.roomId);
-      const w = window.open('', '_blank', 'width=900,height=900');
-      const isKa = lang !== 'en';
-      const content = isKa
-        ? `<h2>სტუმრის რეგისტრაციისა და თანხმობის ფორმა</h2>
-           <p><strong>სახელი:</strong> ${escapeHtml(res.guestName || '-')}</p>
-           <p><strong>პირადი ნომერი / პასპორტი:</strong> ${escapeHtml(res.guestIdNumber || '-')}</p>
-           <p><strong>მოქალაქეობა:</strong> ${escapeHtml(res.guestCitizenship || '-')}</p>
-           <p><strong>ოთახი:</strong> ${escapeHtml(room?.roomNumber || '-')} / ${escapeHtml(room?.roomType || '-')}</p>
-           <p><strong>პერიოდი:</strong> ${formatDate(res.checkinDate)} - ${formatDate(res.checkoutDate)}</p>
-           <h4>თანხმობა</h4>
-           <p>ვეთანხმები სასტუმროს შიდა წესებს და პერსონალური მონაცემების დამუშავებას მომსახურების მიზნებისთვის.</p>`
-        : `<h2>Guest Registration and Consent Form</h2>
-           <p><strong>Name:</strong> ${escapeHtml(res.guestName || '-')}</p>
-           <p><strong>ID / Passport:</strong> ${escapeHtml(res.guestIdNumber || '-')}</p>
-           <p><strong>Citizenship:</strong> ${escapeHtml(res.guestCitizenship || '-')}</p>
-           <p><strong>Room:</strong> ${escapeHtml(room?.roomNumber || '-')} / ${escapeHtml(room?.roomType || '-')}</p>
-           <p><strong>Dates:</strong> ${formatDate(res.checkinDate)} - ${formatDate(res.checkoutDate)}</p>
-           <h4>Consent</h4>
-           <p>I agree to hotel rules and personal data processing for service purposes.</p>`;
-      w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Consent</title></head><body style="font-family:Arial,sans-serif;padding:24px"><div class="consent-print">${content}<div style="margin-top:20px">ხელმოწერა / Signature: ____________________</div></div></body></html>`);
+      const w = window.open('', '_blank');
+      if (!w) return;
+      const isKa = lang === 'ka';
+      const title = isKa ? 'სტუმრის რეგისტრაციისა და თანხმობის ფორმა' : 'Guest Registration and Consent Form';
+      const consentText = isKa ? `
+        <p><strong>სასტუმროს დასახელება:</strong> ______________________________</p>
+        <p><strong>მისამართი:</strong> ________________________________________</p>
+        <p><strong>ტელეფონი / ელფოსტა:</strong> _______________________________</p>
+        <h4>სტუმრის ინფორმაცია</h4>
+        <p><strong>სახელი, გვარი:</strong> ${escapeHtml(res.guestName || '')}</p>
+        <p><strong>პირადი ნომერი / პასპორტის №:</strong> ${escapeHtml(res.guestIdNumber || '')}</p>
+        <p><strong>მოქალაქეობა:</strong> ${escapeHtml(res.guestCitizenship || '')}</p>
+        <p><strong>დაბადების თარიღი:</strong> ${escapeHtml(res.guestBirthDate || '')}</p>
+        <p><strong>ტელეფონის ნომერი:</strong> ${escapeHtml(res.guestPhone || '')}</p>
+        <p><strong>ელფოსტა (არასავალდებულო):</strong> ${escapeHtml(res.guestEmail || '')}</p>
+        <h4>განთავსების დეტალები</h4>
+        <p><strong>ჩექინის თარიღი:</strong> ${formatDate(res.checkinDate)}</p>
+        <p><strong>ჩექაუთის თარიღი:</strong> ${formatDate(res.checkoutDate)}</p>
+        <p><strong>ოთახის ნომერი / ტიპი:</strong> ${escapeHtml(room ? (room.roomName || room.roomNumber) : '-')} / ${escapeHtml(room?.roomType || '-')}</p>
+        <h4>თანხმობა და წესების მიღება</h4>
+        <p>მივიღე და გავეცანი სასტუმროს შიდა წესებს და ვეთანხმები მათ დაცვას;</p>
+        <p>ვიღებ პასუხისმგებლობას ნომერში არსებული ინვენტარის დაზიანების ან დაკარგვის შემთხვევაში;</p>
+        <p>ვეთანხმები, რომ სასტუმრო უფლებამოსილია დაამუშაოს ჩემი პერსონალური მონაცემები მხოლოდ მომსახურების გაწევის მიზნით;</p>
+        <p>ვაცნობიერებ, რომ ჩექაუთის დაგვიანების ან წესების დარღვევის შემთხვევაში შესაძლოა დამეკისროს დამატებითი გადასახადი.</p>
+        <p>☐ ვეთანხმები ზემოთ ჩამოთვლილ პირობებს</p>
+        <h4>ხელმოწერა</h4>
+        <p><strong>სტუმრის ხელმოწერა:</strong> _________________________________</p>
+        <p><strong>თარიღი:</strong> _____________________</p>
+        <p><strong>სასტუმროს წარმომადგენლის ხელმოწერა:</strong> __________________.</p>
+      ` : `
+        <p><strong>Hotel Name:</strong> ______________________________</p>
+        <p><strong>Address:</strong> ________________________________________</p>
+        <p><strong>Phone / Email:</strong> _______________________________</p>
+        <h4>Guest Information</h4>
+        <p><strong>Full Name:</strong> ${escapeHtml(res.guestName || '')}</p>
+        <p><strong>ID / Passport No.:</strong> ${escapeHtml(res.guestIdNumber || '')}</p>
+        <p><strong>Citizenship:</strong> ${escapeHtml(res.guestCitizenship || '')}</p>
+        <p><strong>Date of Birth:</strong> ${escapeHtml(res.guestBirthDate || '')}</p>
+        <p><strong>Phone Number:</strong> ${escapeHtml(res.guestPhone || '')}</p>
+        <p><strong>Email (optional):</strong> ${escapeHtml(res.guestEmail || '')}</p>
+        <h4>Accommodation Details</h4>
+        <p><strong>Check-in Date:</strong> ${formatDate(res.checkinDate)}</p>
+        <p><strong>Check-out Date:</strong> ${formatDate(res.checkoutDate)}</p>
+        <p><strong>Room No. / Type:</strong> ${escapeHtml(room ? (room.roomName || room.roomNumber) : '-')} / ${escapeHtml(room?.roomType || '-')}</p>
+        <h4>Consent and Rules</h4>
+        <p>I have received and read the hotel rules and agree to comply with them;</p>
+        <p>I accept responsibility for any damage or loss of room inventory;</p>
+        <p>I agree that the hotel may process my personal data solely for service purposes;</p>
+        <p>I acknowledge that late checkout or rule violations may result in additional charges.</p>
+        <p>☐ I agree to the terms listed above</p>
+        <h4>Signature</h4>
+        <p><strong>Guest Signature:</strong> _________________________________</p>
+        <p><strong>Date:</strong> _____________________</p>
+        <p><strong>Hotel Representative Signature:</strong> __________________.</p>
+      `;
+      w.document.write(`
+        <!DOCTYPE html>
+        <html lang="${isKa ? 'ka' : 'en'}">
+        <head>
+          <meta charset="UTF-8">
+          <title>${title}</title>
+          <style>
+            @page { size: A4; margin: 14mm; }
+            body { font-family: Arial, sans-serif; padding: 0; color: #0f172a; font-size: 12px; }
+            .consent-form { padding: 14px; border: 1px solid #e2e8f0; }
+            h3 { text-align: center; margin-bottom: 10px; font-size: 16px; }
+            h4 { margin-top: 10px; margin-bottom: 6px; font-size: 13px; }
+            p { margin-bottom: 6px; line-height: 1.35; }
+            @media print { .no-print { display: none; } }
+          </style>
+        </head>
+        <body>
+          <div class="consent-form">
+            <h3>${title}</h3>
+            ${consentText}
+          </div>
+          <div class="no-print" style="margin-top: 16px;"><button onclick="window.print()">${isKa ? 'ბეჭდვა' : 'Print'}</button></div>
+        </body>
+        </html>
+      `);
       w.document.close();
       w.focus();
-      w.print();
+    }
+
+    function openRoomEdit(roomId) {
+      const room = findRoomById(roomId);
+      if (!room) return;
+      openModal('custom');
+      document.getElementById('modal-title').textContent = 'ნომრის რედაქტირება';
+      document.getElementById('modal-content').innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input id="editRoomNumber" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(room.roomNumber)}" placeholder="ნომერი">
+          <input id="editRoomName" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(room.roomName)}" placeholder="სახელი">
+          <select id="editRoomType" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${getRoomTypes().map(t => `<option ${room.roomType===t?'selected':''}>${t}</option>`).join('')}</select>
+          <input id="editRoomPrice" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.basePrice || 0)}">
+          <input id="editRoomFloor" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.floor || 1)}">
+          <input id="editRoomBeds" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.beds || 1)}">
+          <input id="editRoomMaxGuests" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.maxGuests || 1)}">
+          <select id="editRoomStatus" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option ${room.status==='available'?'selected':''}>available</option><option ${room.status==='booked'?'selected':''}>booked</option><option ${room.status==='occupied'?'selected':''}>occupied</option><option ${room.status==='cleaning'?'selected':''}>cleaning</option><option ${room.status==='maintenance'?'selected':''}>maintenance</option></select>
+        </div>
+        <button class="mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="saveRoomEdits(${room.id})">შენახვა</button>
+      `;
+    }
+
+    function saveRoomEdits(roomId) {
+      const rooms = getRoomsData();
+      const idx = rooms.findIndex(r => Number(r.id) === Number(roomId));
+      if (idx === -1) return;
+      rooms[idx] = {
+        ...rooms[idx],
+        roomNumber: document.getElementById('editRoomNumber').value.trim(),
+        roomName: document.getElementById('editRoomName').value.trim(),
+        roomType: document.getElementById('editRoomType').value,
+        basePrice: Number(document.getElementById('editRoomPrice').value || 0),
+        floor: Number(document.getElementById('editRoomFloor').value || 1),
+        beds: Number(document.getElementById('editRoomBeds').value || 1),
+        maxGuests: Number(document.getElementById('editRoomMaxGuests').value || 1),
+        status: document.getElementById('editRoomStatus').value
+      };
+      setRoomsData(rooms);
+      closeModal();
+      showToast('ნომერი განახლდა');
+      renderCurrentPage();
+    }
+
+    function addRoomFromModal() {
+      const roomNumber = document.getElementById('newRoomNumber').value.trim();
+      const roomName = document.getElementById('newRoomName').value.trim();
+      const roomType = document.getElementById('newRoomType').value;
+      const basePrice = Number(document.getElementById('newRoomPrice').value || 0);
+      const floor = Number(document.getElementById('newRoomFloor').value || 1);
+      const beds = Number(document.getElementById('newRoomBeds').value || 1);
+      const maxGuests = Number(document.getElementById('newRoomMaxGuests').value || 1);
+      const status = document.getElementById('newRoomStatus').value;
+      if (!roomNumber) return showToast('ნომრის ნომერი აუცილებელია', 'error');
+      const rooms = getRoomsData();
+      const nextId = rooms.length ? Math.max(...rooms.map(r => Number(r.id))) + 1 : 1;
+      rooms.push({ id: nextId, roomNumber, roomName: roomName || `Room ${roomNumber}`, roomType, basePrice, floor, beds, maxGuests, status });
+      setRoomsData(rooms);
+      closeModal();
+      showToast('ნომერი დაემატა');
+      renderCurrentPage();
+    }
+
+    function addGuestFromModal() {
+      const guestName = document.getElementById('newGuestModalName').value.trim();
+      const guestPhone = document.getElementById('newGuestModalPhone').value.trim();
+      const guestEmail = document.getElementById('newGuestModalEmail').value.trim();
+      const guestIdNumber = document.getElementById('newGuestModalId').value.trim();
+      const guestCitizenship = document.getElementById('newGuestModalCitizenship').value.trim();
+      const guestBirthDate = document.getElementById('newGuestModalBirthDate').value;
+      if (!guestName) return showToast('სახელი აუცილებელია', 'error');
+      const guests = getGuestsData();
+      guests.push({ guestName, guestPhone, guestEmail, guestIdNumber, guestCitizenship, guestBirthDate, flagged: false });
+      setGuestsData(guests);
+      closeModal();
+      showToast('სტუმარი დაემატა');
+      renderGuests();
+    }
+
+    function addPaymentFromModal() {
+      const reservationId = Number(document.getElementById('newPaymentReservationId').value);
+      const amount = Number(document.getElementById('newPaymentAmount').value || 0);
+      const method = document.getElementById('newPaymentMethod').value;
+      const status = document.getElementById('newPaymentStatusField').value;
+      const reservations = getReservationsData();
+      const reservation = reservations.find(r => Number(r.id) === Number(reservationId));
+      if (!reservation) return showToast('აირჩიეთ ჯავშანი', 'error');
+      const payments = getPaymentsData();
+      const nextId = Number(getState('nextPaymentId', 1));
+      payments.push({ id: nextId, reservationId, guestName: reservation.guestName, amount, method, status, createdAt: new Date().toISOString() });
+      setPaymentsData(payments);
+      setState('nextPaymentId', nextId + 1);
+      reservation.paymentStatus = status;
+      setReservationsData(reservations);
+      closeModal();
+      showToast('გადახდა დაემატა');
+      renderPayments();
+    }
+
+    function openPaymentEdit(paymentId) {
+      const payment = getPaymentsData().find(p => Number(p.id) === Number(paymentId));
+      if (!payment) return;
+      openModal('custom');
+      document.getElementById('modal-title').textContent = 'გადახდის რედაქტირება';
+      document.getElementById('modal-content').innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input id="editPaymentAmount" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(payment.amount || 0)}">
+          <select id="editPaymentMethod" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option ${payment.method==='cash'?'selected':''} value="cash">cash</option><option ${payment.method==='card'?'selected':''} value="card">card</option><option ${payment.method==='bank'?'selected':''} value="bank">bank</option></select>
+          <select id="editPaymentStatusField" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid" ${payment.status==='unpaid'?'selected':''}>unpaid</option><option value="partial" ${payment.status==='partial'?'selected':''}>partial</option><option value="paid" ${payment.status==='paid'?'selected':''}>paid</option></select>
+        </div>
+        <button class="mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="savePaymentEdits(${payment.id})">შენახვა</button>
+      `;
+    }
+
+    function savePaymentEdits(paymentId) {
+      const payments = getPaymentsData();
+      const idx = payments.findIndex(p => Number(p.id) === Number(paymentId));
+      if (idx === -1) return;
+      payments[idx] = {
+        ...payments[idx],
+        amount: Number(document.getElementById('editPaymentAmount').value || 0),
+        method: document.getElementById('editPaymentMethod').value,
+        status: document.getElementById('editPaymentStatusField').value
+      };
+      setPaymentsData(payments);
+      const reservations = getReservationsData();
+      const r = reservations.find(x => Number(x.id) === Number(payments[idx].reservationId));
+      if (r) r.paymentStatus = payments[idx].status;
+      setReservationsData(reservations);
+      closeModal();
+      showToast('გადახდა განახლდა');
+      renderPayments();
+    }
+
+    function printPaymentInvoice(paymentId) {
+      const payment = getPaymentsData().find(p => Number(p.id) === Number(paymentId));
+      if (!payment) return;
+      const reservations = getReservationsData();
+      const res = reservations.find(r => Number(r.id) === Number(payment.reservationId));
+      if (!res) return;
+      printInvoice(res.id);
     }
 
     function renderChannels() {
@@ -1060,7 +1409,44 @@
         `;
       } else if (type === 'new-room') {
         title.textContent = 'ახალი ნომერი';
-        content.innerHTML = `<div class='space-y-3'><input class='w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700' placeholder='ნომერი (მაგ. 101)'><select class='w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700'><option>Single</option><option>Double</option><option>Triple</option><option>Family</option><option>Suite</option></select><button class='px-4 py-2 bg-sky-600 text-white rounded-lg' onclick='showToast("ნომერი დამატებულია");closeModal()'>შენახვა</button></div>`;
+        content.innerHTML = `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input id="newRoomNumber" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="ნომერი (მაგ: 101)">
+            <input id="newRoomName" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="სახელი">
+            <select id="newRoomType" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>Single</option><option>Double</option><option>Triple</option><option>Family</option><option>Suite</option></select>
+            <input id="newRoomPrice" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="ღამის ფასი">
+            <input id="newRoomFloor" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="სართული" value="1">
+            <input id="newRoomBeds" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="საწოლები" value="1">
+            <input id="newRoomMaxGuests" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაქს სტუმრები" value="2">
+            <select id="newRoomStatus" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>available</option><option>booked</option><option>occupied</option><option>cleaning</option><option>maintenance</option></select>
+          </div>
+          <button class='mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg' onclick='addRoomFromModal()'>შენახვა</button>
+        `;
+      } else if (type === 'new-guest') {
+        title.textContent = 'ახალი სტუმარი';
+        content.innerHTML = `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input id="newGuestModalName" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="სახელი *">
+            <input id="newGuestModalPhone" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="ტელეფონი">
+            <input id="newGuestModalEmail" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="ელფოსტა">
+            <input id="newGuestModalId" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="პირადი ნომერი / პასპორტი">
+            <input id="newGuestModalCitizenship" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მოქალაქეობა">
+            <input id="newGuestModalBirthDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
+          </div>
+          <button class='mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg' onclick='addGuestFromModal()'>შენახვა</button>
+        `;
+      } else if (type === 'new-payment') {
+        title.textContent = 'ახალი გადახდა';
+        const reservations = getReservationsData();
+        content.innerHTML = `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <select id="newPaymentReservationId" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${reservations.map(r => `<option value="${r.id}">#${r.id} • ${escapeHtml(r.guestName)} • ოთახი ${escapeHtml(findRoomById(r.roomId)?.roomNumber || '-')}</option>`).join('')}</select>
+            <input id="newPaymentAmount" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="თანხა">
+            <select id="newPaymentMethod" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="cash">cash</option><option value="card">card</option><option value="bank">bank</option></select>
+            <select id="newPaymentStatusField" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid">unpaid</option><option value="partial">partial</option><option value="paid">paid</option></select>
+          </div>
+          <button class='mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg' onclick='addPaymentFromModal()'>შენახვა</button>
+        `;
       } else if (type === 'custom') {
         return;
       } else {
