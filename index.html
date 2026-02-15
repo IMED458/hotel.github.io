@@ -484,20 +484,36 @@
       }));
       const rows = rooms.map(room => {
         const cellRow = dayCells.map(d => `<div class="timeline-cell ${weekendIndexes.has(d) ? 'bg-amber-50/60 dark:bg-amber-900/10' : ''}"></div>`).join('');
-        const rowReservations = reservations.filter(r => Number(r.roomId) === Number(room.id));
-        const bars = rowReservations.map(r => {
-          const cin = parseISODateLocal(r.checkinDate);
-          const cout = parseISODateLocal(r.checkoutDate);
-          if (!cin || !cout) return '';
-          const start = Math.max(1, cin.getMonth() === date.getMonth() ? cin.getDate() : 1);
-          const end = Math.min(daysInMonth, cout.getMonth() === date.getMonth() ? cout.getDate() : daysInMonth);
-          const left = 160 + (start - 1) * 28 + 1;
-          const width = Math.max(26, (end - start + 1) * 28 - 3);
+        const rowReservations = reservations
+          .filter(r => Number(r.roomId) === Number(room.id))
+          .map(r => {
+            const cin = parseISODateLocal(r.checkinDate);
+            const cout = parseISODateLocal(r.checkoutDate);
+            if (!cin || !cout) return null;
+            const start = Math.max(1, cin.getMonth() === date.getMonth() ? cin.getDate() : 1);
+            const end = Math.min(daysInMonth, cout.getMonth() === date.getMonth() ? cout.getDate() : daysInMonth);
+            if (end < 1 || start > daysInMonth || end < start) return null;
+            return { reservation: r, start, end };
+          })
+          .filter(Boolean)
+          .sort((a, b) => a.start - b.start || a.end - b.end);
+
+        // Assign each reservation to the first non-overlapping lane to avoid stacking collisions.
+        const laneEnds = [];
+        const bars = rowReservations.map(item => {
+          let lane = 0;
+          while (lane < laneEnds.length && item.start <= laneEnds[lane]) lane++;
+          laneEnds[lane] = item.end;
+          const top = 5 + lane * 34;
+          const left = 160 + (item.start - 1) * 28 + 1;
+          const width = Math.max(26, (item.end - item.start + 1) * 28 - 3);
+          const r = item.reservation;
           const cls = r.status === 'Checked-in' ? 'checkedin' : r.status === 'Checked-out' ? 'checkout' : 'reserved';
-          return `<div class="reservation-bar ${cls}" style="left:${left}px;width:${width}px" onclick="openReservationDetails(${r.id})">${escapeHtml(r.guestName || '-')}</div>`;
+          return `<div class="reservation-bar ${cls}" style="left:${left}px;top:${top}px;width:${width}px" onclick="openReservationDetails(${r.id})">${escapeHtml(r.guestName || '-')}</div>`;
         }).join('');
+        const rowMinHeight = Math.max(42, laneEnds.length * 34 + 10);
         return `
-          <div class="timeline-row" style="--days-in-month:${daysInMonth}">
+          <div class="timeline-row" style="--days-in-month:${daysInMonth};min-height:${rowMinHeight}px">
             <div class="timeline-cell timeline-room">${room.roomName} <span class="text-[10px] text-gray-500 ml-2">${room.roomType}</span></div>
             ${cellRow}
             ${bars}
