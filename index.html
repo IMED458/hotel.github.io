@@ -106,7 +106,10 @@
       <div class="p-6 border-b border-gray-100 dark:border-gray-700 grid grid-cols-[1fr_auto_1fr] items-center">
         <h3 id="modal-title" class="text-lg font-semibold text-gray-900 dark:text-white justify-self-start">ფორმა</h3>
         <div id="modal-header-amount" class="hidden text-3xl font-extrabold text-red-600 tracking-tight justify-self-center"></div>
-        <button onclick="closeModal()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg justify-self-end">✕</button>
+        <div class="justify-self-end flex items-center gap-2">
+          <span id="modal-header-source-logo" class="hidden channel-logo-badge" title=""></span>
+          <button onclick="closeModal()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">✕</button>
+        </div>
       </div>
       <div id="modal-content" class="p-6 overflow-y-auto flex-1"></div>
     </div>

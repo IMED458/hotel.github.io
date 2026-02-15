@@ -347,10 +347,18 @@
       const source = getReservationSourceInfo(reservation);
       return `
         <div class="reservation-bar-content">
-          <span class="channel-logo-badge" title="${escapeHtml(source.title)}"><img class="channel-logo-image" src="${escapeHtml(source.icon)}" alt="${escapeHtml(source.title)}"></span>
           <span class="reservation-guest-name">${escapeHtml(reservation?.guestName || '-')}</span>
+          <span class="channel-logo-badge" title="${escapeHtml(source.title)}"><img class="channel-logo-image" src="${escapeHtml(source.icon)}" alt="${escapeHtml(source.title)}"></span>
         </div>
       `;
+    }
+    function updateModalHeaderSourceLogo(reservation) {
+      const logoEl = document.getElementById('modal-header-source-logo');
+      if (!logoEl) return;
+      const source = getReservationSourceInfo(reservation || {});
+      logoEl.innerHTML = `<img class="channel-logo-image" src="${escapeHtml(source.icon)}" alt="${escapeHtml(source.title)}">`;
+      logoEl.title = source.title || '';
+      logoEl.classList.remove('hidden');
     }
     function getState(key, fallback) {
       try {
@@ -1874,6 +1882,7 @@
         headerAmount.classList.remove('hidden');
         updateReservationModalHeaderAmount(Number(res.totalPrice || 0));
       }
+      updateModalHeaderSourceLogo(res);
       document.getElementById('modal-content').innerHTML = `
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
           <label class="text-xs text-gray-500">სტუმრის სახელი<input id="editGuestName" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.guestName || '')}"></label>
@@ -2662,12 +2671,18 @@
       const title = document.getElementById('modal-title');
       const content = document.getElementById('modal-content');
       const headerAmount = document.getElementById('modal-header-amount');
+      const headerSourceLogo = document.getElementById('modal-header-source-logo');
       container.classList.remove('hidden');
       const calendarContext = calendarFullscreen && currentPage === 'calendar' && type === 'new-reservation';
       container.classList.toggle('calendar-context', !!calendarContext);
       if (headerAmount) {
         headerAmount.classList.add('hidden');
         headerAmount.textContent = '';
+      }
+      if (headerSourceLogo) {
+        headerSourceLogo.classList.add('hidden');
+        headerSourceLogo.innerHTML = '';
+        headerSourceLogo.title = '';
       }
       if (type === 'new-reservation') {
         title.textContent = 'ახალი ჯავშანი';
