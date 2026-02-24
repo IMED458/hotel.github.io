@@ -4,6 +4,21 @@
       ['pricing', 'ფასები / ტარიფები', 'pricing'], ['channels', 'Channel Manager', 'channels'],
       ['reports', 'რეპორტები', 'reports'], ['settings', 'პარამეტრები', 'settings']
     ];
+    const ROLE_ACCOUNTS = {
+      manager: { name: 'მენეჯერი', email: 'manager@hotel.ge', avatar: 'M' },
+      front_office: { name: 'Front Office', email: 'frontoffice@hotel.ge', avatar: 'F' },
+      accountant: { name: 'ბუღალტერი', email: 'accounting@hotel.ge', avatar: 'B' }
+    };
+    const ROLE_PAGE_ACCESS = {
+      manager: ['dashboard', 'calendar', 'rooms', 'reservations', 'guests', 'checkin', 'payments', 'pricing', 'channels', 'reports', 'settings'],
+      front_office: ['dashboard', 'calendar', 'rooms', 'reservations', 'guests', 'checkin', 'payments'],
+      accountant: ['dashboard', 'reservations', 'payments', 'reports']
+    };
+    const ROLE_PERMISSIONS = {
+      manager: { roomManage: true, pricingManage: true, channelsView: true, settingsView: true, reservationsManage: true, guestManage: true, paymentsManage: true },
+      front_office: { roomManage: false, pricingManage: false, channelsView: false, settingsView: false, reservationsManage: true, guestManage: true, paymentsManage: true },
+      accountant: { roomManage: false, pricingManage: false, channelsView: false, settingsView: false, reservationsManage: false, guestManage: false, paymentsManage: true }
+    };
 
     const defaultConfig = {
       hotel_name: 'Grand Hotel',
@@ -41,6 +56,7 @@
     let config = { ...defaultConfig };
     let allData = [];
     let currentPage = 'dashboard';
+    let currentRole = 'manager';
     let calendarDate = new Date();
     let calendarView = 'week';
     let sidebarCollapsed = false;
@@ -90,12 +106,46 @@
 
     function initNav() {
       const nav = document.getElementById('main-nav');
-      nav.innerHTML = NAV_ITEMS.map(([id, label, icon]) => `
+      nav.innerHTML = NAV_ITEMS
+      .filter(([id]) => hasPageAccess(id))
+      .map(([id, label, icon]) => `
         <button onclick="navigateTo('${id}')" class="nav-item w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700" data-page="${id}" title="${label}">
           <span class="nav-icon">${navIconSvg(icon)}</span>
           <span class="sidebar-label">${label}</span>
         </button>
       `).join('');
+    }
+
+    function hasPageAccess(page) {
+      return (ROLE_PAGE_ACCESS[currentRole] || ROLE_PAGE_ACCESS.manager).includes(page);
+    }
+
+    function can(permission) {
+      const rolePerms = ROLE_PERMISSIONS[currentRole] || ROLE_PERMISSIONS.manager;
+      return !!rolePerms[permission];
+    }
+
+    function setRole(role) {
+      const nextRole = ROLE_ACCOUNTS[role] ? role : 'manager';
+      currentRole = nextRole;
+      setState('currentRole', nextRole);
+      applyRoleUI();
+    }
+
+    function applyRoleUI() {
+      const account = ROLE_ACCOUNTS[currentRole] || ROLE_ACCOUNTS.manager;
+      const roleNameEl = document.getElementById('user-role-name');
+      const roleEmailEl = document.getElementById('user-role-email');
+      const avatarEl = document.getElementById('user-avatar');
+      const roleSwitcher = document.getElementById('role-switcher');
+      if (roleNameEl) roleNameEl.textContent = account.name;
+      if (roleEmailEl) roleEmailEl.textContent = account.email;
+      if (avatarEl) avatarEl.textContent = account.avatar;
+      if (roleSwitcher) roleSwitcher.value = currentRole;
+
+      initNav();
+      if (!hasPageAccess(currentPage)) currentPage = 'dashboard';
+      renderCurrentPage();
     }
 
     function navIconSvg(icon) {
@@ -168,6 +218,8 @@
     }
 
     async function initialize() {
+      currentRole = getState('currentRole', 'manager');
+      if (!ROLE_ACCOUNTS[currentRole]) currentRole = 'manager';
       initNav();
       ensureHotelState();
       sidebarCollapsed = !!getState('sidebarCollapsed', false);
@@ -206,10 +258,20 @@
       applyConfig();
       applySidebarState();
       setThemeIcon();
+      const roleSwitcher = document.getElementById('role-switcher');
+      if (roleSwitcher) {
+        roleSwitcher.value = currentRole;
+        roleSwitcher.addEventListener('change', (e) => setRole(e.target.value));
+      }
+      applyRoleUI();
       navigateTo('dashboard');
     }
 
     function navigateTo(page) {
+      if (!hasPageAccess(page)) {
+        showToast('ამ განყოფილებაზე წვდომა არ გაქვთ', 'warning');
+        page = 'dashboard';
+      }
       currentPage = page;
       if (page !== 'calendar' && calendarFullscreen) {
         calendarFullscreen = false;
@@ -229,6 +291,7 @@
     }
 
     function renderCurrentPage() {
+      if (!hasPageAccess(currentPage)) return navigateTo('dashboard');
       if (currentPage === 'dashboard') return renderDashboard();
       if (currentPage === 'calendar') return renderCalendar();
       if (currentPage === 'rooms') return renderRooms();
@@ -574,6 +637,7 @@
     }
 
     function renderDashboard() {
+      if (currentRole === 'accountant') return renderAccountantDashboard();
       ensureHotelState();
       const rooms = getRoomsData();
       const reservations = getReservationsData();
@@ -975,6 +1039,63 @@
       `;
     }
 
+    function renderAccountantDashboard() {
+      ensureHotelState();
+      const reservations = getReservationsData();
+      const payments = getPaymentsData();
+      const totalBilled = reservations.reduce((s, r) => s + Number(r.totalPrice || 0), 0);
+      const totalPaid = reservations.reduce((s, r) => s + normalizeReservationPayment(r), 0);
+      const totalDue = reservations.reduce((s, r) => s + reservationDueAmount(r), 0);
+      const invoicesCount = payments.length;
+      const topDebtors = reservations
+        .map((r) => ({ ...r, due: reservationDueAmount(r) }))
+        .filter((r) => r.due > 0)
+        .sort((a, b) => b.due - a.due)
+        .slice(0, 8);
+
+      document.getElementById('page-dashboard').innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          ${card('სულ დარიცხული', `${config.currency_symbol}${totalBilled.toLocaleString('en-US')}`, 'revenue')}
+          ${card('მიღებული გადახდები', `${config.currency_symbol}${totalPaid.toLocaleString('en-US')}`, 'revenue')}
+          ${card('დასარჩენი', `${config.currency_symbol}${totalDue.toLocaleString('en-US')}`, 'checkout')}
+          ${card('ინვოისების რაოდენობა', `${invoicesCount}`, 'dashboard')}
+        </div>
+        <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-semibold">დავალიანებების სია</h3>
+              <button onclick="navigateTo('payments')" class="px-3 py-2 rounded-lg bg-sky-600 text-white text-sm">გადახდებში გადასვლა</button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="text-left text-gray-500"><tr><th class="pb-3">სტუმარი</th><th class="pb-3">ჯავშანი</th><th class="pb-3">ნომერი</th><th class="pb-3">დასარჩენი</th></tr></thead>
+                <tbody>
+                  ${topDebtors.map((r) => `
+                    <tr class="border-t border-gray-100 dark:border-gray-700">
+                      <td class="py-3">${escapeHtml(r.guestName || 'სტუმარი')}</td>
+                      <td class="py-3">#${r.id}</td>
+                      <td class="py-3">${escapeHtml(findRoomById(r.roomId)?.roomNumber || '-')}</td>
+                      <td class="py-3 font-semibold text-red-600">${config.currency_symbol}${Number(r.due || 0).toLocaleString('en-US')}</td>
+                    </tr>
+                  `).join('') || '<tr><td colspan=\"4\" class=\"py-6 text-center text-gray-500\">დავალიანება არ არის</td></tr>'}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="space-y-6">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+              <h3 class="font-semibold mb-4">სწრაფი მოქმედებები</h3>
+              <div class="space-y-2 text-sm">
+                <button onclick="navigateTo('payments')" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-left">გადახდების მართვა</button>
+                <button onclick="navigateTo('reports')" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-left">ფინანსური რეპორტები</button>
+                <button onclick="navigateTo('reservations')" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-left">ინვოისების გენერირება</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     function changeCalendarView(view) {
       calendarView = view;
       document.querySelectorAll('.calendar-view-btn').forEach(btn => {
@@ -1171,6 +1292,7 @@
     }
 
     function renderRooms() {
+      const canManageRooms = can('roomManage');
       const rooms = getRoomsData();
       const filteredRooms = rooms.filter((r) => {
         const typeOk = !roomFilters.roomType || r.roomType === roomFilters.roomType;
@@ -1182,7 +1304,7 @@
       document.getElementById('page-rooms').innerHTML = `
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-bold">ნომრების მართვა</h2>
-          <button onclick="openModal('new-room')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი ნომერი</button>
+          ${canManageRooms ? '<button onclick="openModal(\'new-room\')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი ნომერი</button>' : ''}
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-xl p-4 mb-5 border border-gray-200 dark:border-gray-700">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
@@ -1221,10 +1343,10 @@
               <div class="lg:col-span-3 text-xs ${r.supportsExtraBed ? 'text-emerald-600' : 'text-gray-400'}">${r.supportsExtraBed ? `ხელმისაწვდომია (მაქს ${Number(r.maxExtraBeds || 1)})` : 'მიუწვდომელია'}</div>
               <div class="lg:col-span-1 font-semibold lg:text-right">${config.currency_symbol}${Number(r.basePrice || 0).toLocaleString('en-US')}</div>
               <div class="lg:col-span-1 lg:text-right">
-                <div class="flex lg:justify-end gap-2">
+                ${canManageRooms ? `<div class="flex lg:justify-end gap-2">
                   <button class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 dark:bg-gray-700" onclick="openRoomEdit(${r.id})">რედაქტირება</button>
                   <button class="px-3 py-1.5 text-xs rounded-lg bg-red-100 text-red-700" onclick="deleteRoom(${r.id})">წაშლა</button>
-                </div>
+                </div>` : '<span class="text-xs text-gray-400">შეზღუდული</span>'}
               </div>
             </div>
           `).join('') || '<div class="py-8 text-center text-gray-500">ფილტრზე ოთახი ვერ მოიძებნა</div>'}
@@ -1233,11 +1355,12 @@
     }
 
     function renderReservations() {
+      const canManageReservations = can('reservationsManage');
       const reservations = getReservationsData();
       document.getElementById('page-reservations').innerHTML = `
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-bold">ჯავშნების მართვა</h2>
-          <button onclick="openModal('new-reservation')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი ჯავშანი</button>
+          ${canManageReservations ? '<button onclick="openModal(\'new-reservation\')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი ჯავშანი</button>' : ''}
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-xl p-4 mb-6 border border-gray-100 dark:border-gray-700 flex flex-wrap gap-3">
           <input type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
@@ -1285,11 +1408,12 @@
     }
 
     function renderGuests() {
+      const canManageGuests = can('guestManage');
       const guests = getGuestsData();
       document.getElementById('page-guests').innerHTML = `
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-bold">სტუმრების მართვა</h2>
-          <button onclick="openModal('new-guest')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი სტუმარი</button>
+          ${canManageGuests ? '<button onclick="openModal(\'new-guest\')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი სტუმარი</button>' : ''}
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           ${guests.map((g, idx) => `
@@ -1305,8 +1429,8 @@
               ${g.flagged ? '<div class="mt-2 text-xs text-red-600">⚠ მონიშნულია</div>' : ''}
               ${g.blacklisted ? '<div class="mt-2 inline-flex px-2 py-1 rounded-full text-xs bg-red-100 text-red-700">შავი სია</div>' : ''}
               <div class="mt-3 flex gap-2">
-                <button class="px-3 py-2 text-xs rounded-lg bg-gray-100 dark:bg-gray-700" onclick="openGuestEdit('${escapeHtml(g.guestIdNumber || '')}', ${idx})">რედაქტირება</button>
-                <button class="px-3 py-2 text-xs rounded-lg bg-red-100 text-red-700" onclick="deleteGuest('${escapeHtml(g.guestIdNumber || '')}', ${idx})">წაშლა</button>
+                ${canManageGuests ? `<button class="px-3 py-2 text-xs rounded-lg bg-gray-100 dark:bg-gray-700" onclick="openGuestEdit('${escapeHtml(g.guestIdNumber || '')}', ${idx})">რედაქტირება</button>` : ''}
+                ${canManageGuests ? `<button class="px-3 py-2 text-xs rounded-lg bg-red-100 text-red-700" onclick="deleteGuest('${escapeHtml(g.guestIdNumber || '')}', ${idx})">წაშლა</button>` : ''}
               </div>
             </div>
           `).join('')}
@@ -1341,6 +1465,7 @@
     }
 
     function renderPayments() {
+      const canManagePayments = can('paymentsManage');
       ensureHotelState();
       const reservations = getReservationsData();
       syncPaymentsFromReservations();
@@ -1350,7 +1475,7 @@
       document.getElementById('page-payments').innerHTML = `
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-bold">გადახდები და ინვოისები</h2>
-          <button onclick="openModal('new-payment')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი გადახდა</button>
+          ${canManagePayments ? '<button onclick="openModal(\'new-payment\')" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ახალი გადახდა</button>' : ''}
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div class="bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700"><p class="text-sm text-gray-500">მიღებული</p><p class="text-2xl font-bold">${config.currency_symbol}${paid.toLocaleString('en-US')}</p></div>
@@ -1367,7 +1492,7 @@
                 <td class="px-4 py-3">${config.currency_symbol}${Number(p.amount || 0).toLocaleString('en-US')}</td>
                 <td class="px-4 py-3">${paymentMethodLabel(p.method || '-')}</td>
                 <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs ${paymentBadge(p.status)}">${paymentStatusLabel(p.status)}</span></td>
-                <td class="px-4 py-3"><div class="flex gap-2"><button class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" onclick="openPaymentEdit(${p.id})">რედაქტირება</button><button class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" onclick="printPaymentInvoice(${p.id})">ინვოისი</button><button class="px-2 py-1 rounded bg-red-100 text-red-700 text-xs" onclick="deletePayment(${p.id})">წაშლა</button></div></td>
+                <td class="px-4 py-3"><div class="flex gap-2">${canManagePayments ? `<button class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" onclick="openPaymentEdit(${p.id})">რედაქტირება</button>` : ''}<button class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" onclick="printPaymentInvoice(${p.id})">ინვოისი</button>${canManagePayments ? `<button class="px-2 py-1 rounded bg-red-100 text-red-700 text-xs" onclick="deletePayment(${p.id})">წაშლა</button>` : ''}</div></td>
               </tr>
             `).join('') || '<tr><td colspan="6" class="px-4 py-6 text-center text-gray-500">გადახდები არ არის</td></tr>'}</tbody>
           </table>
@@ -1399,6 +1524,10 @@
     }
 
     function renderPricing() {
+      if (!can('pricingManage')) {
+        document.getElementById('page-pricing').innerHTML = '<div class="bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-100 dark:border-gray-700 text-sm text-gray-500">ფასები/ტარიფებზე წვდომა შეზღუდულია.</div>';
+        return;
+      }
       const rates = getMonthlyRates();
       const policy = getPolicySettings();
       document.getElementById('page-pricing').innerHTML = `
@@ -1458,6 +1587,10 @@
     }
 
     function renderSettings() {
+      if (!can('settingsView')) {
+        document.getElementById('page-settings').innerHTML = '<div class="bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-100 dark:border-gray-700 text-sm text-gray-500">პარამეტრებზე წვდომა შეზღუდულია.</div>';
+        return;
+      }
       const policy = getPolicySettings();
       document.getElementById('page-settings').innerHTML = `
         <h2 class="text-xl font-bold mb-6">პარამეტრები</h2>
@@ -1524,6 +1657,7 @@
     }
 
     function saveHotelSettings() {
+      if (!can('settingsView')) return showToast('პარამეტრების შეცვლის უფლება არ გაქვთ', 'error');
       config = {
         ...config,
         hotel_name: document.getElementById('settingsHotelName')?.value.trim() || defaultConfig.hotel_name,
@@ -1538,6 +1672,7 @@
     }
 
     function savePolicySettings() {
+      if (!can('settingsView')) return showToast('პოლიტიკის შეცვლის უფლება არ გაქვთ', 'error');
       const checkoutTime = document.getElementById('policyCheckoutTime')?.value || defaultConfig.default_checkout_time;
       const lateCheckoutHourlyRate = Math.max(0, Number(document.getElementById('policyLateHourlyRate')?.value || 0));
       const extraBedRate = Math.max(0, Number(document.getElementById('policyExtraBedRate')?.value || 0));
@@ -1554,6 +1689,7 @@
     }
 
     function saveMonthlyRates() {
+      if (!can('pricingManage')) return showToast('ფასების შეცვლის უფლება არ გაქვთ', 'error');
       const rates = {};
       for (let m = 1; m <= 12; m++) {
         rates[m] = {};
@@ -1636,6 +1772,7 @@
     }
 
     function addNewReservation() {
+      if (!can('reservationsManage')) return showToast('ჯავშნების მართვის უფლება არ გაქვთ', 'error');
       const guestName = document.getElementById('newGuestName').value.trim();
       const guestPhone = document.getElementById('newGuestPhone').value.trim();
       const guestEmail = document.getElementById('newGuestEmail').value.trim();
@@ -1907,6 +2044,7 @@
     function openReservationDetails(resId) {
       const res = getReservationsData().find(r => Number(r.id) === Number(resId));
       if (!res) return;
+      const canManageReservations = can('reservationsManage');
       const room = findRoomById(res.roomId);
       const policy = getPolicySettings();
       const roomSupportsExtraBed = !!room?.supportsExtraBed;
@@ -1951,10 +2089,10 @@
         <div class="mt-1 text-xs text-gray-500" id="editRoomPriceHint"></div>
         <div class="mt-2 text-sm font-semibold text-red-600" id="editDueSummary"></div>
         <div class="flex gap-2 mt-4 flex-wrap">
-          <button class="px-3 py-2 rounded bg-sky-600 text-white" onclick="saveReservationEdits(${res.id})">შენახვა</button>
-          <button class="px-3 py-2 rounded bg-emerald-600 text-white" onclick="checkInReservation(${res.id})">Check-in</button>
-          <button class="px-3 py-2 rounded bg-amber-500 text-white" onclick="checkOutReservation(${res.id})">Check-out</button>
-          <button class="px-3 py-2 rounded bg-red-600 text-white" onclick="deleteReservation(${res.id})">წაშლა</button>
+          ${canManageReservations ? `<button class="px-3 py-2 rounded bg-sky-600 text-white" onclick="saveReservationEdits(${res.id})">შენახვა</button>` : ''}
+          ${canManageReservations ? `<button class="px-3 py-2 rounded bg-emerald-600 text-white" onclick="checkInReservation(${res.id})">Check-in</button>` : ''}
+          ${canManageReservations ? `<button class="px-3 py-2 rounded bg-amber-500 text-white" onclick="checkOutReservation(${res.id})">Check-out</button>` : ''}
+          ${canManageReservations ? `<button class="px-3 py-2 rounded bg-red-600 text-white" onclick="deleteReservation(${res.id})">წაშლა</button>` : ''}
           <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printConsent(${res.id}, 'ka')">თანხმობა KA</button>
           <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printConsent(${res.id}, 'en')">თანხმობა (EN)</button>
         </div>
@@ -1993,6 +2131,7 @@
     }
 
     function saveReservationEdits(resId) {
+      if (!can('reservationsManage')) return showToast('ჯავშნების მართვის უფლება არ გაქვთ', 'error');
       const reservations = getReservationsData();
       const idx = reservations.findIndex(r => Number(r.id) === Number(resId));
       if (idx === -1) return;
@@ -2047,6 +2186,7 @@
     }
 
     function deleteReservation(resId) {
+      if (!can('reservationsManage')) return showToast('ჯავშნების მართვის უფლება არ გაქვთ', 'error');
       if (!confirm('ნამდვილად გსურთ ჯავშნის წაშლა?')) return;
       const reservations = getReservationsData().filter(r => Number(r.id) !== Number(resId));
       setReservationsData(reservations);
@@ -2056,6 +2196,7 @@
     }
 
     function checkInReservation(resId) {
+      if (!can('reservationsManage')) return showToast('ჯავშნების მართვის უფლება არ გაქვთ', 'error');
       const reservations = getReservationsData();
       const idx = reservations.findIndex(r => Number(r.id) === Number(resId));
       if (idx === -1) return;
@@ -2076,6 +2217,7 @@
     }
 
     function checkOutReservation(resId) {
+      if (!can('reservationsManage')) return showToast('ჯავშნების მართვის უფლება არ გაქვთ', 'error');
       const reservations = getReservationsData();
       const idx = reservations.findIndex(r => Number(r.id) === Number(resId));
       if (idx === -1) return;
@@ -2275,6 +2417,7 @@
     }
 
     function openRoomEdit(roomId) {
+      if (!can('roomManage')) return showToast('ნომრების რედაქტირების უფლება არ გაქვთ', 'error');
       const room = findRoomById(roomId);
       if (!room) return;
       openModal('custom');
@@ -2300,6 +2443,7 @@
     }
 
     function saveRoomEdits(roomId) {
+      if (!can('roomManage')) return showToast('ნომრების რედაქტირების უფლება არ გაქვთ', 'error');
       const rooms = getRoomsData();
       const idx = rooms.findIndex(r => Number(r.id) === Number(roomId));
       if (idx === -1) return;
@@ -2324,6 +2468,7 @@
     }
 
     function deleteRoom(roomId) {
+      if (!can('roomManage')) return showToast('ნომრების წაშლის უფლება არ გაქვთ', 'error');
       const id = Number(roomId);
       const room = findRoomById(id);
       if (!room) return showToast('ნომერი ვერ მოიძებნა', 'error');
@@ -2339,6 +2484,7 @@
     }
 
     function addRoomFromModal() {
+      if (!can('roomManage')) return showToast('ნომრების დამატების უფლება არ გაქვთ', 'error');
       const roomNumber = document.getElementById('newRoomNumber').value.trim();
       const roomName = document.getElementById('newRoomName').value.trim();
       const roomType = document.getElementById('newRoomType').value;
@@ -2361,6 +2507,7 @@
     }
 
     function addGuestFromModal() {
+      if (!can('guestManage')) return showToast('სტუმრების მართვის უფლება არ გაქვთ', 'error');
       const guestName = document.getElementById('newGuestModalName').value.trim();
       const guestPhone = document.getElementById('newGuestModalPhone').value.trim();
       const guestEmail = document.getElementById('newGuestModalEmail').value.trim();
@@ -2380,6 +2527,7 @@
     }
 
     function openGuestEdit(guestIdNumber, idxHint = null) {
+      if (!can('guestManage')) return showToast('სტუმრების მართვის უფლება არ გაქვთ', 'error');
       const guests = getGuestsData();
       const idx = Number.isInteger(idxHint) ? idxHint : guests.findIndex(g => String(g.guestIdNumber || '') === String(guestIdNumber || ''));
       if (idx === -1) return;
@@ -2404,6 +2552,7 @@
     }
 
     function saveGuestEdits(originalId, idxHint) {
+      if (!can('guestManage')) return showToast('სტუმრების მართვის უფლება არ გაქვთ', 'error');
       const guests = getGuestsData();
       const idx = Number.isInteger(idxHint) ? idxHint : guests.findIndex(g => String(g.guestIdNumber || '') === String(originalId || ''));
       if (idx === -1) return;
@@ -2424,6 +2573,7 @@
     }
 
     function deleteGuest(guestIdNumber, idxHint = null) {
+      if (!can('guestManage')) return showToast('სტუმრების მართვის უფლება არ გაქვთ', 'error');
       const id = String(guestIdNumber || '').trim();
       if (!window.confirm('დარწმუნებული ხართ რომ გსურთ სტუმრის წაშლა?')) return;
       const guests = getGuestsData();
@@ -2438,6 +2588,7 @@
     }
 
     function addPaymentFromModal() {
+      if (!can('paymentsManage')) return showToast('გადახდების მართვის უფლება არ გაქვთ', 'error');
       const reservationId = Number(document.getElementById('newPaymentReservationId').value);
       const method = document.getElementById('newPaymentMethod').value;
       const status = document.getElementById('newPaymentStatusField').value;
@@ -2467,6 +2618,7 @@
     }
 
     function openPaymentEdit(paymentId) {
+      if (!can('paymentsManage')) return showToast('გადახდების მართვის უფლება არ გაქვთ', 'error');
       const payment = getPaymentsData().find(p => Number(p.id) === Number(paymentId));
       if (!payment) return;
       openModal('custom');
@@ -2489,6 +2641,7 @@
     }
 
     function savePaymentEdits(paymentId) {
+      if (!can('paymentsManage')) return showToast('გადახდების მართვის უფლება არ გაქვთ', 'error');
       const payments = getPaymentsData();
       const idx = payments.findIndex(p => Number(p.id) === Number(paymentId));
       if (idx === -1) return;
@@ -2522,6 +2675,7 @@
     }
 
     function deletePayment(paymentId) {
+      if (!can('paymentsManage')) return showToast('გადახდების მართვის უფლება არ გაქვთ', 'error');
       const id = Number(paymentId);
       const payments = getPaymentsData();
       const payment = payments.find((p) => Number(p.id) === id);
@@ -2555,6 +2709,10 @@
     }
 
     function renderChannels() {
+      if (!can('channelsView')) {
+        document.getElementById('page-channels').innerHTML = '<div class="bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-100 dark:border-gray-700 text-sm text-gray-500">Channel Manager-ზე წვდომა შეზღუდულია.</div>';
+        return;
+      }
       const c = getChannelConfig();
       document.getElementById('page-channels').innerHTML = `
         <div class="flex items-center justify-between mb-4">
@@ -2601,6 +2759,7 @@
     }
 
     function saveChannelSettings() {
+      if (!can('channelsView')) return showToast('Channel Manager-ზე წვდომა შეზღუდულია', 'error');
       const f = readChannelForm();
       setChannelConfig(f);
       configureAutoSyncScheduler();
@@ -2638,6 +2797,7 @@
     }
 
     async function testChannexConnection() {
+      if (!can('channelsView')) return showToast('Channel Manager-ზე წვდომა შეზღუდულია', 'error');
       try {
         const c = getChannelConfig();
         if (c.connectionMode === 'oauth') {
@@ -2663,6 +2823,7 @@
     }
 
     function startChannexOAuth() {
+      if (!can('channelsView')) return showToast('Channel Manager-ზე წვდომა შეზღუდულია', 'error');
       const f = readChannelForm();
       setChannelConfig(f);
       if (!f.authStartUrl) return showToast('OAuth დაწყების მისამართი სავალდებულოა', 'error');
@@ -2694,6 +2855,10 @@
 
     async function syncChannexData(kind, options = {}) {
       const { silent = false, noRender = false } = options || {};
+      if (!can('channelsView')) {
+        if (!silent) showToast('Channel Manager-ზე წვდომა შეზღუდულია', 'error');
+        return;
+      }
       const c = getChannelConfig();
       if (!c.isConnected) {
         if (!silent) showToast('ჯერ დააკავშირეთ Channex', 'warning');
@@ -2716,6 +2881,7 @@
     }
 
     function disconnectChannex() {
+      if (!can('channelsView')) return showToast('Channel Manager-ზე წვდომა შეზღუდულია', 'error');
       setChannelConfig({ isConnected: false, connectedAt: '', lastSyncAt: '', apiKey: '' });
       configureAutoSyncScheduler();
       showToast('Channex კავშირი გათიშულია', 'warning');
@@ -2747,6 +2913,10 @@
     }
 
     function openModal(type) {
+      if (type === 'new-room' && !can('roomManage')) return showToast('ნომრების დამატების უფლება არ გაქვთ', 'error');
+      if (type === 'new-reservation' && !can('reservationsManage')) return showToast('ჯავშნების დამატების უფლება არ გაქვთ', 'error');
+      if (type === 'new-guest' && !can('guestManage')) return showToast('სტუმრების დამატების უფლება არ გაქვთ', 'error');
+      if (type === 'new-payment' && !can('paymentsManage')) return showToast('გადახდების დამატების უფლება არ გაქვთ', 'error');
       const container = document.getElementById('modal-container');
       const title = document.getElementById('modal-title');
       const content = document.getElementById('modal-content');

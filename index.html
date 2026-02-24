@@ -58,10 +58,15 @@
 
       <div class="p-4 border-t border-gray-100 dark:border-gray-700">
         <div class="sidebar-user flex items-center gap-3">
-          <div class="w-10 h-10 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold">A</div>
+          <div id="user-avatar" class="w-10 h-10 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold">M</div>
           <div class="sidebar-text flex-1">
-            <p class="font-medium text-sm text-gray-900 dark:text-white">ადმინისტრატორი</p>
-            <p class="text-xs text-gray-500">admin@hotel.ge</p>
+            <p id="user-role-name" class="font-medium text-sm text-gray-900 dark:text-white">მენეჯერი</p>
+            <p id="user-role-email" class="text-xs text-gray-500">manager@hotel.ge</p>
+            <select id="role-switcher" class="mt-2 w-full text-xs px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
+              <option value="manager">მენეჯერი</option>
+              <option value="front_office">Front Office</option>
+              <option value="accountant">ბუღალტერი</option>
+            </select>
           </div>
           <button onclick="toggleDarkMode()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
             <span id="theme-icon" class="text-slate-500"></span>
