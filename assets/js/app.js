@@ -1,7 +1,7 @@
     const NAV_ITEMS = [
       ['dashboard', 'დეშბორდი', 'dashboard'], ['calendar', 'კალენდარი', 'calendar'], ['rooms', 'ნომრები', 'rooms'], ['reservations', 'ჯავშნები', 'reservations'],
       ['guests', 'სტუმრები', 'guests'], ['checkin', 'Check-in / Check-out', 'checkin'], ['payments', 'გადახდები / ინვოისები', 'payments'],
-      ['pricing', 'ფასები / ტარიფები', 'pricing'], ['channels', 'Channel Manager', 'channels'],
+      ['finance', 'ფინანსები', 'finance'], ['pricing', 'ფასები / ტარიფები', 'pricing'], ['channels', 'Channel Manager', 'channels'],
       ['reports', 'რეპორტები', 'reports'], ['settings', 'პარამეტრები', 'settings']
     ];
     const ROLE_ACCOUNTS = {
@@ -10,14 +10,14 @@
       accountant: { name: 'ბუღალტერი', email: 'accounting@hotel.ge', avatar: 'B' }
     };
     const ROLE_PAGE_ACCESS = {
-      manager: ['dashboard', 'calendar', 'rooms', 'reservations', 'guests', 'checkin', 'payments', 'pricing', 'channels', 'reports', 'settings'],
+      manager: ['dashboard', 'calendar', 'rooms', 'reservations', 'guests', 'checkin', 'payments', 'finance', 'pricing', 'channels', 'reports', 'settings'],
       front_office: ['dashboard', 'calendar', 'rooms', 'reservations', 'guests', 'checkin', 'payments'],
-      accountant: ['dashboard', 'reservations', 'payments', 'reports']
+      accountant: ['dashboard', 'reservations', 'payments', 'finance', 'reports']
     };
     const ROLE_PERMISSIONS = {
-      manager: { roomManage: true, pricingManage: true, channelsView: true, settingsView: true, reservationsManage: true, guestManage: true, paymentsManage: true },
-      front_office: { roomManage: false, pricingManage: false, channelsView: false, settingsView: false, reservationsManage: true, guestManage: true, paymentsManage: true },
-      accountant: { roomManage: false, pricingManage: false, channelsView: false, settingsView: false, reservationsManage: false, guestManage: false, paymentsManage: true }
+      manager: { roomManage: true, pricingManage: true, channelsView: true, settingsView: true, reservationsManage: true, guestManage: true, paymentsManage: true, financeView: true, expensesManage: true, periodCloseManage: true },
+      front_office: { roomManage: false, pricingManage: false, channelsView: false, settingsView: false, reservationsManage: true, guestManage: true, paymentsManage: true, financeView: false, expensesManage: false, periodCloseManage: false },
+      accountant: { roomManage: false, pricingManage: false, channelsView: false, settingsView: false, reservationsManage: false, guestManage: false, paymentsManage: true, financeView: true, expensesManage: true, periodCloseManage: false }
     };
 
     const defaultConfig = {
@@ -64,6 +64,7 @@
     let draggedReservationId = null;
     let autoSyncTimerId = null;
     let autoSyncInProgress = false;
+    let financeTab = 'overview';
     let roomFilters = { roomType: '', minPrice: '', maxPrice: '', fromDate: '', toDate: '' };
     let calendarFilters = { roomType: '', maxPrice: '' };
     const GEO_MONTHS = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
@@ -158,6 +159,7 @@
         guests: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2"/><path d="M15 20a5 5 0 0 1 6 0"/></svg>`,
         checkin: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 17l-5-5 5-5"/><path d="M5 12h14"/><path d="M14 5h5v14h-5"/></svg>`,
         payments: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg>`,
+        finance: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20h16M6 16V8m6 8V4m6 12v-6"/></svg>`,
         pricing: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 12h-8m0 0V4m0 8 5 5M4 12h3m0 0V7m0 5 4 4"/></svg>`,
         channels: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h18M12 3a15.3 15.3 0 0 1 0 18M12 3a15.3 15.3 0 0 0 0 18"/><circle cx="12" cy="12" r="9"/></svg>`,
         reports: `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V8m6 12V4m6 16v-7m4 7H2"/></svg>`,
@@ -299,6 +301,7 @@
       if (currentPage === 'guests') return renderGuests();
       if (currentPage === 'checkin') return renderCheckin();
       if (currentPage === 'payments') return renderPayments();
+      if (currentPage === 'finance') return renderFinance();
       if (currentPage === 'pricing') return renderPricing();
       if (currentPage === 'channels') return renderChannels();
       if (currentPage === 'reports') return renderReports();
@@ -552,6 +555,30 @@
       }
       if (!Array.isArray(getState('payments', null))) setState('payments', []);
       if (!getState('nextPaymentId', null)) setState('nextPaymentId', 1);
+      if (!Array.isArray(getState('expenses', null))) setState('expenses', []);
+      if (!getState('nextExpenseId', null)) setState('nextExpenseId', 1);
+      if (!Array.isArray(getState('manualJournalEntries', null))) setState('manualJournalEntries', []);
+      if (!getState('nextManualJournalId', null)) setState('nextManualJournalId', 1);
+      if (!Array.isArray(getState('reconciliations', null))) setState('reconciliations', []);
+      if (!getState('nextReconciliationId', null)) setState('nextReconciliationId', 1);
+      if (!Array.isArray(getState('creditNotes', null))) setState('creditNotes', []);
+      if (!getState('nextCreditNoteId', null)) setState('nextCreditNoteId', 1);
+      if (!Array.isArray(getState('financeAuditLog', null))) setState('financeAuditLog', []);
+      if (!getState('financeCloseUntil', null)) setState('financeCloseUntil', '');
+      if (!getState('financeVatRate', null)) setState('financeVatRate', 18);
+      if (!getState('nextInvoiceNo', null)) setState('nextInvoiceNo', 1001);
+      const reservationsForInvoice = getState('reservations', []);
+      if (Array.isArray(reservationsForInvoice) && reservationsForInvoice.length) {
+        let nextInvoiceNo = Number(getState('nextInvoiceNo', 1001));
+        const migrated = reservationsForInvoice.map((r) => {
+          const hasInvoiceNo = typeof r.invoiceNo === 'string' && r.invoiceNo.trim();
+          const invoiceNo = hasInvoiceNo ? r.invoiceNo : `INV-${nextInvoiceNo++}`;
+          const invoiceStatus = r.invoiceStatus || 'issued';
+          return { ...r, invoiceNo, invoiceStatus };
+        });
+        setState('reservations', migrated);
+        setState('nextInvoiceNo', nextInvoiceNo);
+      }
       if (!getState('monthlyRates', null)) {
         setState('monthlyRates', buildMonthlyRatesFromRooms());
       }
@@ -565,6 +592,23 @@
     function setGuestsData(items) { setState('guests', items); }
     function getPaymentsData() { return getState('payments', []); }
     function setPaymentsData(items) { setState('payments', items); }
+    function getExpensesData() { return getState('expenses', []); }
+    function setExpensesData(items) { setState('expenses', items); }
+    function getManualJournalData() { return getState('manualJournalEntries', []); }
+    function setManualJournalData(items) { setState('manualJournalEntries', items); }
+    function getReconciliationsData() { return getState('reconciliations', []); }
+    function setReconciliationsData(items) { setState('reconciliations', items); }
+    function getCreditNotesData() { return getState('creditNotes', []); }
+    function setCreditNotesData(items) { setState('creditNotes', items); }
+    function getFinanceAuditData() { return getState('financeAuditLog', []); }
+    function setFinanceAuditData(items) { setState('financeAuditLog', items); }
+    function getFinanceCloseUntil() { return String(getState('financeCloseUntil', '') || ''); }
+    function setFinanceCloseUntil(value) { setState('financeCloseUntil', String(value || '')); }
+    function getFinanceVatRate() {
+      const rate = Number(getState('financeVatRate', 18));
+      return Number.isFinite(rate) && rate >= 0 ? rate : 18;
+    }
+    function setFinanceVatRate(rate) { setState('financeVatRate', Math.max(0, Number(rate || 0))); }
     function getMonthlyRates() {
       const stored = getState('monthlyRates', null);
       const fallback = buildMonthlyRatesFromRooms();
@@ -634,6 +678,123 @@
         unpaid: 'bg-red-100 text-red-700'
       };
       return map[status] || 'bg-gray-100 text-gray-700';
+    }
+
+    function invoiceStatusLabel(status) {
+      const map = {
+        draft: 'დრაფტი',
+        issued: 'გაცემული',
+        paid: 'გადახდილი',
+        cancelled: 'გაუქმებული'
+      };
+      return map[String(status || '').toLowerCase()] || 'გაცემული';
+    }
+
+    function financeMonthKeyFromDate(value) {
+      if (!value) return '';
+      const d = parseISODateLocal(value);
+      if (!d) return '';
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    function isDateLockedByFinancePeriod(value) {
+      const closeUntil = getFinanceCloseUntil();
+      if (!closeUntil) return false;
+      const key = financeMonthKeyFromDate(value);
+      return !!(key && key <= closeUntil);
+    }
+
+    function canMutateForDate(value, errorText = 'ფინანსური პერიოდი დახურულია') {
+      if (isDateLockedByFinancePeriod(value)) {
+        showToast(errorText, 'error');
+        return false;
+      }
+      return true;
+    }
+
+    function appendFinanceAudit(action, entity, details = '') {
+      const items = getFinanceAuditData();
+      items.unshift({
+        id: `audit_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+        createdAt: new Date().toISOString(),
+        role: currentRole,
+        action,
+        entity,
+        details: String(details || '')
+      });
+      setFinanceAuditData(items.slice(0, 500));
+    }
+
+    function getSystemJournalEntries() {
+      const reservations = getReservationsData();
+      const payments = getPaymentsData();
+      const expenses = getExpensesData();
+      const entries = [];
+      reservations.forEach((r) => {
+        const date = r.checkinDate || todayISO();
+        const amount = Number(r.totalPrice || 0);
+        if (amount <= 0) return;
+        entries.push({
+          id: `sys_inv_${r.id}`,
+          date,
+          source: 'system',
+          reference: r.invoiceNo || `INV-${r.id}`,
+          description: `ინვოისი #${r.id} • ${r.guestName || 'სტუმარი'}`,
+          debitAccount: 'დებიტორი',
+          creditAccount: 'შემოსავალი',
+          amount
+        });
+      });
+      payments.forEach((p) => {
+        const amount = Number(p.amount || 0);
+        if (amount <= 0) return;
+        const date = (p.createdAt || '').slice(0, 10) || todayISO();
+        entries.push({
+          id: `sys_pay_${p.id}`,
+          date,
+          source: 'system',
+          reference: `PAY-${p.id}`,
+          description: `გადახდა • ჯავშანი #${p.reservationId}`,
+          debitAccount: 'ბანკი/ნაღდი',
+          creditAccount: 'დებიტორი',
+          amount
+        });
+      });
+      expenses.forEach((e) => {
+        const amount = Number(e.amount || 0);
+        if (amount <= 0) return;
+        entries.push({
+          id: `sys_exp_${e.id}`,
+          date: e.date || todayISO(),
+          source: 'system',
+          reference: `EXP-${e.id}`,
+          description: `ხარჯი • ${e.category || 'სხვა'}`,
+          debitAccount: 'ხარჯი',
+          creditAccount: 'ბანკი/ნაღდი',
+          amount
+        });
+      });
+      return entries;
+    }
+
+    function getAllJournalEntries() {
+      const manual = getManualJournalData().map((m) => ({ ...m, source: 'manual' }));
+      return [...getSystemJournalEntries(), ...manual].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    }
+
+    function downloadCSV(filename, columns, rows) {
+      const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const header = columns.map((c) => esc(c.label)).join(',');
+      const body = rows.map((r) => columns.map((c) => esc(r[c.key])).join(',')).join('\n');
+      const csv = `${header}\n${body}`;
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(link.href);
     }
 
     function renderDashboard() {
@@ -1087,6 +1248,7 @@
               <h3 class="font-semibold mb-4">სწრაფი მოქმედებები</h3>
               <div class="space-y-2 text-sm">
                 <button onclick="navigateTo('payments')" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-left">გადახდების მართვა</button>
+                <button onclick="navigateTo('finance')" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-left">ფინანსური მოდული</button>
                 <button onclick="navigateTo('reports')" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-left">ფინანსური რეპორტები</button>
                 <button onclick="navigateTo('reservations')" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-left">ინვოისების გენერირება</button>
               </div>
@@ -1500,6 +1662,645 @@
       `;
     }
 
+    function setFinanceTab(tab) {
+      financeTab = String(tab || 'overview');
+      renderFinance();
+    }
+
+    function renderFinance() {
+      if (!can('financeView')) {
+        document.getElementById('page-finance').innerHTML = '<div class="bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-100 dark:border-gray-700 text-sm text-gray-500">ფინანსების განყოფილებაზე წვდომა შეზღუდულია.</div>';
+        return;
+      }
+      const reservations = getReservationsData();
+      const expenses = getExpensesData();
+      const payments = getPaymentsData();
+      const totalInvoiced = reservations.reduce((s, r) => s + Number(r.totalPrice || 0), 0);
+      const totalPaid = reservations.reduce((s, r) => s + normalizeReservationPayment(r), 0);
+      const totalDue = reservations.reduce((s, r) => s + reservationDueAmount(r), 0);
+      const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+      const profit = totalPaid - totalExpenses;
+      const closeUntil = getFinanceCloseUntil();
+
+      const tabs = [
+        ['overview', 'Overview'],
+        ['invoices', 'ინვოისი/კორექტირება'],
+        ['expenses', 'ხარჯები'],
+        ['journal', 'Ledger/Journal'],
+        ['taxes', 'დღგ/გადასახადი'],
+        ['aging', 'Aging'],
+        ['reconciliation', 'Reconciliation'],
+        ['close', 'Period Close'],
+        ['audit', 'Audit Log']
+      ];
+
+      document.getElementById('page-finance').innerHTML = `
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold">ფინანსური ადმინისტრირება</h2>
+          <div class="text-xs ${closeUntil ? 'text-red-600' : 'text-gray-500'}">${closeUntil ? `დახურული პერიოდი: ${closeUntil}` : 'პერიოდი ღიაა'}</div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700"><p class="text-xs text-gray-500">დარიცხული</p><p class="text-2xl font-bold">${config.currency_symbol}${totalInvoiced.toLocaleString('en-US')}</p></div>
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700"><p class="text-xs text-gray-500">მიღებული</p><p class="text-2xl font-bold text-emerald-600">${config.currency_symbol}${totalPaid.toLocaleString('en-US')}</p></div>
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700"><p class="text-xs text-gray-500">დებიტორი</p><p class="text-2xl font-bold text-red-600">${config.currency_symbol}${totalDue.toLocaleString('en-US')}</p></div>
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700"><p class="text-xs text-gray-500">ხარჯები</p><p class="text-2xl font-bold text-amber-600">${config.currency_symbol}${totalExpenses.toLocaleString('en-US')}</p></div>
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700"><p class="text-xs text-gray-500">მოგება (Cash)</p><p class="text-2xl font-bold ${profit >= 0 ? 'text-emerald-600' : 'text-red-600'}">${config.currency_symbol}${profit.toLocaleString('en-US')}</p></div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 mb-6">
+          <div class="flex flex-wrap gap-2">
+            ${tabs.map(([id, label]) => `<button onclick="setFinanceTab('${id}')" class="px-3 py-2 rounded-lg text-sm ${financeTab === id ? 'bg-sky-600 text-white' : 'bg-gray-100 dark:bg-gray-700'}">${label}</button>`).join('')}
+          </div>
+        </div>
+        <div class="space-y-6">
+          ${renderFinanceTabContent(financeTab)}
+        </div>
+      `;
+    }
+
+    function renderFinanceTabContent(tab) {
+      if (tab === 'invoices') return renderFinanceInvoicesTab();
+      if (tab === 'expenses') return renderFinanceExpensesTab();
+      if (tab === 'journal') return renderFinanceJournalTab();
+      if (tab === 'taxes') return renderFinanceTaxesTab();
+      if (tab === 'aging') return renderFinanceAgingTab();
+      if (tab === 'reconciliation') return renderFinanceReconciliationTab();
+      if (tab === 'close') return renderFinanceCloseTab();
+      if (tab === 'audit') return renderFinanceAuditTab();
+      return renderFinanceOverviewTab();
+    }
+
+    function renderFinanceOverviewTab() {
+      const reservations = getReservationsData();
+      const overdue = reservations
+        .map((r) => ({ ...r, due: reservationDueAmount(r) }))
+        .filter((r) => r.due > 0)
+        .sort((a, b) => b.due - a.due)
+        .slice(0, 10);
+      return `
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold">უმსხვილესი დავალიანებები</h3>
+            <button onclick="exportFinanceDebtorsCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Export CSV</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-left text-gray-500"><tr><th class="pb-2">სტუმარი</th><th class="pb-2">ინვოისი</th><th class="pb-2">Checkout</th><th class="pb-2">დებიტორი</th></tr></thead>
+              <tbody>
+                ${overdue.map((r) => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-2">${escapeHtml(r.guestName || 'სტუმარი')}</td><td class="py-2">${escapeHtml(r.invoiceNo || `INV-${r.id}`)}</td><td class="py-2">${formatDate(r.checkoutDate)}</td><td class="py-2 font-semibold text-red-600">${config.currency_symbol}${Number(r.due || 0).toLocaleString('en-US')}</td></tr>`).join('') || '<tr><td colspan="4" class="py-6 text-center text-gray-500">დებიტორი არ არის</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFinanceInvoicesTab() {
+      const reservations = getReservationsData();
+      const creditNotes = getCreditNotesData();
+      return `
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold">ინვოისები და სტატუსები</h3>
+            <button onclick="exportFinanceInvoicesCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Export CSV</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-left text-gray-500"><tr><th class="pb-2">ინვოისი</th><th class="pb-2">სტუმარი</th><th class="pb-2">თანხა</th><th class="pb-2">სტატუსი</th><th class="pb-2">მოქმედება</th></tr></thead>
+              <tbody>
+                ${reservations.map((r) => `
+                  <tr class="border-t border-gray-100 dark:border-gray-700">
+                    <td class="py-2">${escapeHtml(r.invoiceNo || `INV-${r.id}`)}</td>
+                    <td class="py-2">${escapeHtml(r.guestName || 'სტუმარი')}</td>
+                    <td class="py-2">${config.currency_symbol}${Number(r.totalPrice || 0).toLocaleString('en-US')}</td>
+                    <td class="py-2"><span class="px-2 py-1 rounded-full text-xs ${r.invoiceStatus === 'paid' ? 'bg-green-100 text-green-700' : r.invoiceStatus === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-sky-100 text-sky-700'}">${invoiceStatusLabel(r.invoiceStatus)}</span></td>
+                    <td class="py-2">
+                      <div class="flex gap-2">
+                        <select id="invStatus_${r.id}" class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs">
+                          <option value="draft" ${r.invoiceStatus === 'draft' ? 'selected' : ''}>draft</option>
+                          <option value="issued" ${!r.invoiceStatus || r.invoiceStatus === 'issued' ? 'selected' : ''}>issued</option>
+                          <option value="paid" ${r.invoiceStatus === 'paid' ? 'selected' : ''}>paid</option>
+                          <option value="cancelled" ${r.invoiceStatus === 'cancelled' ? 'selected' : ''}>cancelled</option>
+                        </select>
+                        <button onclick="setInvoiceStatusFromFinance(${r.id})" class="px-2 py-1 rounded bg-sky-600 text-white text-xs">შენახვა</button>
+                        <button onclick="openCreditNotePrompt(${r.id})" class="px-2 py-1 rounded bg-amber-500 text-white text-xs">Credit Note</button>
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <h3 class="font-semibold mb-4">Credit Notes</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-left text-gray-500"><tr><th class="pb-2">თარიღი</th><th class="pb-2">ინვოისი</th><th class="pb-2">თანხა</th><th class="pb-2">მიზეზი</th></tr></thead>
+              <tbody>
+                ${creditNotes.map((c) => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-2">${formatDate(c.createdAt)}</td><td class="py-2">${escapeHtml(c.invoiceNo || '-')}</td><td class="py-2 text-amber-600">${config.currency_symbol}${Number(c.amount || 0).toLocaleString('en-US')}</td><td class="py-2">${escapeHtml(c.reason || '-')}</td></tr>`).join('') || '<tr><td colspan="4" class="py-6 text-center text-gray-500">Credit Note არ არის</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFinanceExpensesTab() {
+      const expenses = getExpensesData().slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+      return `
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <h3 class="font-semibold mb-4">ხარჯის დამატება</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <input id="finExpenseDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${todayISO()}">
+            <input id="finExpenseCategory" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="კატეგორია">
+            <input id="finExpenseVendor" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მომწოდებელი">
+            <input id="finExpenseAmount" type="number" min="0" step="0.01" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="თანხა">
+            <label class="flex items-center gap-2 text-sm px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><input id="finExpenseHasVat" type="checkbox" class="rounded"> VAT</label>
+            <input id="finExpenseReceiptUrl" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="ქვითრის URL (არასავალდებულო)">
+          </div>
+          <div class="mt-3 flex gap-2">
+            <button onclick="addExpenseFromFinance()" class="px-3 py-2 rounded-lg bg-sky-600 text-white text-sm">ხარჯის დამატება</button>
+            <button onclick="exportFinanceExpensesCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Export CSV</button>
+          </div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <h3 class="font-semibold mb-4">ხარჯების სია</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-left text-gray-500"><tr><th class="pb-2">თარიღი</th><th class="pb-2">კატეგორია</th><th class="pb-2">მომწოდებელი</th><th class="pb-2">თანხა</th><th class="pb-2">VAT</th><th class="pb-2">ქვითარი</th><th class="pb-2">მოქმედება</th></tr></thead>
+              <tbody>
+                ${expenses.map((e) => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-2">${formatDate(e.date)}</td><td class="py-2">${escapeHtml(e.category || '-')}</td><td class="py-2">${escapeHtml(e.vendor || '-')}</td><td class="py-2">${config.currency_symbol}${Number(e.amount || 0).toLocaleString('en-US')}</td><td class="py-2">${e.hasVat ? 'დიახ' : 'არა'}</td><td class="py-2">${e.receiptUrl ? `<a class="text-sky-600 underline" target="_blank" href="${escapeHtml(e.receiptUrl)}">ბმული</a>` : '-'}</td><td class="py-2"><button onclick="deleteExpenseFromFinance(${e.id})" class="px-2 py-1 rounded bg-red-100 text-red-700 text-xs">წაშლა</button></td></tr>`).join('') || '<tr><td colspan="7" class="py-6 text-center text-gray-500">ხარჯები არ არის</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFinanceJournalTab() {
+      const rows = getAllJournalEntries();
+      return `
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <h3 class="font-semibold mb-4">Manual Journal Entry</h3>
+          <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
+            <input id="finJDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${todayISO()}">
+            <input id="finJRef" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="Reference">
+            <input id="finJDesc" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="აღწერა">
+            <input id="finJDebit" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="Debit ანგარიში">
+            <input id="finJCredit" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="Credit ანგარიში">
+            <input id="finJAmount" type="number" min="0" step="0.01" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="თანხა">
+          </div>
+          <div class="mt-3 flex gap-2">
+            <button onclick="addManualJournalEntryFromFinance()" class="px-3 py-2 rounded-lg bg-sky-600 text-white text-sm">დამატება</button>
+            <button onclick="exportFinanceJournalCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Export CSV</button>
+          </div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <h3 class="font-semibold mb-4">General Journal</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-left text-gray-500"><tr><th class="pb-2">თარიღი</th><th class="pb-2">Reference</th><th class="pb-2">აღწერა</th><th class="pb-2">Debit</th><th class="pb-2">Credit</th><th class="pb-2">თანხა</th><th class="pb-2">წყარო</th></tr></thead>
+              <tbody>
+                ${rows.map((j) => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-2">${formatDate(j.date)}</td><td class="py-2">${escapeHtml(j.reference || '-')}</td><td class="py-2">${escapeHtml(j.description || '-')}</td><td class="py-2">${escapeHtml(j.debitAccount || '-')}</td><td class="py-2">${escapeHtml(j.creditAccount || '-')}</td><td class="py-2">${config.currency_symbol}${Number(j.amount || 0).toLocaleString('en-US')}</td><td class="py-2">${j.source === 'manual' ? 'manual' : 'system'}</td></tr>`).join('') || '<tr><td colspan="7" class="py-6 text-center text-gray-500">ჩანაწერები არ არის</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFinanceTaxesTab() {
+      const vatRate = getFinanceVatRate();
+      const reservations = getReservationsData();
+      const expenses = getExpensesData();
+      const today = parseISODateLocal(todayISO());
+      const from = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+      const to = todayISO();
+      const salesVat = reservations.reduce((s, r) => s + (Number(r.totalPrice || 0) * vatRate / (100 + vatRate)), 0);
+      const purchaseVat = expenses.filter(e => e.hasVat).reduce((s, e) => s + (Number(e.amount || 0) * vatRate / (100 + vatRate)), 0);
+      const payable = Math.max(0, salesVat - purchaseVat);
+      return `
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <h3 class="font-semibold mb-4">დღგ და გადასახადი</h3>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <label class="text-xs text-gray-500">VAT %
+              <input id="finVatRate" type="number" min="0" step="0.01" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${vatRate}">
+            </label>
+            <label class="text-xs text-gray-500">პერიოდი From
+              <input id="finTaxFrom" type="date" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${from}">
+            </label>
+            <label class="text-xs text-gray-500">პერიოდი To
+              <input id="finTaxTo" type="date" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${to}">
+            </label>
+            <div class="flex items-end gap-2">
+              <button onclick="saveFinanceVatRate()" class="px-3 py-2 rounded-lg bg-sky-600 text-white text-sm">შენახვა</button>
+              <button onclick="exportFinanceTaxCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Export CSV</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div class="p-4 rounded-xl bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-900/40"><p class="text-xs text-gray-500">Sales VAT</p><p class="text-xl font-bold">${config.currency_symbol}${salesVat.toLocaleString('en-US', { maximumFractionDigits: 2 })}</p></div>
+            <div class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900/40"><p class="text-xs text-gray-500">Purchase VAT</p><p class="text-xl font-bold">${config.currency_symbol}${purchaseVat.toLocaleString('en-US', { maximumFractionDigits: 2 })}</p></div>
+            <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/40"><p class="text-xs text-gray-500">VAT Payable</p><p class="text-xl font-bold">${config.currency_symbol}${payable.toLocaleString('en-US', { maximumFractionDigits: 2 })}</p></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFinanceAgingTab() {
+      const today = parseISODateLocal(todayISO());
+      const buckets = { current: 0, d30: 0, d60: 0, d90: 0 };
+      const rows = getReservationsData().map((r) => {
+        const due = reservationDueAmount(r);
+        const dueDate = parseISODateLocal(r.checkoutDate || r.checkinDate || todayISO());
+        const days = dueDate ? Math.max(0, Math.floor((today - dueDate) / (1000 * 60 * 60 * 24))) : 0;
+        if (due > 0) {
+          if (days <= 30) buckets.d30 += due;
+          else if (days <= 60) buckets.d60 += due;
+          else buckets.d90 += due;
+          if (days === 0) buckets.current += due;
+        }
+        return { ...r, due, days };
+      }).filter((r) => r.due > 0).sort((a, b) => b.due - a.due);
+      return `
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold">Aging Report</h3>
+            <button onclick="exportFinanceAgingCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Export CSV</button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+            <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40"><p class="text-xs text-gray-500">Current</p><p class="text-lg font-bold">${config.currency_symbol}${buckets.current.toLocaleString('en-US')}</p></div>
+            <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20"><p class="text-xs text-gray-500">1-30 დღე</p><p class="text-lg font-bold">${config.currency_symbol}${buckets.d30.toLocaleString('en-US')}</p></div>
+            <div class="p-3 rounded-xl bg-orange-50 dark:bg-orange-900/20"><p class="text-xs text-gray-500">31-60 დღე</p><p class="text-lg font-bold">${config.currency_symbol}${buckets.d60.toLocaleString('en-US')}</p></div>
+            <div class="p-3 rounded-xl bg-red-50 dark:bg-red-900/20"><p class="text-xs text-gray-500">60+ დღე</p><p class="text-lg font-bold">${config.currency_symbol}${buckets.d90.toLocaleString('en-US')}</p></div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-left text-gray-500"><tr><th class="pb-2">სტუმარი</th><th class="pb-2">ინვოისი</th><th class="pb-2">ვადა</th><th class="pb-2">დღე</th><th class="pb-2">დასარჩენი</th></tr></thead>
+              <tbody>
+                ${rows.map((r) => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-2">${escapeHtml(r.guestName || 'სტუმარი')}</td><td class="py-2">${escapeHtml(r.invoiceNo || `INV-${r.id}`)}</td><td class="py-2">${formatDate(r.checkoutDate)}</td><td class="py-2">${r.days}</td><td class="py-2 text-red-600 font-semibold">${config.currency_symbol}${Number(r.due || 0).toLocaleString('en-US')}</td></tr>`).join('') || '<tr><td colspan="5" class="py-6 text-center text-gray-500">დებიტორი არ არის</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFinanceReconciliationTab() {
+      const items = getReconciliationsData().slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+      const systemPaid = getReservationsData().reduce((s, r) => s + normalizeReservationPayment(r), 0);
+      return `
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <h3 class="font-semibold mb-4">Bank Reconciliation</h3>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <input id="finRecDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${todayISO()}">
+            <input id="finRecBankAmount" type="number" min="0" step="0.01" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="Statement total">
+            <input id="finRecSystemAmount" type="number" min="0" step="0.01" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(systemPaid || 0)}">
+            <input id="finRecNotes" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="შენიშვნა">
+          </div>
+          <div class="mt-3 flex gap-2">
+            <button onclick="addReconciliationFromFinance()" class="px-3 py-2 rounded-lg bg-sky-600 text-white text-sm">შენახვა</button>
+            <button onclick="exportFinanceReconciliationCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Export CSV</button>
+          </div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <h3 class="font-semibold mb-4">შეჯერების ისტორია</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-left text-gray-500"><tr><th class="pb-2">თარიღი</th><th class="pb-2">Statement</th><th class="pb-2">System</th><th class="pb-2">სხვაობა</th><th class="pb-2">სტატუსი</th><th class="pb-2">შენიშვნა</th></tr></thead>
+              <tbody>
+                ${items.map((i) => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-2">${formatDate(i.date)}</td><td class="py-2">${config.currency_symbol}${Number(i.bankAmount || 0).toLocaleString('en-US')}</td><td class="py-2">${config.currency_symbol}${Number(i.systemAmount || 0).toLocaleString('en-US')}</td><td class="py-2 ${Number(i.diff || 0) === 0 ? 'text-emerald-600' : 'text-red-600'}">${config.currency_symbol}${Number(i.diff || 0).toLocaleString('en-US')}</td><td class="py-2">${Number(i.diff || 0) === 0 ? 'შეჯერებულია' : 'გასასწორებელია'}</td><td class="py-2">${escapeHtml(i.notes || '-')}</td></tr>`).join('') || '<tr><td colspan="6" class="py-6 text-center text-gray-500">შეჯერება არ არის</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFinanceCloseTab() {
+      const closeUntil = getFinanceCloseUntil();
+      return `
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <h3 class="font-semibold mb-4">Period Close / Lock</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <input id="finCloseMonth" type="month" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${closeUntil}">
+            <button onclick="closeFinancePeriodFromUI()" class="px-3 py-2 rounded-lg bg-red-600 text-white text-sm" ${can('periodCloseManage') ? '' : 'disabled'}>პერიოდის დახურვა</button>
+            <button onclick="reopenFinancePeriodFromUI()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm" ${can('periodCloseManage') ? '' : 'disabled'}>Lock მოხსნა</button>
+          </div>
+          <p class="text-xs text-gray-500 mt-3">დახურულ პერიოდზე (და მის წინაზე) ფინანსური ცვლილებები იბლოკება: ხარჯი/გადახდა/ჯავშნის ფინანსური რედაქტირება.</p>
+        </div>
+      `;
+    }
+
+    function renderFinanceAuditTab() {
+      const logs = getFinanceAuditData();
+      return `
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold">Audit Log</h3>
+            <button onclick="exportFinanceAuditCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Export CSV</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-left text-gray-500"><tr><th class="pb-2">თარიღი</th><th class="pb-2">როლი</th><th class="pb-2">ქმედება</th><th class="pb-2">ობიექტი</th><th class="pb-2">დეტალი</th></tr></thead>
+              <tbody>
+                ${logs.map((l) => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-2">${formatDate(l.createdAt)}</td><td class="py-2">${escapeHtml(l.role || '-')}</td><td class="py-2">${escapeHtml(l.action || '-')}</td><td class="py-2">${escapeHtml(l.entity || '-')}</td><td class="py-2">${escapeHtml(l.details || '-')}</td></tr>`).join('') || '<tr><td colspan="5" class="py-6 text-center text-gray-500">ლოგი ცარიელია</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function setInvoiceStatusFromFinance(reservationId) {
+      const reservations = getReservationsData();
+      const idx = reservations.findIndex((r) => Number(r.id) === Number(reservationId));
+      if (idx === -1) return;
+      if (!can('paymentsManage')) return showToast('წვდომა შეზღუდულია', 'error');
+      if (!canMutateForDate(reservations[idx].checkinDate, 'დახურულ პერიოდზე ინვოისის სტატუსი ვერ იცვლება')) return;
+      const el = document.getElementById(`invStatus_${reservationId}`);
+      const nextStatus = String(el?.value || 'issued');
+      reservations[idx].invoiceStatus = nextStatus;
+      setReservationsData(reservations);
+      appendFinanceAudit('invoice_status_update', 'reservation', `#${reservationId} -> ${nextStatus}`);
+      showToast('ინვოისის სტატუსი განახლდა');
+      renderFinance();
+    }
+
+    function openCreditNotePrompt(reservationId) {
+      const reservations = getReservationsData();
+      const res = reservations.find((r) => Number(r.id) === Number(reservationId));
+      if (!res) return;
+      if (!can('paymentsManage')) return showToast('წვდომა შეზღუდულია', 'error');
+      if (!canMutateForDate(res.checkinDate, 'დახურულ პერიოდზე Credit Note ვერ დაემატება')) return;
+      const rawAmount = window.prompt('Credit Note თანხა (₾)', '0');
+      if (rawAmount === null) return;
+      const amount = Math.max(0, Number(rawAmount || 0));
+      if (!amount) return showToast('თანხა არასწორია', 'error');
+      const reason = window.prompt('მიზეზი', 'კორექტირება') || 'კორექტირება';
+      const notes = getCreditNotesData();
+      const nextId = Number(getState('nextCreditNoteId', 1));
+      notes.push({
+        id: nextId,
+        reservationId: res.id,
+        invoiceNo: res.invoiceNo || `INV-${res.id}`,
+        amount,
+        reason,
+        createdAt: new Date().toISOString()
+      });
+      setCreditNotesData(notes);
+      setState('nextCreditNoteId', nextId + 1);
+      appendFinanceAudit('credit_note_create', 'credit_note', `${res.invoiceNo || `INV-${res.id}`} • ${amount}`);
+      showToast('Credit Note დამატებულია');
+      renderFinance();
+    }
+
+    function addExpenseFromFinance() {
+      if (!can('expensesManage')) return showToast('ხარჯების მართვის უფლება არ გაქვთ', 'error');
+      const date = document.getElementById('finExpenseDate')?.value || todayISO();
+      if (!canMutateForDate(date, 'დახურულ პერიოდზე ხარჯის დამატება შეუძლებელია')) return;
+      const category = document.getElementById('finExpenseCategory')?.value.trim() || 'სხვა';
+      const vendor = document.getElementById('finExpenseVendor')?.value.trim() || '';
+      const amount = Math.max(0, Number(document.getElementById('finExpenseAmount')?.value || 0));
+      const hasVat = !!document.getElementById('finExpenseHasVat')?.checked;
+      const receiptUrl = document.getElementById('finExpenseReceiptUrl')?.value.trim() || '';
+      if (!amount) return showToast('ხარჯის თანხა აუცილებელია', 'error');
+      const items = getExpensesData();
+      const nextId = Number(getState('nextExpenseId', 1));
+      items.push({ id: nextId, date, category, vendor, amount, hasVat, receiptUrl, createdAt: new Date().toISOString() });
+      setExpensesData(items);
+      setState('nextExpenseId', nextId + 1);
+      appendFinanceAudit('expense_create', 'expense', `${category} • ${amount}`);
+      showToast('ხარჯი დაემატა');
+      renderFinance();
+    }
+
+    function deleteExpenseFromFinance(expenseId) {
+      if (!can('expensesManage')) return showToast('ხარჯების მართვის უფლება არ გაქვთ', 'error');
+      const items = getExpensesData();
+      const found = items.find((x) => Number(x.id) === Number(expenseId));
+      if (!found) return;
+      if (!canMutateForDate(found.date, 'დახურულ პერიოდზე ხარჯის წაშლა შეუძლებელია')) return;
+      if (!window.confirm('გსურთ ხარჯის წაშლა?')) return;
+      setExpensesData(items.filter((x) => Number(x.id) !== Number(expenseId)));
+      appendFinanceAudit('expense_delete', 'expense', `#${expenseId}`);
+      showToast('ხარჯი წაიშალა');
+      renderFinance();
+    }
+
+    function addManualJournalEntryFromFinance() {
+      if (!can('expensesManage')) return showToast('წვდომა შეზღუდულია', 'error');
+      const date = document.getElementById('finJDate')?.value || todayISO();
+      if (!canMutateForDate(date, 'დახურულ პერიოდზე ჩანაწერი ვერ დაემატება')) return;
+      const reference = document.getElementById('finJRef')?.value.trim() || '';
+      const description = document.getElementById('finJDesc')?.value.trim() || '';
+      const debitAccount = document.getElementById('finJDebit')?.value.trim() || '';
+      const creditAccount = document.getElementById('finJCredit')?.value.trim() || '';
+      const amount = Math.max(0, Number(document.getElementById('finJAmount')?.value || 0));
+      if (!debitAccount || !creditAccount || !amount) return showToast('შეავსეთ journal ველები სწორად', 'error');
+      const items = getManualJournalData();
+      const nextId = Number(getState('nextManualJournalId', 1));
+      items.push({ id: `mj_${nextId}`, date, reference, description, debitAccount, creditAccount, amount });
+      setManualJournalData(items);
+      setState('nextManualJournalId', nextId + 1);
+      appendFinanceAudit('journal_create', 'manual_journal', `${reference || '-'} • ${amount}`);
+      showToast('Journal entry დაემატა');
+      renderFinance();
+    }
+
+    function saveFinanceVatRate() {
+      if (!can('financeView')) return showToast('წვდომა შეზღუდულია', 'error');
+      const rate = Math.max(0, Number(document.getElementById('finVatRate')?.value || 0));
+      setFinanceVatRate(rate);
+      appendFinanceAudit('vat_rate_update', 'tax', `${rate}%`);
+      showToast('VAT განახლდა');
+      renderFinance();
+    }
+
+    function addReconciliationFromFinance() {
+      if (!can('paymentsManage')) return showToast('წვდომა შეზღუდულია', 'error');
+      const date = document.getElementById('finRecDate')?.value || todayISO();
+      if (!canMutateForDate(date, 'დახურულ პერიოდზე შეჯერება ვერ დაემატება')) return;
+      const bankAmount = Math.max(0, Number(document.getElementById('finRecBankAmount')?.value || 0));
+      const systemAmount = Math.max(0, Number(document.getElementById('finRecSystemAmount')?.value || 0));
+      const notes = document.getElementById('finRecNotes')?.value.trim() || '';
+      const diff = bankAmount - systemAmount;
+      const items = getReconciliationsData();
+      const nextId = Number(getState('nextReconciliationId', 1));
+      items.push({ id: nextId, date, bankAmount, systemAmount, diff, notes, createdAt: new Date().toISOString() });
+      setReconciliationsData(items);
+      setState('nextReconciliationId', nextId + 1);
+      appendFinanceAudit('reconciliation_create', 'reconciliation', `${date} • diff ${diff}`);
+      showToast('შეჯერება შენახულია');
+      renderFinance();
+    }
+
+    function closeFinancePeriodFromUI() {
+      if (!can('periodCloseManage')) return showToast('პერიოდის დახურვის უფლება არ გაქვთ', 'error');
+      const month = document.getElementById('finCloseMonth')?.value || '';
+      if (!month) return showToast('აირჩიეთ თვე', 'error');
+      setFinanceCloseUntil(month);
+      appendFinanceAudit('period_close', 'finance_period', month);
+      showToast(`პერიოდი დაიხურა: ${month}`);
+      renderFinance();
+    }
+
+    function reopenFinancePeriodFromUI() {
+      if (!can('periodCloseManage')) return showToast('პერიოდის გახსნის უფლება არ გაქვთ', 'error');
+      setFinanceCloseUntil('');
+      appendFinanceAudit('period_reopen', 'finance_period', 'all open');
+      showToast('ფინანსური lock მოიხსნა');
+      renderFinance();
+    }
+
+    function exportFinanceDebtorsCSV() {
+      const rows = getReservationsData()
+        .map((r) => ({ guest: r.guestName || 'სტუმარი', invoice_no: r.invoiceNo || `INV-${r.id}`, checkout_date: r.checkoutDate || '', due_amount: reservationDueAmount(r) }))
+        .filter((r) => Number(r.due_amount) > 0);
+      downloadCSV('finance_debtors.csv', [
+        { key: 'guest', label: 'Guest' },
+        { key: 'invoice_no', label: 'Invoice No' },
+        { key: 'checkout_date', label: 'Checkout Date' },
+        { key: 'due_amount', label: 'Due Amount' }
+      ], rows);
+    }
+
+    function exportFinanceInvoicesCSV() {
+      const rows = getReservationsData().map((r) => ({
+        invoice_no: r.invoiceNo || `INV-${r.id}`,
+        reservation_id: r.id,
+        guest: r.guestName || 'სტუმარი',
+        total_price: Number(r.totalPrice || 0),
+        paid: normalizeReservationPayment(r),
+        due: reservationDueAmount(r),
+        invoice_status: r.invoiceStatus || 'issued'
+      }));
+      downloadCSV('finance_invoices.csv', [
+        { key: 'invoice_no', label: 'Invoice No' },
+        { key: 'reservation_id', label: 'Reservation ID' },
+        { key: 'guest', label: 'Guest' },
+        { key: 'total_price', label: 'Total' },
+        { key: 'paid', label: 'Paid' },
+        { key: 'due', label: 'Due' },
+        { key: 'invoice_status', label: 'Invoice Status' }
+      ], rows);
+    }
+
+    function exportFinanceExpensesCSV() {
+      const rows = getExpensesData().map((e) => ({
+        date: e.date || '',
+        category: e.category || '',
+        vendor: e.vendor || '',
+        amount: Number(e.amount || 0),
+        vat: e.hasVat ? 'yes' : 'no',
+        receipt_url: e.receiptUrl || ''
+      }));
+      downloadCSV('finance_expenses.csv', [
+        { key: 'date', label: 'Date' },
+        { key: 'category', label: 'Category' },
+        { key: 'vendor', label: 'Vendor' },
+        { key: 'amount', label: 'Amount' },
+        { key: 'vat', label: 'VAT' },
+        { key: 'receipt_url', label: 'Receipt URL' }
+      ], rows);
+    }
+
+    function exportFinanceJournalCSV() {
+      const rows = getAllJournalEntries().map((j) => ({
+        date: j.date || '',
+        reference: j.reference || '',
+        description: j.description || '',
+        debit_account: j.debitAccount || '',
+        credit_account: j.creditAccount || '',
+        amount: Number(j.amount || 0),
+        source: j.source || 'system'
+      }));
+      downloadCSV('finance_journal.csv', [
+        { key: 'date', label: 'Date' },
+        { key: 'reference', label: 'Reference' },
+        { key: 'description', label: 'Description' },
+        { key: 'debit_account', label: 'Debit' },
+        { key: 'credit_account', label: 'Credit' },
+        { key: 'amount', label: 'Amount' },
+        { key: 'source', label: 'Source' }
+      ], rows);
+    }
+
+    function exportFinanceTaxCSV() {
+      const vatRate = getFinanceVatRate();
+      const reservations = getReservationsData();
+      const expenses = getExpensesData();
+      const salesVat = reservations.reduce((s, r) => s + (Number(r.totalPrice || 0) * vatRate / (100 + vatRate)), 0);
+      const purchaseVat = expenses.filter(e => e.hasVat).reduce((s, e) => s + (Number(e.amount || 0) * vatRate / (100 + vatRate)), 0);
+      const rows = [{
+        vat_rate: vatRate,
+        sales_vat: salesVat.toFixed(2),
+        purchase_vat: purchaseVat.toFixed(2),
+        vat_payable: Math.max(0, salesVat - purchaseVat).toFixed(2)
+      }];
+      downloadCSV('finance_tax_report.csv', [
+        { key: 'vat_rate', label: 'VAT %' },
+        { key: 'sales_vat', label: 'Sales VAT' },
+        { key: 'purchase_vat', label: 'Purchase VAT' },
+        { key: 'vat_payable', label: 'VAT Payable' }
+      ], rows);
+    }
+
+    function exportFinanceAgingCSV() {
+      const today = parseISODateLocal(todayISO());
+      const rows = getReservationsData().map((r) => {
+        const dueDate = parseISODateLocal(r.checkoutDate || r.checkinDate || todayISO());
+        const days = dueDate ? Math.max(0, Math.floor((today - dueDate) / (1000 * 60 * 60 * 24))) : 0;
+        return {
+          guest: r.guestName || 'სტუმარი',
+          invoice_no: r.invoiceNo || `INV-${r.id}`,
+          due_date: r.checkoutDate || '',
+          overdue_days: days,
+          due_amount: reservationDueAmount(r)
+        };
+      }).filter((r) => Number(r.due_amount) > 0);
+      downloadCSV('finance_aging.csv', [
+        { key: 'guest', label: 'Guest' },
+        { key: 'invoice_no', label: 'Invoice No' },
+        { key: 'due_date', label: 'Due Date' },
+        { key: 'overdue_days', label: 'Overdue Days' },
+        { key: 'due_amount', label: 'Due Amount' }
+      ], rows);
+    }
+
+    function exportFinanceReconciliationCSV() {
+      const rows = getReconciliationsData().map((r) => ({
+        date: r.date || '',
+        bank_amount: Number(r.bankAmount || 0),
+        system_amount: Number(r.systemAmount || 0),
+        difference: Number(r.diff || 0),
+        notes: r.notes || ''
+      }));
+      downloadCSV('finance_reconciliation.csv', [
+        { key: 'date', label: 'Date' },
+        { key: 'bank_amount', label: 'Bank Amount' },
+        { key: 'system_amount', label: 'System Amount' },
+        { key: 'difference', label: 'Difference' },
+        { key: 'notes', label: 'Notes' }
+      ], rows);
+    }
+
+    function exportFinanceAuditCSV() {
+      const rows = getFinanceAuditData().map((l) => ({
+        created_at: l.createdAt || '',
+        role: l.role || '',
+        action: l.action || '',
+        entity: l.entity || '',
+        details: l.details || ''
+      }));
+      downloadCSV('finance_audit_log.csv', [
+        { key: 'created_at', label: 'Created At' },
+        { key: 'role', label: 'Role' },
+        { key: 'action', label: 'Action' },
+        { key: 'entity', label: 'Entity' },
+        { key: 'details', label: 'Details' }
+      ], rows);
+    }
+
     function renderHousekeeping() {
       const rooms = getRoomsData();
       const clean = rooms.filter(r => r.status === 'available').length;
@@ -1789,6 +2590,7 @@
       let paidAmount = Number(document.getElementById('newPaidAmount')?.value || 0);
       if (!guestName || !checkinDate || !checkoutDate) return showToast('შეავსეთ აუცილებელი ველები', 'error');
       if (checkoutDate <= checkinDate) return showToast('Check-out თარიღი უნდა იყოს Check-in თარიღის შემდეგ', 'error');
+      if (!canMutateForDate(checkinDate, 'დახურულ პერიოდზე ჯავშნის დამატება შეუძლებელია')) return;
       if (guestIdNumber) {
         const knownGuest = findKnownGuestById(guestIdNumber);
         if (knownGuest?.blacklisted) return showToast('სტუმარი შავ სიაშია და რეგისტრაცია შეუძლებელია', 'error');
@@ -1840,6 +2642,7 @@
       }
       closeModal();
       showToast('ჯავშანი წარმატებით დაემატა');
+      appendFinanceAudit('reservation_create', 'reservation', `#${createdReservation.id} • ${guestName}`);
       renderCurrentPage();
     }
 
@@ -2135,6 +2938,7 @@
       const reservations = getReservationsData();
       const idx = reservations.findIndex(r => Number(r.id) === Number(resId));
       if (idx === -1) return;
+      if (!canMutateForDate(reservations[idx].checkinDate, 'დახურულ პერიოდზე ჯავშნის შეცვლა შეუძლებელია')) return;
       const nextRoomId = Number(document.getElementById('editRoomId').value);
       const nextCheckinDate = document.getElementById('editCheckinDate').value;
       const nextCheckoutDate = document.getElementById('editCheckoutDate').value;
@@ -2180,6 +2984,7 @@
       };
       setReservationsData(reservations);
       upsertPaymentFromReservation(reservations[idx]);
+      appendFinanceAudit('reservation_update', 'reservation', `#${resId}`);
       showToast('ჯავშანი განახლდა');
       closeModal();
       renderCurrentPage();
@@ -2187,9 +2992,13 @@
 
     function deleteReservation(resId) {
       if (!can('reservationsManage')) return showToast('ჯავშნების მართვის უფლება არ გაქვთ', 'error');
+      const reservation = getReservationsData().find(r => Number(r.id) === Number(resId));
+      if (!reservation) return;
+      if (!canMutateForDate(reservation.checkinDate, 'დახურულ პერიოდზე ჯავშნის წაშლა შეუძლებელია')) return;
       if (!confirm('ნამდვილად გსურთ ჯავშნის წაშლა?')) return;
       const reservations = getReservationsData().filter(r => Number(r.id) !== Number(resId));
       setReservationsData(reservations);
+      appendFinanceAudit('reservation_delete', 'reservation', `#${resId}`);
       showToast('ჯავშანი წაიშალა', 'warning');
       closeModal();
       renderCurrentPage();
@@ -2200,6 +3009,7 @@
       const reservations = getReservationsData();
       const idx = reservations.findIndex(r => Number(r.id) === Number(resId));
       if (idx === -1) return;
+      if (!canMutateForDate(reservations[idx].checkinDate, 'დახურულ პერიოდზე სტატუსის შეცვლა შეუძლებელია')) return;
       reservations[idx].status = 'Checked-in';
       setReservationsData(reservations);
       const room = findRoomById(reservations[idx].roomId);
@@ -2212,6 +3022,7 @@
         }
       }
       showToast('Check-in დასრულდა');
+      appendFinanceAudit('reservation_checkin', 'reservation', `#${resId}`);
       closeModal();
       renderCurrentPage();
     }
@@ -2221,6 +3032,7 @@
       const reservations = getReservationsData();
       const idx = reservations.findIndex(r => Number(r.id) === Number(resId));
       if (idx === -1) return;
+      if (!canMutateForDate(reservations[idx].checkoutDate, 'დახურულ პერიოდზე სტატუსის შეცვლა შეუძლებელია')) return;
       reservations[idx].status = 'Checked-out';
       setReservationsData(reservations);
       const room = findRoomById(reservations[idx].roomId);
@@ -2233,6 +3045,7 @@
         }
       }
       showToast('Check-out დასრულდა');
+      appendFinanceAudit('reservation_checkout', 'reservation', `#${resId}`);
       closeModal();
       renderCurrentPage();
     }
@@ -2597,6 +3410,7 @@
       const reservations = getReservationsData();
       const reservation = reservations.find(r => Number(r.id) === Number(reservationId));
       if (!reservation) return showToast('აირჩიეთ ჯავშანი', 'error');
+      if (!canMutateForDate(todayISO(), 'დახურულ პერიოდზე გადახდის დამატება შეუძლებელია')) return;
       let amount = baseAmount;
       if (status === 'partial' || status === 'advance') amount = splitAmount;
       if (status === 'paid') amount = Number(reservation.totalPrice || baseAmount || 0);
@@ -2612,6 +3426,7 @@
       else if (status === 'unpaid') reservation.paidAmount = 0;
       else reservation.paidAmount = Math.max(0, Math.min(Number(reservation.totalPrice || 0), amount));
       setReservationsData(reservations);
+      appendFinanceAudit('payment_create', 'payment', `reservation #${reservationId} • ${amount}`);
       closeModal();
       showToast('გადახდა დაემატა');
       renderPayments();
@@ -2645,6 +3460,7 @@
       const payments = getPaymentsData();
       const idx = payments.findIndex(p => Number(p.id) === Number(paymentId));
       if (idx === -1) return;
+      if (!canMutateForDate((payments[idx].createdAt || '').slice(0, 10) || todayISO(), 'დახურულ პერიოდზე გადახდის რედაქტირება შეუძლებელია')) return;
       const status = document.getElementById('editPaymentStatusField').value;
       const baseAmount = Number(document.getElementById('editPaymentAmount').value || 0);
       const splitAmount = Number(document.getElementById('editPaymentAdvanceAmount')?.value || 0);
@@ -2669,6 +3485,7 @@
         else reservation.paidAmount = Math.max(0, Math.min(Number(reservation.totalPrice || 0), Number(payments[idx].amount || 0)));
       }
       setReservationsData(reservations);
+      appendFinanceAudit('payment_update', 'payment', `#${paymentId} • ${amount}`);
       closeModal();
       showToast('გადახდა განახლდა');
       renderPayments();
@@ -2680,6 +3497,7 @@
       const payments = getPaymentsData();
       const payment = payments.find((p) => Number(p.id) === id);
       if (!payment) return showToast('გადახდა ვერ მოიძებნა', 'error');
+      if (!canMutateForDate((payment.createdAt || '').slice(0, 10) || todayISO(), 'დახურულ პერიოდზე გადახდის წაშლა შეუძლებელია')) return;
       if (!window.confirm('გსურთ გადახდის/ინვოისის წაშლა?')) return;
       const nextPayments = payments.filter((p) => Number(p.id) !== id);
       setPaymentsData(nextPayments);
@@ -2695,6 +3513,7 @@
         setReservationsData(reservations);
       }
       closeModal();
+      appendFinanceAudit('payment_delete', 'payment', `#${paymentId}`);
       showToast('გადახდა წაიშალა');
       renderPayments();
     }
