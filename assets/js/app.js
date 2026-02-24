@@ -2794,26 +2794,99 @@
     }
 
     function collectMinibarSelection(prefix) {
+      const rowsWrap = document.getElementById(`${prefix}MinibarRows`);
       const products = getMinibarProductsData();
-      const items = [];
+      if (rowsWrap) {
+        const items = [];
+        rowsWrap.querySelectorAll('.minibar-row').forEach((row) => {
+          const productId = Number(row.querySelector('.minibar-product')?.value || 0);
+          const quantity = Math.max(0, Number(row.querySelector('.minibar-qty')?.value || 0));
+          if (!productId || !quantity) return;
+          const product = products.find((p) => Number(p.id) === productId);
+          if (!product) return;
+          items.push({
+            productId,
+            name: String(product.name || ''),
+            unitPrice: Math.max(0, Number(product.price || 0)),
+            quantity
+          });
+        });
+        return items;
+      }
+      const legacyItems = [];
       products.forEach((product) => {
         const qty = Math.max(0, Number(document.getElementById(`${prefix}MinibarQty_${product.id}`)?.value || 0));
         if (!qty) return;
-        items.push({
+        legacyItems.push({
           productId: Number(product.id),
           name: String(product.name || ''),
           unitPrice: Math.max(0, Number(product.price || 0)),
           quantity: qty
         });
       });
-      return items;
+      return legacyItems;
+    }
+
+    function buildMinibarProductOptions(selectedId = 0) {
+      const products = getMinibarProductsData();
+      return [
+        '<option value="">აირჩიე პროდუქტი</option>',
+        ...products.map((p) => `<option value="${p.id}" ${Number(selectedId) === Number(p.id) ? 'selected' : ''}>${escapeHtml(p.name)} (${config.currency_symbol}${Number(p.price || 0).toLocaleString('en-US')})</option>`)
+      ].join('');
+    }
+
+    function createMinibarRowHtml(prefix, item = {}) {
+      const productId = Number(item.productId || 0);
+      const quantity = Math.max(0, Number(item.quantity || 1));
+      return `
+        <div class="minibar-row grid grid-cols-12 gap-2 items-center">
+          <select class="minibar-product col-span-8 px-2 py-2 rounded bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs" onchange="recalcMinibarUI('${prefix}')">
+            ${buildMinibarProductOptions(productId)}
+          </select>
+          <input type="number" min="0" step="1" value="${quantity}" class="minibar-qty col-span-3 px-2 py-2 rounded bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs" oninput="recalcMinibarUI('${prefix}')">
+          <button type="button" class="col-span-1 px-2 py-2 rounded bg-red-100 text-red-700 text-xs" onclick="removeMinibarRow(this, '${prefix}')">✕</button>
+        </div>
+      `;
+    }
+
+    function addMinibarRow(prefix, item = {}) {
+      const rowsWrap = document.getElementById(`${prefix}MinibarRows`);
+      if (!rowsWrap) return;
+      rowsWrap.insertAdjacentHTML('beforeend', createMinibarRowHtml(prefix, item));
+      recalcMinibarUI(prefix);
+    }
+
+    function removeMinibarRow(btn, prefix) {
+      const row = btn?.closest('.minibar-row');
+      if (row) row.remove();
+      const rowsWrap = document.getElementById(`${prefix}MinibarRows`);
+      if (rowsWrap && !rowsWrap.querySelector('.minibar-row')) {
+        addMinibarRow(prefix, { productId: 0, quantity: 1 });
+        return;
+      }
+      recalcMinibarUI(prefix);
+    }
+
+    function recalcMinibarUI(prefix) {
+      const minibarTotal = getMinibarTotalFromItems(collectMinibarSelection(prefix));
+      const label = document.getElementById(`${prefix}MinibarTotalLabel`);
+      if (label) label.textContent = `${config.currency_symbol}${minibarTotal.toLocaleString('en-US')}`;
+      if (prefix === 'new') recalcNewReservationTotal();
+      if (prefix === 'edit') recalcEditReservationTotal();
+    }
+
+    function initMinibarSelector(prefix, selectedItems = []) {
+      const rowsWrap = document.getElementById(`${prefix}MinibarRows`);
+      if (!rowsWrap) return;
+      rowsWrap.innerHTML = '';
+      const normalized = normalizeMinibarItems(selectedItems);
+      if (normalized.length) normalized.forEach((item) => addMinibarRow(prefix, item));
+      else addMinibarRow(prefix, { productId: 0, quantity: 1 });
+      recalcMinibarUI(prefix);
     }
 
     function renderMinibarSelector(prefix, selectedItems = []) {
       const products = getMinibarProductsData();
-      const normalizedSelected = normalizeMinibarItems(selectedItems);
-      const selectedByProductId = {};
-      normalizedSelected.forEach((item) => { selectedByProductId[String(item.productId)] = item; });
       if (!products.length) {
         return `
           <div class="md:col-span-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600">
@@ -2824,20 +2897,12 @@
       }
       return `
         <div class="md:col-span-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600">
-          <p class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">მინიბარის მოხმარება</p>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
-            ${products.map((product) => {
-              const selected = selectedByProductId[String(product.id)];
-              const qty = Number(selected?.quantity || 0);
-              return `
-                <label class="text-xs text-gray-500">
-                  ${escapeHtml(product.name)} (${config.currency_symbol}${Number(product.price || 0).toLocaleString('en-US')})
-                  <input id="${prefix}MinibarQty_${product.id}" type="number" min="0" step="1" value="${qty}" class="mt-1 w-full px-2 py-1.5 rounded bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
-                </label>
-              `;
-            }).join('')}
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-xs font-semibold text-gray-700 dark:text-gray-300">მინიბარის მოხმარება</p>
+            <button type="button" class="px-2 py-1 rounded bg-sky-600 text-white text-xs" onclick="addMinibarRow('${prefix}')">+ დამატება</button>
           </div>
-          <div class="text-xs text-gray-500 mt-2">მინიბარი: <strong id="${prefix}MinibarTotalLabel">${config.currency_symbol}${getMinibarTotalFromItems(normalizedSelected).toLocaleString('en-US')}</strong></div>
+          <div id="${prefix}MinibarRows" class="space-y-2"></div>
+          <div class="text-xs text-gray-500 mt-2">მინიბარი: <strong id="${prefix}MinibarTotalLabel">${config.currency_symbol}${getMinibarTotalFromItems(selectedItems).toLocaleString('en-US')}</strong></div>
         </div>
       `;
     }
@@ -3064,7 +3129,7 @@
       document.getElementById('editCheckoutDate')?.addEventListener('change', recalcEditReservationTotal);
       document.getElementById('editCheckoutTime')?.addEventListener('change', recalcEditReservationTotal);
       document.getElementById('editAdditionalFeeAmount')?.addEventListener('input', recalcEditReservationTotal);
-      document.querySelectorAll('[id^="editMinibarQty_"]').forEach((el) => el.addEventListener('input', recalcEditReservationTotal));
+      initMinibarSelector('edit', res.minibarItems || []);
       document.getElementById('editRoomId')?.addEventListener('change', () => {
         updateExtraBedOptions('editRoomId', 'editExtraBedWrap', 'editExtraBedEnabled', 'editExtraBedQty', 'editExtraBedRateInfo');
         recalcEditReservationTotal();
@@ -4181,16 +4246,16 @@
           updateExtraBedOptions('newRoomId', 'newExtraBedWrap', 'newExtraBedEnabled', 'newExtraBedQty', 'newExtraBedRateInfo');
           recalcNewReservationTotal();
         });
-        document.getElementById('newCheckinDate')?.addEventListener('change', recalcNewReservationTotal);
-        document.getElementById('newCheckoutDate')?.addEventListener('change', recalcNewReservationTotal);
-        document.getElementById('newCheckoutTime')?.addEventListener('change', recalcNewReservationTotal);
-        document.getElementById('newAdditionalFeeAmount')?.addEventListener('input', recalcNewReservationTotal);
-        document.querySelectorAll('[id^="newMinibarQty_"]').forEach((el) => el.addEventListener('input', recalcNewReservationTotal));
-        document.getElementById('newExtraBedEnabled')?.addEventListener('change', () => {
-          const qty = document.getElementById('newExtraBedQty');
-          if (qty) qty.disabled = !document.getElementById('newExtraBedEnabled')?.checked;
-          recalcNewReservationTotal();
-        });
+      document.getElementById('newCheckinDate')?.addEventListener('change', recalcNewReservationTotal);
+      document.getElementById('newCheckoutDate')?.addEventListener('change', recalcNewReservationTotal);
+      document.getElementById('newCheckoutTime')?.addEventListener('change', recalcNewReservationTotal);
+      document.getElementById('newAdditionalFeeAmount')?.addEventListener('input', recalcNewReservationTotal);
+      initMinibarSelector('new', []);
+      document.getElementById('newExtraBedEnabled')?.addEventListener('change', () => {
+        const qty = document.getElementById('newExtraBedQty');
+        if (qty) qty.disabled = !document.getElementById('newExtraBedEnabled')?.checked;
+        recalcNewReservationTotal();
+      });
         document.getElementById('newExtraBedQty')?.addEventListener('change', recalcNewReservationTotal);
         updateRoomPriceHint('newRoomId', 'newRoomPriceHint');
         updateExtraBedOptions('newRoomId', 'newExtraBedWrap', 'newExtraBedEnabled', 'newExtraBedQty', 'newExtraBedRateInfo');
