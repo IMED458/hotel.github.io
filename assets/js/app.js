@@ -538,7 +538,9 @@
             lateCheckoutFee: Math.max(0, Number(r.lateCheckoutFee || 0)),
             extraBedEnabled: !!r.extraBedEnabled,
             extraBedQty: Math.max(0, Number(r.extraBedQty || 0)),
-            extraBedFee: Math.max(0, Number(r.extraBedFee || 0))
+            extraBedFee: Math.max(0, Number(r.extraBedFee || 0)),
+            minibarItems: Array.isArray(r.minibarItems) ? r.minibarItems : [],
+            minibarTotal: Math.max(0, Number(r.minibarTotal || 0))
           };
         });
         setState('reservations', migratedReservations);
@@ -555,6 +557,8 @@
       }
       if (!Array.isArray(getState('payments', null))) setState('payments', []);
       if (!getState('nextPaymentId', null)) setState('nextPaymentId', 1);
+      if (!Array.isArray(getState('minibarProducts', null))) setState('minibarProducts', []);
+      if (!getState('nextMinibarProductId', null)) setState('nextMinibarProductId', 1);
       if (!Array.isArray(getState('expenses', null))) setState('expenses', []);
       if (!getState('nextExpenseId', null)) setState('nextExpenseId', 1);
       if (!Array.isArray(getState('manualJournalEntries', null))) setState('manualJournalEntries', []);
@@ -592,6 +596,8 @@
     function setGuestsData(items) { setState('guests', items); }
     function getPaymentsData() { return getState('payments', []); }
     function setPaymentsData(items) { setState('payments', items); }
+    function getMinibarProductsData() { return getState('minibarProducts', []); }
+    function setMinibarProductsData(items) { setState('minibarProducts', items); }
     function getExpensesData() { return getState('expenses', []); }
     function setExpensesData(items) { setState('expenses', items); }
     function getManualJournalData() { return getState('manualJournalEntries', []); }
@@ -2338,6 +2344,7 @@
       }
       const rates = getMonthlyRates();
       const policy = getPolicySettings();
+      const minibarProducts = getMinibarProductsData();
       document.getElementById('page-pricing').innerHTML = `
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-bold">ფასები და ტარიფები</h2>
@@ -2364,6 +2371,31 @@
               </label>
             </div>
             <button onclick="saveMonthlyRates()" class="mt-4 px-4 py-2 bg-sky-600 text-white rounded-xl">ფასების შენახვა</button>
+          </div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold">მინიბარის პროდუქტები</h3>
+            <button onclick="saveMinibarProductsFromPricing()" class="px-3 py-2 bg-sky-600 text-white rounded-lg text-sm">ჩამონათვალის შენახვა</button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+            <input id="newMinibarProductName" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="პროდუქტის დასახელება">
+            <input id="newMinibarProductPrice" type="number" min="0" step="0.01" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="ფასი (₾)">
+            <button onclick="addMinibarProductFromPricing()" class="px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm">პროდუქტის დამატება</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-left text-gray-500"><tr><th class="pb-2">პროდუქტი</th><th class="pb-2">ფასი (₾)</th><th class="pb-2">მოქმედება</th></tr></thead>
+              <tbody>
+                ${minibarProducts.map((p) => `
+                  <tr class="border-t border-gray-100 dark:border-gray-700">
+                    <td class="py-2"><input id="minibarName_${p.id}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(p.name || '')}"></td>
+                    <td class="py-2"><input id="minibarPrice_${p.id}" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(p.price || 0)}"></td>
+                    <td class="py-2"><button onclick="deleteMinibarProductFromPricing(${p.id})" class="px-3 py-2 rounded bg-red-100 text-red-700 text-xs">წაშლა</button></td>
+                  </tr>
+                `).join('') || '<tr><td colspan="3" class="py-6 text-center text-gray-500">მინიბარის პროდუქტები ჯერ არ არის</td></tr>'}
+              </tbody>
+            </table>
           </div>
         </div>
       `;
@@ -2525,6 +2557,43 @@
       showToast('ფასები შენახულია');
     }
 
+    function addMinibarProductFromPricing() {
+      if (!can('pricingManage')) return showToast('მინიბარის ცვლილების უფლება არ გაქვთ', 'error');
+      const name = document.getElementById('newMinibarProductName')?.value.trim() || '';
+      const price = Math.max(0, Number(document.getElementById('newMinibarProductPrice')?.value || 0));
+      if (!name) return showToast('მიუთითეთ პროდუქტის დასახელება', 'error');
+      const items = getMinibarProductsData();
+      const nextId = Number(getState('nextMinibarProductId', 1));
+      items.push({ id: nextId, name, price });
+      setMinibarProductsData(items);
+      setState('nextMinibarProductId', nextId + 1);
+      showToast('მინიბარის პროდუქტი დაემატა');
+      renderPricing();
+    }
+
+    function saveMinibarProductsFromPricing() {
+      if (!can('pricingManage')) return showToast('მინიბარის ცვლილების უფლება არ გაქვთ', 'error');
+      const items = getMinibarProductsData()
+        .map((p) => ({
+          id: Number(p.id),
+          name: String(document.getElementById(`minibarName_${p.id}`)?.value || '').trim(),
+          price: Math.max(0, Number(document.getElementById(`minibarPrice_${p.id}`)?.value || 0))
+        }))
+        .filter((p) => p.id > 0 && p.name);
+      setMinibarProductsData(items);
+      showToast('მინიბარის ჩამონათვალი განახლდა');
+      renderPricing();
+    }
+
+    function deleteMinibarProductFromPricing(productId) {
+      if (!can('pricingManage')) return showToast('მინიბარის ცვლილების უფლება არ გაქვთ', 'error');
+      if (!window.confirm('წავშალოთ მინიბარის პროდუქტი?')) return;
+      const items = getMinibarProductsData().filter((p) => Number(p.id) !== Number(productId));
+      setMinibarProductsData(items);
+      showToast('მინიბარის პროდუქტი წაიშალა');
+      renderPricing();
+    }
+
     function autoFillGuestById() {
       const id = document.getElementById('newGuestIdNumber')?.value.trim();
       if (!id) return;
@@ -2604,7 +2673,9 @@
       }
       const extraBedEnabled = !!document.getElementById('newExtraBedEnabled')?.checked;
       const extraBedQty = Math.max(0, Number(document.getElementById('newExtraBedQty')?.value || 0));
-      const charges = computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled, extraBedQty });
+      const minibarItems = collectMinibarSelection('new');
+      const minibarTotal = getMinibarTotalFromItems(minibarItems);
+      const charges = computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled, extraBedQty, minibarAmount: minibarTotal });
       const totalPrice = charges.grossTotal;
       if (paymentStatus === 'paid') paidAmount = totalPrice;
       if (paymentStatus === 'unpaid') paidAmount = 0;
@@ -2633,6 +2704,8 @@
         nightlyRate: charges.nightlyRate,
         lateCheckoutFee: charges.lateCheckoutFee,
         extraBedFee: charges.extraBedFee,
+        minibarItems: normalizeMinibarItems(minibarItems),
+        minibarTotal: charges.minibarAmount,
         totalPrice
       };
       reservations.push(createdReservation);
@@ -2653,23 +2726,24 @@
       renderCurrentPage();
     }
 
-    function computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled = false, extraBedQty = 0 }) {
+    function computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled = false, extraBedQty = 0, minibarAmount = 0 }) {
       const room = findRoomById(Number(roomId));
       const nights = calculateNights(checkinDate, checkoutDate);
       const nightlyRate = Number(room?.basePrice || 0);
       const baseTotal = Math.max(0, nights * nightlyRate);
       const lateCheckoutFee = calculateLateCheckoutFee(checkoutTime);
       const extraFee = Math.max(0, Number(additionalFeeAmount || 0));
+      const safeMinibarAmount = Math.max(0, Number(minibarAmount || 0));
       const policy = getPolicySettings();
       const roomAllowsExtraBed = !!room?.supportsExtraBed;
       const safeExtraQty = roomAllowsExtraBed && extraBedEnabled ? Math.max(1, Math.min(Number(room?.maxExtraBeds || 1), Number(extraBedQty || 1))) : 0;
       const extraBedFee = safeExtraQty > 0 ? (safeExtraQty * nights * Number(policy.extraBedRate || 0)) : 0;
-      const grossTotal = baseTotal + lateCheckoutFee + extraFee + extraBedFee;
-      return { nights, nightlyRate, baseTotal, lateCheckoutFee, extraFee, extraBedEnabled: safeExtraQty > 0, extraBedQty: safeExtraQty, extraBedFee, grossTotal };
+      const grossTotal = baseTotal + lateCheckoutFee + extraFee + extraBedFee + safeMinibarAmount;
+      return { nights, nightlyRate, baseTotal, lateCheckoutFee, extraFee, extraBedEnabled: safeExtraQty > 0, extraBedQty: safeExtraQty, extraBedFee, minibarAmount: safeMinibarAmount, grossTotal };
     }
 
-    function computeReservationTotal(roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled, extraBedQty) {
-      const charges = computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled, extraBedQty });
+    function computeReservationTotal(roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled, extraBedQty, minibarAmount = 0) {
+      const charges = computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled, extraBedQty, minibarAmount });
       return charges.grossTotal;
     }
 
@@ -2703,6 +2777,71 @@
       outputEl.textContent = room ? `არჩეული ნომრის ფასი: ${config.currency_symbol}${Number(room.basePrice || 0).toLocaleString('en-US')} / ღამე` : 'არჩეული ნომერი არ არის';
     }
 
+    function normalizeMinibarItems(items) {
+      if (!Array.isArray(items)) return [];
+      return items
+        .map((item) => ({
+          productId: Number(item.productId || item.id || 0),
+          name: String(item.name || '').trim(),
+          unitPrice: Math.max(0, Number(item.unitPrice ?? item.price ?? 0)),
+          quantity: Math.max(0, Number(item.quantity || item.qty || 0))
+        }))
+        .filter((item) => item.productId > 0 && item.quantity > 0 && item.unitPrice >= 0 && item.name);
+    }
+
+    function getMinibarTotalFromItems(items) {
+      return normalizeMinibarItems(items).reduce((sum, item) => sum + (Number(item.unitPrice || 0) * Number(item.quantity || 0)), 0);
+    }
+
+    function collectMinibarSelection(prefix) {
+      const products = getMinibarProductsData();
+      const items = [];
+      products.forEach((product) => {
+        const qty = Math.max(0, Number(document.getElementById(`${prefix}MinibarQty_${product.id}`)?.value || 0));
+        if (!qty) return;
+        items.push({
+          productId: Number(product.id),
+          name: String(product.name || ''),
+          unitPrice: Math.max(0, Number(product.price || 0)),
+          quantity: qty
+        });
+      });
+      return items;
+    }
+
+    function renderMinibarSelector(prefix, selectedItems = []) {
+      const products = getMinibarProductsData();
+      const normalizedSelected = normalizeMinibarItems(selectedItems);
+      const selectedByProductId = {};
+      normalizedSelected.forEach((item) => { selectedByProductId[String(item.productId)] = item; });
+      if (!products.length) {
+        return `
+          <div class="md:col-span-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600">
+            <div class="text-xs text-gray-500">მინიბარის პროდუქტები ჯერ არ არის დამატებული (მენეჯერი ამატებს ფასები/ტარიფებიდან).</div>
+            <div class="text-xs text-gray-500 mt-1">მინიბარი: <strong id="${prefix}MinibarTotalLabel">${config.currency_symbol}0</strong></div>
+          </div>
+        `;
+      }
+      return `
+        <div class="md:col-span-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600">
+          <p class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">მინიბარის მოხმარება</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+            ${products.map((product) => {
+              const selected = selectedByProductId[String(product.id)];
+              const qty = Number(selected?.quantity || 0);
+              return `
+                <label class="text-xs text-gray-500">
+                  ${escapeHtml(product.name)} (${config.currency_symbol}${Number(product.price || 0).toLocaleString('en-US')})
+                  <input id="${prefix}MinibarQty_${product.id}" type="number" min="0" step="1" value="${qty}" class="mt-1 w-full px-2 py-1.5 rounded bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
+                </label>
+              `;
+            }).join('')}
+          </div>
+          <div class="text-xs text-gray-500 mt-2">მინიბარი: <strong id="${prefix}MinibarTotalLabel">${config.currency_symbol}${getMinibarTotalFromItems(normalizedSelected).toLocaleString('en-US')}</strong></div>
+        </div>
+      `;
+    }
+
     function recalcNewReservationTotal() {
       const roomId = Number(document.getElementById('newRoomId')?.value);
       const checkinDate = document.getElementById('newCheckinDate')?.value;
@@ -2711,14 +2850,19 @@
       const additionalFeeAmount = Number(document.getElementById('newAdditionalFeeAmount')?.value || 0);
       const extraBedEnabled = !!document.getElementById('newExtraBedEnabled')?.checked;
       const extraBedQty = Math.max(0, Number(document.getElementById('newExtraBedQty')?.value || 0));
+      const minibarTotal = getMinibarTotalFromItems(collectMinibarSelection('new'));
       const totalEl = document.getElementById('newReservationTotal');
       const lateFeeEl = document.getElementById('newLateCheckoutFee');
       const extraBedFeeEl = document.getElementById('newExtraBedFee');
+      const minibarFeeEl = document.getElementById('newMinibarFee');
       if (!totalEl || !roomId || !checkinDate || !checkoutDate) return;
-      const charges = computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled, extraBedQty });
+      const charges = computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled, extraBedQty, minibarAmount: minibarTotal });
       totalEl.value = String(charges.grossTotal);
       if (lateFeeEl) lateFeeEl.textContent = `${config.currency_symbol}${charges.lateCheckoutFee.toLocaleString('en-US')}`;
       if (extraBedFeeEl) extraBedFeeEl.textContent = `${config.currency_symbol}${charges.extraBedFee.toLocaleString('en-US')}`;
+      if (minibarFeeEl) minibarFeeEl.textContent = `${config.currency_symbol}${charges.minibarAmount.toLocaleString('en-US')}`;
+      const minibarTotalLabel = document.getElementById('newMinibarTotalLabel');
+      if (minibarTotalLabel) minibarTotalLabel.textContent = `${config.currency_symbol}${charges.minibarAmount.toLocaleString('en-US')}`;
     }
 
     function normalizeReservationPayment(res) {
@@ -2779,15 +2923,20 @@
       const additionalFeeAmount = Number(document.getElementById('editAdditionalFeeAmount')?.value || 0);
       const extraBedEnabled = !!document.getElementById('editExtraBedEnabled')?.checked;
       const extraBedQty = Math.max(0, Number(document.getElementById('editExtraBedQty')?.value || 0));
+      const minibarTotal = getMinibarTotalFromItems(collectMinibarSelection('edit'));
       const totalEl = document.getElementById('editTotalPrice');
       const lateFeeEl = document.getElementById('editLateCheckoutFee');
       const extraBedFeeEl = document.getElementById('editExtraBedFee');
+      const minibarFeeEl = document.getElementById('editMinibarFee');
       if (!roomId || !checkinDate || !checkoutDate || !totalEl) return;
-      const charges = computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled, extraBedQty });
+      const charges = computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled, extraBedQty, minibarAmount: minibarTotal });
       totalEl.value = String(charges.grossTotal);
       updateReservationModalHeaderAmount(charges.grossTotal);
       if (lateFeeEl) lateFeeEl.textContent = `${config.currency_symbol}${charges.lateCheckoutFee.toLocaleString('en-US')}`;
       if (extraBedFeeEl) extraBedFeeEl.textContent = `${config.currency_symbol}${charges.extraBedFee.toLocaleString('en-US')}`;
+      if (minibarFeeEl) minibarFeeEl.textContent = `${config.currency_symbol}${charges.minibarAmount.toLocaleString('en-US')}`;
+      const minibarTotalLabel = document.getElementById('editMinibarTotalLabel');
+      if (minibarTotalLabel) minibarTotalLabel.textContent = `${config.currency_symbol}${charges.minibarAmount.toLocaleString('en-US')}`;
       updateRoomPriceHint('editRoomId', 'editRoomPriceHint');
       recalcEditDueAmount();
     }
@@ -2886,6 +3035,7 @@
           </div>
           <label class="text-xs text-gray-500">დამატებითი გადასახადი (სახელი)<input id="editAdditionalFeeName" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.additionalFeeName || '')}"></label>
           <label class="text-xs text-gray-500">დამატებითი გადასახადი (₾)<input id="editAdditionalFeeAmount" type="number" min="0" step="0.01" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(res.additionalFeeAmount || 0)}"></label>
+          ${renderMinibarSelector('edit', res.minibarItems || [])}
           <div id="editExtraBedWrap" class="${roomSupportsExtraBed ? '' : 'hidden'} md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3">
             <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="editExtraBedEnabled" type="checkbox" class="rounded" ${res.extraBedEnabled ? 'checked' : ''}> Extra Bed</label>
             <label class="text-xs text-gray-500">Extra Bed რაოდენობა<select id="editExtraBedQty" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full"></select></label>
@@ -2896,6 +3046,7 @@
         </div>
         <div class="mt-2 text-xs text-gray-500">გვიანი Check-out გადასახადი: <strong id="editLateCheckoutFee">${config.currency_symbol}${Number(res.lateCheckoutFee || 0).toLocaleString('en-US')}</strong></div>
         <div class="mt-1 text-xs text-gray-500">Extra Bed გადასახადი: <strong id="editExtraBedFee">${config.currency_symbol}${Number(res.extraBedFee || 0).toLocaleString('en-US')}</strong></div>
+        <div class="mt-1 text-xs text-gray-500">მინიბარის გადასახადი: <strong id="editMinibarFee">${config.currency_symbol}${Number(res.minibarTotal || 0).toLocaleString('en-US')}</strong></div>
         <div class="mt-1 text-xs text-gray-500" id="editRoomPriceHint"></div>
         <div class="mt-2 text-sm font-semibold text-red-600" id="editDueSummary"></div>
         <div class="flex gap-2 mt-4 flex-wrap">
@@ -2913,6 +3064,7 @@
       document.getElementById('editCheckoutDate')?.addEventListener('change', recalcEditReservationTotal);
       document.getElementById('editCheckoutTime')?.addEventListener('change', recalcEditReservationTotal);
       document.getElementById('editAdditionalFeeAmount')?.addEventListener('input', recalcEditReservationTotal);
+      document.querySelectorAll('[id^="editMinibarQty_"]').forEach((el) => el.addEventListener('input', recalcEditReservationTotal));
       document.getElementById('editRoomId')?.addEventListener('change', () => {
         updateExtraBedOptions('editRoomId', 'editExtraBedWrap', 'editExtraBedEnabled', 'editExtraBedQty', 'editExtraBedRateInfo');
         recalcEditReservationTotal();
@@ -2955,11 +3107,13 @@
       const nextAdditionalFeeAmount = Math.max(0, Number(document.getElementById('editAdditionalFeeAmount')?.value || 0));
       const nextExtraBedEnabled = !!document.getElementById('editExtraBedEnabled')?.checked;
       const nextExtraBedQty = Math.max(0, Number(document.getElementById('editExtraBedQty')?.value || 0));
+      const minibarItems = collectMinibarSelection('edit');
+      const minibarTotal = getMinibarTotalFromItems(minibarItems);
       if (nextCheckoutDate <= nextCheckinDate) {
         showToast('Check-out თარიღი უნდა იყოს Check-in თარიღის შემდეგ', 'error');
         return;
       }
-      const charges = computeReservationCharges({ roomId: nextRoomId, checkinDate: nextCheckinDate, checkoutDate: nextCheckoutDate, checkoutTime: nextCheckoutTime, additionalFeeAmount: nextAdditionalFeeAmount, extraBedEnabled: nextExtraBedEnabled, extraBedQty: nextExtraBedQty });
+      const charges = computeReservationCharges({ roomId: nextRoomId, checkinDate: nextCheckinDate, checkoutDate: nextCheckoutDate, checkoutTime: nextCheckoutTime, additionalFeeAmount: nextAdditionalFeeAmount, extraBedEnabled: nextExtraBedEnabled, extraBedQty: nextExtraBedQty, minibarAmount: minibarTotal });
       const recalculatedTotal = charges.grossTotal;
       let paidAmount = Number(document.getElementById('editPaidAmount')?.value || 0);
       if (nextPaymentStatus === 'paid') paidAmount = recalculatedTotal;
@@ -2987,6 +3141,8 @@
         nightlyRate: charges.nightlyRate,
         lateCheckoutFee: charges.lateCheckoutFee,
         extraBedFee: charges.extraBedFee,
+        minibarItems: normalizeMinibarItems(minibarItems),
+        minibarTotal: charges.minibarAmount,
         totalPrice: recalculatedTotal
       };
       setReservationsData(reservations);
@@ -3059,7 +3215,7 @@
 
     function getReservationFinancials(resId) {
       const res = getReservationsData().find(r => Number(r.id) === Number(resId));
-      if (!res) return { nights: 0, nightlyRate: 0, baseTotal: 0, lateCheckoutFee: 0, extraBedFee: 0, extraBedQty: 0, additionalFeeName: '', additionalFeeAmount: 0, grossTotal: 0, advance: 0, dueTotal: 0 };
+      if (!res) return { nights: 0, nightlyRate: 0, baseTotal: 0, lateCheckoutFee: 0, extraBedFee: 0, extraBedQty: 0, minibarItems: [], minibarTotal: 0, additionalFeeName: '', additionalFeeAmount: 0, grossTotal: 0, advance: 0, dueTotal: 0 };
       const room = findRoomById(res.roomId);
       const nights = calculateNights(res.checkinDate, res.checkoutDate);
       const nightlyRate = Number(res.nightlyRate || room?.basePrice || 0);
@@ -3067,12 +3223,14 @@
       const lateCheckoutFee = Number(res.lateCheckoutFee || calculateLateCheckoutFee(res.checkoutTime));
       const extraBedFee = Number(res.extraBedFee || 0);
       const extraBedQty = Math.max(0, Number(res.extraBedQty || 0));
+      const minibarItems = normalizeMinibarItems(res.minibarItems || []);
+      const minibarTotal = Math.max(0, Number(res.minibarTotal || getMinibarTotalFromItems(minibarItems)));
       const additionalFeeAmount = Math.max(0, Number(res.additionalFeeAmount || 0));
       const additionalFeeName = String(res.additionalFeeName || '').trim();
-      const grossTotal = Number(res.totalPrice || (baseTotal + lateCheckoutFee + extraBedFee + additionalFeeAmount));
+      const grossTotal = Number(res.totalPrice || (baseTotal + lateCheckoutFee + extraBedFee + minibarTotal + additionalFeeAmount));
       const advance = normalizeReservationPayment(res);
       const dueTotal = Math.max(0, grossTotal - advance);
-      return { nights, nightlyRate, baseTotal, lateCheckoutFee, extraBedFee, extraBedQty, additionalFeeName, additionalFeeAmount, grossTotal, advance, dueTotal };
+      return { nights, nightlyRate, baseTotal, lateCheckoutFee, extraBedFee, extraBedQty, minibarItems, minibarTotal, additionalFeeName, additionalFeeAmount, grossTotal, advance, dueTotal };
     }
 
     function printInvoice(resId) {
@@ -3129,6 +3287,8 @@
                 <tr><td>სასტუმრო — ღამეები</td><td class="right">${financials.nights}</td><td class="right">${financials.nightlyRate}₾</td><td class="right">${financials.baseTotal}₾</td></tr>
                 <tr><td>გვიანი Check-out</td><td class="right">1</td><td class="right">${financials.lateCheckoutFee}₾</td><td class="right">${financials.lateCheckoutFee}₾</td></tr>
                 ${financials.extraBedFee > 0 ? `<tr><td>Extra Bed</td><td class="right">${financials.extraBedQty}</td><td class="right">${getPolicySettings().extraBedRate}₾ x ${financials.nights} ღამე</td><td class="right">${financials.extraBedFee}₾</td></tr>` : ''}
+                ${financials.minibarItems.map((item) => `<tr><td>მინიბარი — ${escapeHtml(item.name)}</td><td class="right">${item.quantity}</td><td class="right">${Number(item.unitPrice || 0)}₾</td><td class="right">${(Number(item.unitPrice || 0) * Number(item.quantity || 0)).toFixed(2)}₾</td></tr>`).join('')}
+                ${financials.minibarTotal > 0 ? `<tr><td>მინიბარი ჯამურად</td><td class="right">-</td><td class="right">-</td><td class="right">${financials.minibarTotal.toFixed(2)}₾</td></tr>` : ''}
                 ${financials.additionalFeeAmount > 0 ? `<tr><td>${escapeHtml(financials.additionalFeeName || 'დამატებითი გადასახადი')}</td><td class="right">1</td><td class="right">${financials.additionalFeeAmount}₾</td><td class="right">${financials.additionalFeeAmount}₾</td></tr>` : ''}
                 <tr><td>ავანსი</td><td class="right">1</td><td class="right">-</td><td class="right">-${financials.advance}₾</td></tr>
               </tbody>
@@ -3999,6 +4159,7 @@
             <label class="text-xs text-gray-500">Check-out დრო<input id="newCheckoutTime" type="time" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(policy.checkoutTime)}"></label>
             <label class="text-xs text-gray-500">დამატებითი გადასახადი (სახელი)<input id="newAdditionalFeeName" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(policy.defaultAdditionalFeeName)}" placeholder="მაგ: City Fee"></label>
             <label class="text-xs text-gray-500">დამატებითი გადასახადი (₾)<input id="newAdditionalFeeAmount" type="number" min="0" step="0.01" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(policy.defaultAdditionalFeeAmount || 0)}"></label>
+            ${renderMinibarSelector('new', [])}
             <div id="newExtraBedWrap" class="md:col-span-2 hidden grid grid-cols-1 md:grid-cols-3 gap-3">
               <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="newExtraBedEnabled" type="checkbox" class="rounded"> Extra Bed</label>
               <label class="text-xs text-gray-500">Extra Bed რაოდენობა<select id="newExtraBedQty" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full"><option value="1">1</option></select></label>
@@ -4009,6 +4170,7 @@
           <div class="mt-2 text-xs text-gray-500" id="newRoomPriceHint"></div>
           <div class="mt-1 text-xs text-gray-500">გვიანი Check-out გადასახადი: <strong id="newLateCheckoutFee">${config.currency_symbol}0</strong></div>
           <div class="mt-1 text-xs text-gray-500">Extra Bed გადასახადი: <strong id="newExtraBedFee">${config.currency_symbol}0</strong></div>
+          <div class="mt-1 text-xs text-gray-500">მინიბარის გადასახადი: <strong id="newMinibarFee">${config.currency_symbol}0</strong></div>
           <div class="mt-4 flex gap-2">
             <button class="px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="addNewReservation()">შენახვა</button>
             <button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg" onclick="closeModal()">გაუქმება</button>
@@ -4023,6 +4185,7 @@
         document.getElementById('newCheckoutDate')?.addEventListener('change', recalcNewReservationTotal);
         document.getElementById('newCheckoutTime')?.addEventListener('change', recalcNewReservationTotal);
         document.getElementById('newAdditionalFeeAmount')?.addEventListener('input', recalcNewReservationTotal);
+        document.querySelectorAll('[id^="newMinibarQty_"]').forEach((el) => el.addEventListener('input', recalcNewReservationTotal));
         document.getElementById('newExtraBedEnabled')?.addEventListener('change', () => {
           const qty = document.getElementById('newExtraBedQty');
           if (qty) qty.disabled = !document.getElementById('newExtraBedEnabled')?.checked;
