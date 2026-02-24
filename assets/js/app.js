@@ -49,12 +49,13 @@
       syncIntervalMinutes: 15,
       isConnected: false,
       connectedAt: '',
-      lastSyncAt: ''
+      lastSyncAt: '',
+      lastSyncStatus: 'idle',
+      lastSyncMessage: ''
     };
     const DEFAULT_HOTEL_LOGO_PATH = 'Green%20Tower%20Hotel.png';
 
     let config = { ...defaultConfig };
-    let allData = [];
     let currentPage = 'dashboard';
     let currentRole = 'manager';
     let calendarDate = new Date();
@@ -70,8 +71,7 @@
     const GEO_MONTHS = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
 
     const dataHandler = {
-      onDataChanged(data) {
-        allData = Array.isArray(data) ? data : [];
+      onDataChanged() {
         renderCurrentPage();
       }
     };
@@ -1535,6 +1535,7 @@
             <thead class="bg-gray-50 dark:bg-gray-700/50">
               <tr>
                 <th class="px-4 py-3 text-left">სტუმარი</th>
+                <th class="px-4 py-3 text-left">OTA</th>
                 <th class="px-4 py-3 text-left">ნომერი</th>
                 <th class="px-4 py-3 text-left">Check-in</th>
                 <th class="px-4 py-3 text-left">Check-out</th>
@@ -1547,7 +1548,13 @@
             <tbody>
               ${reservations.map(r => `
                 <tr class="border-t border-gray-100 dark:border-gray-700">
-                  <td class="px-4 py-3">${r.guestName || 'სტუმარი'}</td>
+                  <td class="px-4 py-3">${escapeHtml(r.guestName || 'სტუმარი')}</td>
+                  <td class="px-4 py-3">
+                    ${(() => {
+                      const src = getReservationSourceInfo(r);
+                      return `<span class="inline-flex items-center gap-2"><img src="${escapeHtml(src.icon)}" alt="${escapeHtml(src.title)}" title="${escapeHtml(src.title)}" class="w-4 h-4 rounded-sm object-contain"><span class="text-xs text-gray-500">${escapeHtml(src.title || '-')}</span></span>`;
+                    })()}
+                  </td>
                   <td class="px-4 py-3">${findRoomById(r.roomId)?.roomNumber || '-'}</td>
                   <td class="px-4 py-3">${formatDate(r.checkinDate)}</td>
                   <td class="px-4 py-3">${formatDate(r.checkoutDate)}</td>
@@ -1562,7 +1569,7 @@
                     </div>
                   </td>
                 </tr>
-              `).join('')}
+              `).join('') || '<tr><td colspan="9" class="px-4 py-6 text-center text-gray-500">ჯავშნები არ არის</td></tr>'}
             </tbody>
           </table>
         </div>
@@ -3527,16 +3534,57 @@
       printInvoice(res.id);
     }
 
+    function getChannelRoomMapping() {
+      const raw = getState('channelRoomMapping', {});
+      return raw && typeof raw === 'object' ? raw : {};
+    }
+
+    function setChannelRoomMapping(mapping) {
+      setState('channelRoomMapping', mapping && typeof mapping === 'object' ? mapping : {});
+    }
+
+    function saveChannelRoomMapping() {
+      if (!can('channelsView')) return showToast('Channel Manager-ზე წვდომა შეზღუდულია', 'error');
+      const rooms = getRoomsData();
+      const next = {};
+      rooms.forEach((room) => {
+        const input = document.getElementById(`ch-map-${room.id}`);
+        next[String(room.id)] = String(input?.value || '').trim();
+      });
+      setChannelRoomMapping(next);
+      showToast('ოთახების mapping შენახულია');
+      renderChannels();
+    }
+
+    function readChannexCollection(payload) {
+      if (!payload) return [];
+      if (Array.isArray(payload)) return payload;
+      if (Array.isArray(payload.data)) return payload.data;
+      if (Array.isArray(payload.results)) return payload.results;
+      if (payload.data && Array.isArray(payload.data.attributes)) return payload.data.attributes;
+      return [];
+    }
+
     function renderChannels() {
       if (!can('channelsView')) {
         document.getElementById('page-channels').innerHTML = '<div class="bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-100 dark:border-gray-700 text-sm text-gray-500">Channel Manager-ზე წვდომა შეზღუდულია.</div>';
         return;
       }
       const c = getChannelConfig();
+      const mapping = getChannelRoomMapping();
+      const rooms = getRoomsData();
+      const syncStatusBadge = c.lastSyncStatus === 'success'
+        ? 'bg-green-100 text-green-700'
+        : c.lastSyncStatus === 'error'
+          ? 'bg-red-100 text-red-700'
+          : 'bg-gray-100 text-gray-600';
       document.getElementById('page-channels').innerHTML = `
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-xl font-bold">არხების მენეჯერი</h2>
-          <span class="text-sm px-3 py-1 rounded-full ${c.isConnected ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}">${c.isConnected ? 'დაკავშირებულია' : 'გათიშულია'}</span>
+          <span class="text-sm px-3 py-1 rounded-full inline-flex items-center gap-2 ${c.isConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+            <span class="w-2 h-2 rounded-full ${c.isConnected ? 'bg-green-600' : 'bg-red-600'}"></span>
+            ${c.isConnected ? 'დაკავშირებულია' : 'გათიშულია'}
+          </span>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -3550,6 +3598,25 @@
             <div><label class="block text-sm mb-1">ავტო სინქი (წუთი)</label><input id="ch-interval" type="number" min="5" value="${c.syncIntervalMinutes}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"></div>
             <div class="md:col-span-2"><label class="inline-flex items-center gap-2 text-sm mt-2"><input id="ch-auto-sync-enabled" type="checkbox" class="rounded" ${c.autoSyncEnabled ? 'checked' : ''}>ავტომატური სინქი ჩართული</label></div>
           </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600">
+              <div class="text-gray-500">კავშირის სტატუსი</div>
+              <div class="mt-1 font-semibold inline-flex items-center gap-2 ${c.isConnected ? 'text-green-700' : 'text-red-700'}">
+                <span class="w-2 h-2 rounded-full ${c.isConnected ? 'bg-green-600' : 'bg-red-600'}"></span>
+                ${c.isConnected ? 'დაკავშირებულია' : 'გათიშულია'}
+              </div>
+            </div>
+            <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600">
+              <div class="text-gray-500">Auto-sync</div>
+              <div class="mt-1 font-semibold ${c.autoSyncEnabled ? 'text-green-700' : 'text-gray-600'}">${c.autoSyncEnabled ? 'ჩართულია' : 'გამორთულია'} • ${Number(c.syncIntervalMinutes || 15)} წთ</div>
+            </div>
+            <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600">
+              <div class="text-gray-500">ბოლო სინქი</div>
+              <div class="mt-1 font-semibold">${c.lastSyncAt ? formatDate(c.lastSyncAt) : '-'}</div>
+              <div class="mt-1 inline-flex px-2 py-0.5 rounded-full text-xs ${syncStatusBadge}">${c.lastSyncStatus === 'success' ? 'წარმატებული' : c.lastSyncStatus === 'error' ? 'შეცდომა' : 'მოლოდინი'}</div>
+              <div class="text-xs text-gray-500 mt-1">${escapeHtml(c.lastSyncMessage || '-')}</div>
+            </div>
+          </div>
           <div class="flex flex-wrap gap-2">
             <button onclick="saveChannelSettings()" class="px-4 py-2 bg-sky-600 text-white rounded-xl">შენახვა</button>
             <button onclick="startChannexOAuth()" class="px-4 py-2 bg-indigo-600 text-white rounded-xl">Channex OAuth ავტორიზაცია</button>
@@ -3559,6 +3626,27 @@
             <button onclick="disconnectChannex()" class="px-4 py-2 bg-red-600 text-white rounded-xl">გათიშვა</button>
           </div>
           <div class="text-xs text-gray-500">ბოლო დაკავშირება: ${c.connectedAt ? formatDate(c.connectedAt) : '-'} | ბოლო სინქი: ${c.lastSyncAt ? formatDate(c.lastSyncAt) : '-'}</div>
+        </div>
+        <div class="mt-4 bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold">Room Mapping (Local → Channex room_type_id)</h3>
+            <button onclick="saveChannelRoomMapping()" class="px-3 py-2 bg-sky-600 text-white rounded-lg text-sm">Mapping შენახვა</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-left text-gray-500"><tr><th class="pb-2">ადგილობრივი ოთახი</th><th class="pb-2">Channex room_type_id</th></tr></thead>
+              <tbody>
+                ${rooms.map((room) => `
+                  <tr class="border-t border-gray-100 dark:border-gray-700">
+                    <td class="py-2">${escapeHtml(room.roomNumber || '-')} • ${escapeHtml(room.roomName || '-')}</td>
+                    <td class="py-2">
+                      <input id="ch-map-${room.id}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: room-type-uuid" value="${escapeHtml(mapping[String(room.id)] || '')}">
+                    </td>
+                  </tr>
+                `).join('') || '<tr><td colspan="2" class="py-6 text-center text-gray-500">ოთახები ვერ მოიძებნა</td></tr>'}
+              </tbody>
+            </table>
+          </div>
         </div>
       `;
     }
@@ -3691,9 +3779,143 @@
           credentials: 'include'
         });
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-        setChannelConfig({ lastSyncAt: new Date().toISOString() });
-        if (!silent) showToast(`${kind === 'rates' ? 'ტარიფების' : 'ჯავშნების'} სინქი დასრულდა`);
+        const payload = await res.json();
+        const rows = readChannexCollection(payload);
+        if (kind === 'reservations') {
+          const mapping = getChannelRoomMapping();
+          const inverseMapping = {};
+          Object.keys(mapping).forEach((localRoomId) => {
+            const remoteId = String(mapping[localRoomId] || '').trim();
+            if (remoteId) inverseMapping[remoteId] = Number(localRoomId);
+          });
+          const rooms = getRoomsData();
+          const reservations = getReservationsData();
+          const guests = getGuestsData();
+          let nextReservationId = Number(getState('nextReservationId', 1));
+          let added = 0;
+          let conflicts = 0;
+          rows.forEach((bookingRaw) => {
+            const b = bookingRaw?.attributes ? { ...bookingRaw.attributes, id: bookingRaw.id || bookingRaw.attributes.id } : bookingRaw;
+            const channelBookingId = String(b?.id || '').trim();
+            if (!channelBookingId) return;
+            const exists = reservations.some((r) => String(r.channelBookingId || '').trim() === channelBookingId);
+            if (exists) return;
+            const checkinDate = String(b?.arrival_date || '').trim();
+            const checkoutDate = String(b?.departure_date || '').trim();
+            if (!checkinDate || !checkoutDate || checkoutDate <= checkinDate) return;
+            const amount = Math.max(0, Number(b?.amount || b?.total_amount || 0));
+            const source = String(b?.channel_id || b?.channel || b?.source || 'direct').trim();
+            const customer = b?.customer || {};
+            const guestName = String(customer?.name || b?.guest_name || b?.customer_name || 'სტუმარი').trim();
+            const guestEmail = String(customer?.email || b?.guest_email || '').trim();
+            const guestPhone = String(customer?.phone || b?.guest_phone || '').trim();
+            const guestIdNumber = String(customer?.id_number || '').trim();
+            const remoteRoomTypeId = String(b?.room_type_id || '').trim();
+            let roomId = inverseMapping[remoteRoomTypeId];
+            if (!roomId && rooms.length) roomId = Number(rooms[0].id);
+            if (!roomId) return;
+            const room = findRoomById(roomId);
+            const baseStatus = String(b?.status || '').toLowerCase() === 'cancelled' ? 'Cancelled' : 'Reserved';
+            const available = isRoomAvailableInRange(roomId, checkinDate, checkoutDate);
+            const status = available ? baseStatus : 'conflict';
+            if (!available) {
+              conflicts += 1;
+              if (!silent) showToast(`ყურადღება: Overbooking კონფლიქტი — ${guestName} (${checkinDate} - ${checkoutDate})`, 'warning');
+            }
+            const createdReservation = {
+              id: nextReservationId++,
+              guestName,
+              guestPhone,
+              guestEmail,
+              guestIdNumber,
+              guestCitizenship: '',
+              guestBirthDate: '',
+              roomId,
+              checkinDate,
+              checkoutDate,
+              checkoutTime: getPolicySettings().checkoutTime,
+              status,
+              paymentStatus: amount > 0 ? 'unpaid' : 'paid',
+              paidAmount: 0,
+              additionalFeeName: '',
+              additionalFeeAmount: 0,
+              extraBedEnabled: false,
+              extraBedQty: 0,
+              nightlyRate: Number(room?.basePrice || 0),
+              lateCheckoutFee: 0,
+              extraBedFee: 0,
+              totalPrice: amount,
+              channelBookingId,
+              source,
+              channelRoomTypeId: remoteRoomTypeId,
+              invoiceNo: `INV-${Number(getState('nextInvoiceNo', 1001))}`,
+              invoiceStatus: 'issued'
+            };
+            const nextInvoiceNo = Number(getState('nextInvoiceNo', 1001)) + 1;
+            setState('nextInvoiceNo', nextInvoiceNo);
+            reservations.push(createdReservation);
+            added += 1;
+            if (guestName || guestEmail || guestPhone || guestIdNumber) {
+              const idx = guestIdNumber
+                ? guests.findIndex((g) => String(g.guestIdNumber || '').trim() === guestIdNumber)
+                : guests.findIndex((g) => String(g.guestEmail || '').trim().toLowerCase() && String(g.guestEmail || '').trim().toLowerCase() === guestEmail.toLowerCase());
+              const payloadGuest = {
+                guestName,
+                guestPhone,
+                guestEmail,
+                guestIdNumber,
+                guestCitizenship: '',
+                guestBirthDate: '',
+                flagged: false,
+                blacklisted: false
+              };
+              if (idx === -1) guests.push(payloadGuest);
+              else guests[idx] = { ...guests[idx], ...payloadGuest };
+            }
+          });
+          setState('reservations', reservations);
+          setState('guests', guests);
+          setState('nextReservationId', nextReservationId);
+          setChannelConfig({
+            lastSyncAt: new Date().toISOString(),
+            lastSyncStatus: 'success',
+            lastSyncMessage: `ჯავშნები: დამატდა ${added}, კონფლიქტი ${conflicts}`
+          });
+          if (!silent) showToast(`ჯავშნების სინქი დასრულდა • დამატდა ${added}`, conflicts > 0 ? 'warning' : 'success');
+          renderCurrentPage();
+        } else if (kind === 'rates') {
+          const mapping = getChannelRoomMapping();
+          const rates = getMonthlyRates();
+          const currentMonth = new Date().getMonth() + 1;
+          const roomTypes = getRoomTypes();
+          const rooms = getRoomsData();
+          rows.forEach((rateRaw) => {
+            const rate = rateRaw?.attributes ? { ...rateRaw.attributes, id: rateRaw.id || rateRaw.attributes.id } : rateRaw;
+            const remoteId = String(rate?.id || rate?.room_type_id || '').trim();
+            if (!remoteId) return;
+            const localRoomId = Object.keys(mapping).find((rid) => String(mapping[rid] || '').trim() === remoteId);
+            if (!localRoomId) return;
+            const room = rooms.find((r) => Number(r.id) === Number(localRoomId));
+            if (!room) return;
+            const price = Number(rate?.amount || rate?.price || rate?.rate || rate?.base_rate || 0);
+            if (!Number.isFinite(price) || price <= 0) return;
+            rates[currentMonth] = rates[currentMonth] || {};
+            if (roomTypes.includes(room.roomType)) rates[currentMonth][room.roomType] = price;
+          });
+          setState('monthlyRates', rates);
+          setChannelConfig({
+            lastSyncAt: new Date().toISOString(),
+            lastSyncStatus: 'success',
+            lastSyncMessage: 'ტარიფები განახლდა'
+          });
+          if (!silent) showToast('ტარიფების სინქი დასრულდა');
+        }
       } catch (e) {
+        setChannelConfig({
+          lastSyncAt: new Date().toISOString(),
+          lastSyncStatus: 'error',
+          lastSyncMessage: String(e.message || 'უცნობი შეცდომა')
+        });
         if (!silent) showToast(`სინქის შეცდომა: ${e.message}`, 'error');
       }
       if (!noRender) renderChannels();
@@ -3701,7 +3923,7 @@
 
     function disconnectChannex() {
       if (!can('channelsView')) return showToast('Channel Manager-ზე წვდომა შეზღუდულია', 'error');
-      setChannelConfig({ isConnected: false, connectedAt: '', lastSyncAt: '', apiKey: '' });
+      setChannelConfig({ isConnected: false, connectedAt: '', lastSyncAt: '', lastSyncStatus: 'idle', lastSyncMessage: '', apiKey: '' });
       configureAutoSyncScheduler();
       showToast('Channex კავშირი გათიშულია', 'warning');
       renderChannels();
