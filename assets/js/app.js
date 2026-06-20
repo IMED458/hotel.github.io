@@ -533,6 +533,7 @@
       ].filter(Boolean).map((item) => String(item));
       const raw = sourceParts.join(' ').toLowerCase().trim();
       const isOpaqueId = /^[a-f0-9-]{20,}$/i.test(raw) || /^[a-z0-9]{20,}$/i.test(raw);
+      const isExternalWithoutNamedSource = !!(reservation?.channelBookingId || reservation?.externalReservationId) && (isOpaqueId || raw === 'ota' || raw === 'channex');
       const otaIcon = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0f172a"/><text x="32" y="39" text-anchor="middle" font-family="Arial, sans-serif" font-size="21" font-weight="800" fill="#fff">OTA</text></svg>');
 
       if (raw.includes('booking') || raw.includes('bcom') || raw.includes('bookingcom') || raw.includes('booking.com')) return { icon: 'https://cdn.simpleicons.org/bookingdotcom/1D4ED8', title: 'Booking.com' };
@@ -542,6 +543,7 @@
       if (raw.includes('agoda')) return { icon: 'https://cdn.simpleicons.org/agoda/8B5CF6', title: 'Agoda' };
       if (raw.includes('hotels.com') || raw.includes('hotelscom') || raw.includes('hotel.com')) return { icon: 'https://cdn.simpleicons.org/hotelsdotcom/0F172A', title: 'Hotels.com' };
       if (!raw || raw.includes('direct') || raw.includes('walkin') || raw.includes('walk-in')) return { icon: 'https://cdn.simpleicons.org/homeadvisor/475569', title: 'Direct' };
+      if (isExternalWithoutNamedSource) return { icon: 'https://cdn.simpleicons.org/bookingdotcom/1D4ED8', title: 'Booking.com' };
       return { icon: otaIcon, title: isOpaqueId ? 'OTA' : (reservation?.source || reservation?.channel || reservation?.channelName || 'OTA') };
     }
     function isExternalChannelReservation(reservation) {
@@ -569,7 +571,7 @@
         b.channel_id, attrs.channel_id
       ].filter(Boolean).map((item) => String(item).trim()).filter(Boolean);
       const named = candidates.find((item) => !/^[a-f0-9-]{20,}$/i.test(item) && !/^[a-z0-9]{20,}$/i.test(item));
-      return named || candidates[0] || 'OTA';
+      return named || 'Booking.com';
     }
     function renderChannelLogoBadge(reservation, size = 'sm') {
       if (!isExternalChannelReservation(reservation)) return '';
