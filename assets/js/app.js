@@ -3672,6 +3672,9 @@
       if (!guestName || !checkinDate || !checkoutDate) return showToast('შეავსეთ აუცილებელი ველები', 'error');
       if (checkoutDate <= checkinDate) return showToast('გასვლის თარიღი უნდა იყოს შესახლების თარიღის შემდეგ', 'error');
       if (!canMutateForDate(checkinDate, 'დახურულ პერიოდზე ჯავშნის დამატება შეუძლებელია')) return;
+      if (!isRoomAvailableInRange(roomId, checkinDate, checkoutDate)) {
+        return showToast('❌ ნომერი უკვე დაჯავშნილია ამ პერიოდში — სხვა ნომერი ან თარიღი აირჩიეთ', 'error');
+      }
       if (guestIdNumber) {
         const knownGuest = findKnownGuestById(guestIdNumber);
         if (knownGuest?.blacklisted) return showToast('სტუმარი შავ სიაშია და რეგისტრაცია შეუძლებელია', 'error');
@@ -4859,9 +4862,11 @@
       if (!roomNumber) return showToast('ნომრის ნომერი აუცილებელია', 'error');
       const rooms = getRoomsData();
       const nextId = rooms.length ? Math.max(...rooms.map(r => Number(r.id))) + 1 : 1;
-      rooms.push({ id: nextId, roomNumber, roomName: roomName || `ნომერი ${roomNumber}`, roomType, basePrice, floor, beds, maxGuests, supportsExtraBed, maxExtraBeds, status });
-      setRoomsData(rooms);
+      const newRoom = { id: nextId, roomNumber, roomName: roomName || `ნომერი ${roomNumber}`, roomType, basePrice, floor, beds, maxGuests, supportsExtraBed, maxExtraBeds, status };
+      rooms.push(newRoom);
+      setRoomsData(rooms, true);
       syncCurrentMonthRatesFromRooms();
+      createRoomTypeInChannex(newRoom);
       closeModal();
       showToast('ნომერი დაემატა');
       renderCurrentPage();
@@ -5172,6 +5177,48 @@
         }
       } catch (e) {
         console.warn('pushAvailabilityToChannex error:', e.message);
+      }
+    }
+
+    // Create a new room type in Channex when a room is added in the PMS
+    async function createRoomTypeInChannex(room) {
+      try {
+        const c = getChannelConfig();
+        if (!c.isConnected || !c.proxyUrl || !c.propertyId) return;
+        const proxyBase = c.proxyUrl.replace(/\/$/, '');
+        const resp = await fetch(`${proxyBase}?path=room_types`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            room_type: {
+              property_id: c.propertyId,
+              title: room.roomName || `ნომერი ${room.roomNumber}`,
+              count_of_rooms: 1,
+              occ_adults: Number(room.maxGuests || 2),
+              occ_children: 0,
+              default_occupancy: Number(room.maxGuests || 2),
+              facilities: []
+            }
+          })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          console.warn('Channex room type create failed:', data);
+          return;
+        }
+        const channexRoomTypeId = data?.data?.id || data?.id;
+        if (channexRoomTypeId) {
+          const mapping = getChannelRoomMapping();
+          mapping[String(room.id)] = channexRoomTypeId;
+          setChannelRoomMapping(mapping);
+          showToast(`ნომერი Channex-ში შეიქმნა ✓ (${channexRoomTypeId.slice(0, 8)}...)`, 'success');
+          // Push initial availability for 365 days
+          const today = formatDateISO(new Date());
+          const yearAhead = formatDateISO(addDays(new Date(), 365));
+          pushAvailabilityToChannex(room.id, today, yearAhead);
+        }
+      } catch (e) {
+        console.warn('createRoomTypeInChannex error:', e.message);
       }
     }
 
