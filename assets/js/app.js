@@ -5308,11 +5308,8 @@
 
       showToast('სრული სინქი დაიწყო...', 'info');
       const proxyBase = c.proxyUrl.replace(/\/$/, '');
-      // Always start fresh — clear stale IDs so everything is recreated
       const mapping = {};
       const ratePlanMapping = {};
-      setChannelRoomMapping({});
-      setChannelRatePlanMapping({});
       const monthlyRates = getMonthlyRates();
       const today = new Date();
       const todayStr = formatDateISO(today);
@@ -5321,27 +5318,47 @@
       const yearStart = formatDateISO(new Date(today.getFullYear(), 0, 1));
       const yearEnd = formatDateISO(new Date(today.getFullYear() + 1, 0, 1));
 
+      // Fetch all existing room types from Channex once, match by title (upsert)
+      let existingRoomTypes = [];
+      try {
+        const listResp = await fetch(
+          `${proxyBase}?path=room_types%3Ffilter%5Bproperty_id%5D%3D${encodeURIComponent(c.propertyId)}%26pagination%5Blimit%5D%3D100`,
+          { method: 'GET', headers: { 'Content-Type': 'application/json' } }
+        );
+        const listData = await listResp.json();
+        existingRoomTypes = listData?.data || [];
+        console.log('Existing Channex room types:', existingRoomTypes.length);
+      } catch (e) {
+        console.warn('Could not fetch existing room types:', e.message);
+      }
+
+      // Also fetch existing rate plans for this property
+      let existingRatePlans = [];
+      try {
+        const rpListResp = await fetch(
+          `${proxyBase}?path=rate_plans%3Ffilter%5Bproperty_id%5D%3D${encodeURIComponent(c.propertyId)}%26pagination%5Blimit%5D%3D200`,
+          { method: 'GET', headers: { 'Content-Type': 'application/json' } }
+        );
+        const rpListData = await rpListResp.json();
+        existingRatePlans = rpListData?.data || [];
+        console.log('Existing Channex rate plans:', existingRatePlans.length);
+      } catch (e) {
+        console.warn('Could not fetch existing rate plans:', e.message);
+      }
+
       let created = 0, updated = 0, errors = 0;
 
       for (const room of rooms) {
         try {
-          let channexRoomTypeId = mapping[String(room.id)];
+          const roomTitle = room.roomName || `ნომერი ${room.roomNumber}`;
+
+          // Find existing room type by title (upsert approach)
+          const existingRT = existingRoomTypes.find(rt => (rt.attributes?.title || rt.title) === roomTitle);
+          let channexRoomTypeId = existingRT ? (existingRT.id || existingRT.attributes?.id) : null;
 
           if (channexRoomTypeId) {
-            // Check if room type still exists in Channex (mapping might be stale)
-            const checkResp = await fetch(`${proxyBase}?path=room_types/${channexRoomTypeId}`, {
-              method: 'GET', headers: { 'Content-Type': 'application/json' }
-            });
-            if (!checkResp.ok) {
-              console.warn('Stale room_type mapping, recreating:', channexRoomTypeId);
-              channexRoomTypeId = null;
-              delete mapping[String(room.id)];
-              delete ratePlanMapping[String(room.id)];
-            } else {
-              updated++;
-            }
-          }
-          if (!channexRoomTypeId) {
+            updated++;
+          } else {
             // Create new room type
             const crResp = await fetch(`${proxyBase}?path=room_types`, {
               method: 'POST',
@@ -5349,7 +5366,7 @@
               body: JSON.stringify({
                 room_type: {
                   property_id: c.propertyId,
-                  title: room.roomName || `ნომერი ${room.roomNumber}`,
+                  title: roomTitle,
                   count_of_rooms: 1,
                   occ_adults: Math.max(1, Number(room.maxGuests || 2)),
                   occ_children: 0,
@@ -5365,14 +5382,21 @@
             }
             channexRoomTypeId = crData?.data?.id || crData?.id;
             if (!channexRoomTypeId) { console.warn('fullSync no id:', JSON.stringify(crData)); errors++; continue; }
-            mapping[String(room.id)] = channexRoomTypeId;
-            // Save mapping immediately so pushAvailabilityToChannex can find this room
-            setChannelRoomMapping(mapping);
             created++;
           }
 
+          mapping[String(room.id)] = channexRoomTypeId;
+          setChannelRoomMapping(mapping);
+
           // Ensure this room type has a rate plan in Channex
-          let ratePlanId = ratePlanMapping[String(room.id)];
+          // First check if one already exists for this room_type_id
+          const existingRP = existingRatePlans.find(rp =>
+            (rp.attributes?.room_type_id || rp.room_type_id) === channexRoomTypeId
+          );
+          let ratePlanId = existingRP ? (existingRP.id || existingRP.attributes?.id) : null;
+          if (ratePlanId) {
+            ratePlanMapping[String(room.id)] = ratePlanId;
+          }
           if (!ratePlanId) {
             const baseRate = Number(room.basePrice || 100);
             const rpPayload = {
