@@ -5329,20 +5329,6 @@
       } catch (e) { console.warn('room_types list error:', e.message); }
 
       const tomorrow = formatDateISO(addDays(today, 1));
-      const probeRtId = existingRoomTypes[0]?.id || 'c713a157-af35-4a4d-a05b-18fada9491c2';
-      for (const [lbl, path, body] of [
-        ['availability', 'availability', { values: [{ room_type_id: probeRtId, date_from: todayStr, date_to: tomorrow, availability: 1 }] }],
-        ['ari', 'ari', { property_id: c.propertyId, values: [{ room_type_id: probeRtId, date_from: todayStr, date_to: tomorrow, availability: 1 }] }],
-        ['inventory', 'inventory', { values: [{ room_type_id: probeRtId, date_from: todayStr, date_to: tomorrow, availability: 1 }] }],
-      ]) {
-        try {
-          const r = await fetch(`${proxyBase}?path=${encodeURIComponent(path)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-          const t = await r.text();
-          console.log(`ARI [${lbl}] → ${r.status}:`, t.slice(0, 120));
-        } catch(e) { console.warn(`ARI [${lbl}] err:`, e.message); }
-      }
-      // ─────────────────────────────────────────────────────────────────────
-
       let connectedChannels = [];
       let existingCRTIds = new Set();
       let created = 0, updated = 0, rateErrors = 0, availErrors = 0;
