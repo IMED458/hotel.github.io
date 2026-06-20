@@ -5328,6 +5328,27 @@
         existingRoomTypes = d?.data || [];
       } catch (e) { console.warn('room_types list error:', e.message); }
 
+      // Fetch property's connected channels — needed to map room types for ARI push
+      let connectedChannels = [];
+      try {
+        const chR = await fetch(`${proxyBase}?path=${encodeURIComponent(`channels?filter[property_id]=${c.propertyId}&pagination[limit]=50`)}`, { headers: { 'Content-Type': 'application/json' } });
+        const chD = await chR.json();
+        connectedChannels = chD?.data || [];
+        console.log('Connected channels:', connectedChannels.length, connectedChannels.map(ch => `${ch.id}/${ch.attributes?.title || ch.attributes?.type}`));
+      } catch (e) { console.warn('channels fetch error:', e.message); }
+
+      // Also fetch existing channel_room_types mappings (to avoid duplicate errors)
+      let existingCRTIds = new Set();
+      try {
+        const crtR = await fetch(`${proxyBase}?path=${encodeURIComponent(`channel_room_types?filter[property_id]=${c.propertyId}&pagination[limit]=500`)}`, { headers: { 'Content-Type': 'application/json' } });
+        const crtD = await crtR.json();
+        console.log('channel_room_types response:', crtR.status, JSON.stringify(crtD).slice(0, 200));
+        (crtD?.data || []).forEach(crt => {
+          const rtId = crt.attributes?.room_type_id || crt.relationships?.room_type?.data?.id;
+          if (rtId) existingCRTIds.add(rtId);
+        });
+      } catch (e) { console.warn('channel_room_types fetch error:', e.message); }
+
       let created = 0, updated = 0, rateErrors = 0, availErrors = 0;
 
       for (const room of rooms) {
@@ -5359,6 +5380,27 @@
 
           mapping[String(room.id)] = channexRoomTypeId;
           setChannelRoomMapping(mapping);
+
+          // ── 1b. CHANNEL MAPPING — connect room type to all property channels ─
+          // Channex requires at least one channel connection before ARI push works
+          if (connectedChannels.length > 0 && !existingCRTIds.has(channexRoomTypeId)) {
+            for (const ch of connectedChannels) {
+              const chId = ch.id;
+              try {
+                const crtR = await fetch(`${proxyBase}?path=channel_room_types`, {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ channel_room_type: {
+                    channel_id: chId,
+                    room_type_id: channexRoomTypeId,
+                    property_id: c.propertyId,
+                  }})
+                });
+                const crtD = await crtR.json();
+                console.log(`channel_room_type create (ch=${chId.slice(0,8)}, rt=${channexRoomTypeId.slice(0,8)}) → ${crtR.status}:`, JSON.stringify(crtD).slice(0, 150));
+                if (crtR.ok) existingCRTIds.add(channexRoomTypeId);
+              } catch(e) { console.warn('channel_room_type create error:', e.message); }
+            }
+          }
 
           // ── 2. RATE PLAN upsert ───────────────────────────────────────────
           // Try multiple filter strategies to find existing rate plan
