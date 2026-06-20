@@ -4146,7 +4146,6 @@
       if (!roomId || !checkinDate || !checkoutDate || !totalEl) return;
       const charges = computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled, extraBedQty, minibarAmount: minibarTotal });
       totalEl.value = String(charges.grossTotal);
-      updateReservationModalHeaderAmount(charges.grossTotal);
       if (lateFeeEl) lateFeeEl.textContent = `${config.currency_symbol}${charges.lateCheckoutFee.toLocaleString('en-US')}`;
       if (extraBedFeeEl) extraBedFeeEl.textContent = `${config.currency_symbol}${charges.extraBedFee.toLocaleString('en-US')}`;
       if (minibarFeeEl) minibarFeeEl.textContent = `${config.currency_symbol}${charges.minibarAmount.toLocaleString('en-US')}`;
@@ -4160,6 +4159,10 @@
       const headerAmount = document.getElementById('modal-header-amount');
       if (!headerAmount) return;
       headerAmount.textContent = `${config.currency_symbol}${Number(total || 0).toLocaleString('en-US')}`;
+    }
+
+    function shouldShowFolioDueInHeader() {
+      return !!document.getElementById('modal-container')?.classList.contains('folio-context');
     }
 
     function recalcEditDueAmount() {
@@ -4178,6 +4181,7 @@
       if (dueEl) dueEl.value = String(due);
       const dueSummary = document.getElementById('editDueSummary');
       if (dueSummary) dueSummary.textContent = `ჯამური გადასახდელი თანხა: ${config.currency_symbol}${due.toLocaleString('en-US')}`;
+      if (shouldShowFolioDueInHeader()) updateReservationModalHeaderAmount(due);
     }
 
     function togglePaidAmountField(statusSelectId, wrapId) {
