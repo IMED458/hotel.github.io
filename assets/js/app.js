@@ -5328,26 +5328,31 @@
         existingRoomTypes = d?.data || [];
       } catch (e) { console.warn('room_types list error:', e.message); }
 
-      // ── DIAGNOSTIC: test ARI with known default room type ─────────────────
+      // ── DIAGNOSTIC: probe ARI endpoint variants with default room type ───
       const DEFAULT_RT_ID = 'c713a157-af35-4a4d-a05b-18fada9491c2';
       const tomorrow = formatDateISO(addDays(today, 1));
-      try {
-        // Check property status
-        const propR = await fetch(`${proxyBase}?path=${encodeURIComponent(`properties/${c.propertyId}`)}`, { headers: { 'Content-Type': 'application/json' } });
-        const propD = await propR.json();
-        console.log('PROPERTY status:', propR.status, JSON.stringify(propD?.data?.attributes || propD).slice(0, 300));
-      } catch(e) { console.warn('property GET error:', e.message); }
-      try {
-        // Test ARI push with pre-existing default room type
-        const testR = await fetch(`${proxyBase}?path=availability`, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ values: [{ room_type_id: DEFAULT_RT_ID, date_from: todayStr, date_to: tomorrow, availability: 1 }] })
-        });
-        const testT = await testR.text();
-        console.log(`DIAGNOSTIC ARI (default RT ${DEFAULT_RT_ID.slice(0,8)}) → ${testR.status}:`, testT.slice(0, 200));
-      } catch(e) { console.warn('DIAGNOSTIC ARI error:', e.message); }
+      const ariPayload = { values: [{ room_type_id: DEFAULT_RT_ID, date_from: todayStr, date_to: tomorrow, availability: 1 }] };
+      const ariPaths = [
+        'availability',
+        `properties/${c.propertyId}/availability`,
+        'ari/availability',
+        `v1/availability`,
+      ];
+      for (const ariPath of ariPaths) {
+        try {
+          const r = await fetch(`${proxyBase}?path=${encodeURIComponent(ariPath)}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ariPayload)
+          });
+          const t = await r.text();
+          console.log(`ARI probe [${ariPath}] → ${r.status}:`, t.slice(0, 120));
+          if (r.ok) { console.log('✓ WORKING ARI PATH:', ariPath); break; }
+        } catch(e) { console.warn(`ARI probe [${ariPath}] error:`, e.message); }
+      }
       // ─────────────────────────────────────────────────────────────────────
 
+      let connectedChannels = [];
+      let existingCRTIds = new Set();
       let created = 0, updated = 0, rateErrors = 0, availErrors = 0;
 
       for (const room of rooms) {
