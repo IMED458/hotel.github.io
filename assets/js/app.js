@@ -5361,32 +5361,41 @@
           mapping[String(room.id)] = channexRoomTypeId;
           setChannelRoomMapping(mapping);
 
-          // ── 2. RATE PLAN upsert — fetch by room_type_id ───────────────────
+          // ── 2. RATE PLAN upsert ───────────────────────────────────────────
+          // Try multiple filter strategies to find existing rate plan
           let ratePlanId = null;
-          try {
-            const rpQ = `rate_plans?filter[room_type_id]=${channexRoomTypeId}&pagination[limit]=10`;
-            const rpR = await fetch(`${proxyBase}?path=${encodeURIComponent(rpQ)}`, { headers: { 'Content-Type': 'application/json' } });
-            const rpD = await rpR.json();
-            const rpList = rpD?.data || [];
-            if (rpList.length > 0) {
-              ratePlanId = rpList[0].id;
-            }
-          } catch (e) { console.warn('rate_plan list error:', e.message); }
+          const rpFilters = [
+            `rate_plans?filter[room_type_id]=${channexRoomTypeId}&pagination[limit]=10`,
+            `rate_plans?room_type_id=${channexRoomTypeId}&pagination[limit]=10`,
+            `rate_plans?pagination[limit]=200`,
+          ];
+          for (const rpQ of rpFilters) {
+            try {
+              const rpR = await fetch(`${proxyBase}?path=${encodeURIComponent(rpQ)}`, { headers: { 'Content-Type': 'application/json' } });
+              if (!rpR.ok) continue;
+              const rpD = await rpR.json();
+              const rpList = (rpD?.data || []).filter(rp => {
+                const rtId = rp.relationships?.room_type?.data?.id || rp.attributes?.room_type_id || rp.room_type_id;
+                return rtId === channexRoomTypeId;
+              });
+              if (rpList.length > 0) { ratePlanId = rpList[0].id; break; }
+            } catch (e) { /* try next */ }
+          }
 
           if (!ratePlanId) {
-            // Create rate plan with unique title (room title + Standard Rate)
+            // Use unique title: "RP-{channexRoomTypeId slice}" — guaranteed unique per room type
+            const rpTitle = `RP-${channexRoomTypeId.slice(0, 8)}`;
             const rpC = await fetch(`${proxyBase}?path=rate_plans`, {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ rate_plan: {
                 property_id: c.propertyId, room_type_id: channexRoomTypeId,
-                title: `${roomTitle} Standard`,
-                sell_mode: 'per_room',
+                title: rpTitle, sell_mode: 'per_room',
                 options: [{ occupancy: 1, rate: baseRate, is_primary: true }],
               }})
             });
             const rpD2 = await rpC.json();
             ratePlanId = rpD2?.data?.id || rpD2?.id;
-            if (!ratePlanId) { console.warn('rate_plan create failed:', JSON.stringify(rpD2)); rateErrors++; }
+            if (!ratePlanId) { console.warn('rate_plan create failed:', rpC.status, JSON.stringify(rpD2)); rateErrors++; }
           }
 
           if (ratePlanId) {
