@@ -5255,6 +5255,103 @@
       }
     }
 
+    // Full sync: push all rooms, prices, availability to Channex
+    async function fullSyncToChannex() {
+      if (!can('channelsView')) return showToast('წვდომა შეზღუდულია', 'error');
+      const c = getChannelConfig();
+      if (!c.isConnected || !c.proxyUrl) return showToast('ჯერ დააკავშირეთ Channex', 'warning');
+
+      const rooms = getRoomsData();
+      if (!rooms.length) return showToast('ოთახები არ მოიძებნა', 'warning');
+
+      showToast('სრული სინქი დაიწყო...', 'info');
+      const proxyBase = c.proxyUrl.replace(/\/$/, '');
+      const mapping = getChannelRoomMapping();
+      const rates = getMonthlyRates();
+      const today = new Date();
+      const todayStr = formatDateISO(today);
+      const yearAhead = formatDateISO(addDays(today, 365));
+
+      let created = 0, updated = 0, errors = 0;
+
+      for (const room of rooms) {
+        try {
+          const existingChannexId = mapping[String(room.id)];
+
+          if (existingChannexId) {
+            // Update existing room type title/occupancy
+            const upResp = await fetch(`${proxyBase}?path=room_types/${existingChannexId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                room_type: {
+                  title: room.roomName || `ნომერი ${room.roomNumber}`,
+                  count_of_rooms: 1,
+                  occ_adults: Number(room.maxGuests || 2),
+                  default_occupancy: Number(room.maxGuests || 2),
+                }
+              })
+            });
+            if (upResp.ok) updated++; else errors++;
+          } else {
+            // Create new room type
+            const crResp = await fetch(`${proxyBase}?path=room_types`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                room_type: {
+                  property_id: c.propertyId,
+                  title: room.roomName || `ნომერი ${room.roomNumber}`,
+                  count_of_rooms: 1,
+                  occ_adults: Number(room.maxGuests || 2),
+                  occ_children: 0,
+                  default_occupancy: Number(room.maxGuests || 2),
+                  facilities: []
+                }
+              })
+            });
+            const crData = await crResp.json();
+            const newId = crData?.data?.id || crData?.id;
+            if (newId) {
+              mapping[String(room.id)] = newId;
+              created++;
+            } else {
+              errors++;
+              continue;
+            }
+          }
+
+          // Push availability for this room (365 days)
+          await pushAvailabilityToChannex(room.id, todayStr, yearAhead);
+
+          // Push rates for this room (current month rate plan)
+          const currentMonth = today.getMonth() + 1;
+          const monthRates = rates[currentMonth] || {};
+          const rate = Number(monthRates[room.roomType] || room.basePrice || 0);
+          if (rate > 0 && c.ratePlanId) {
+            const monthStart = new Date(today.getFullYear(), currentMonth - 1, 1);
+            const monthEnd = new Date(today.getFullYear(), currentMonth, 1);
+            await pushRateToChannex(room.id, formatDateISO(monthStart), formatDateISO(monthEnd), rate);
+          }
+
+        } catch (e) {
+          console.warn('fullSyncToChannex room error:', room.id, e.message);
+          errors++;
+        }
+      }
+
+      setChannelRoomMapping(mapping);
+      setChannelConfig({
+        lastSyncAt: new Date().toISOString(),
+        lastSyncStatus: errors === 0 ? 'success' : 'error',
+        lastSyncMessage: `სრული სინქი: ${created} შეიქმნა, ${updated} განახლდა, ${errors} შეცდომა`
+      });
+
+      const msg = `სრული სინქი დასრულდა — ${created} ახალი, ${updated} განახლებული${errors ? `, ${errors} შეცდომა` : ''}`;
+      showToast(msg, errors > 0 ? 'warning' : 'success');
+      renderChannels();
+    }
+
     // Create a new room type in Channex when a room is added in the PMS
     async function createRoomTypeInChannex(room) {
       try {
@@ -5480,6 +5577,7 @@
             <button onclick="testChannexConnection()" class="px-4 py-2 bg-emerald-600 text-white rounded-xl">კავშირის ტესტი</button>
             <button onclick="syncChannexData('rates')" class="px-4 py-2 bg-amber-500 text-white rounded-xl">ტარიფების სინქი</button>
             <button onclick="syncChannexData('reservations')" class="px-4 py-2 bg-amber-500 text-white rounded-xl">ჯავშნების სინქი</button>
+            <button onclick="fullSyncToChannex()" class="px-4 py-2 bg-purple-600 text-white rounded-xl font-semibold">🔄 სრული სინქი Channex-ში</button>
             <button onclick="disconnectChannex()" class="px-4 py-2 bg-red-600 text-white rounded-xl">გათიშვა</button>
           </div>
           <div class="text-xs text-gray-500">ბოლო დაკავშირება: ${c.connectedAt ? formatDate(c.connectedAt) : '-'} | ბოლო სინქი: ${c.lastSyncAt ? formatDate(c.lastSyncAt) : '-'}</div>
