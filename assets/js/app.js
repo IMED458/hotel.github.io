@@ -5371,7 +5371,6 @@
           // Ensure this room type has a rate plan in Channex
           let ratePlanId = ratePlanMapping[String(room.id)];
           if (!ratePlanId) {
-            const occ = Math.max(1, Number(room.maxGuests || 2));
             const baseRate = Number(room.basePrice || 100);
             const rpPayload = {
               rate_plan: {
@@ -5379,7 +5378,7 @@
                 room_type_id: channexRoomTypeId,
                 title: 'Standard Rate',
                 sell_mode: 'per_room',
-                options: Array.from({ length: occ }, (_, i) => ({ occupancy: i + 1, rate: baseRate })),
+                options: [{ occupancy: 1, rate: baseRate, is_primary: true }],
               }
             };
             const rpResp = await fetch(`${proxyBase}?path=rate_plans`, {
