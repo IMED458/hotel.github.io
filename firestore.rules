@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Hotel state — read/write from the app
+    match /hotelState/{doc} {
+      allow read, write: if true;
+    }
+
+    // Channex webhooks written by Cloudflare Worker (no auth)
+    match /channexWebhooks/{doc} {
+      allow read: if true;
+      allow create: if true;
+    }
+
+    // Pending bookings from OTAs — written by Cloudflare Worker, read+update by frontend
+    match /channexPendingBookings/{doc} {
+      allow read, write: if true;
+    }
+  }
+}

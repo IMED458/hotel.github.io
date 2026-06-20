@@ -80,7 +80,7 @@
 
     const DEFAULT_CHANNEL_CONFIG = {
       connectionMode: 'apikey',
-      proxyUrl: 'https://us-central1-hotel-7497c.cloudfunctions.net/channexProxy',
+      proxyUrl: 'https://hotel-channex.YOUR_SUBDOMAIN.workers.dev/proxy',
       apiBaseUrl: 'https://staging.channex.io/api/v1',
       authStartUrl: '/auth/channex/start',
       authStatusUrl: '/auth/channex/status',
@@ -88,7 +88,7 @@
       propertyId: '313fecb5-4fb4-425d-9b35-efa820655e36',
       ratePlanId: 'd88c6b4e-e5cd-4633-a243-1b3478bdc837',
       defaultRoomTypeId: 'c713a157-af35-4a4d-a05b-18fada9491c2',
-      webhookUrl: 'https://us-central1-hotel-7497c.cloudfunctions.net/channexWebhook',
+      webhookUrl: 'https://hotel-channex.YOUR_SUBDOMAIN.workers.dev/webhook',
       autoSyncEnabled: true,
       syncIntervalMinutes: 15,
       isConnected: false,
