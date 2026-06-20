@@ -5289,6 +5289,14 @@
       }
     }
 
+    function getChannelRatePlanMapping() {
+      const raw = getState('channelRatePlanMapping', {});
+      return raw && typeof raw === 'object' ? raw : {};
+    }
+    function setChannelRatePlanMapping(m) {
+      setState('channelRatePlanMapping', m && typeof m === 'object' ? m : {});
+    }
+
     // Full sync: push all rooms, prices, availability to Channex
     async function fullSyncToChannex() {
       if (!can('channelsView')) return showToast('წვდომა შეზღუდულია', 'error');
@@ -5301,78 +5309,115 @@
       showToast('სრული სინქი დაიწყო...', 'info');
       const proxyBase = c.proxyUrl.replace(/\/$/, '');
       const mapping = getChannelRoomMapping();
-      const rates = getMonthlyRates();
+      const ratePlanMapping = getChannelRatePlanMapping();
+      const monthlyRates = getMonthlyRates();
       const today = new Date();
       const todayStr = formatDateISO(today);
       const yearAhead = formatDateISO(addDays(today, 365));
+      const currentMonth = today.getMonth() + 1;
+      const yearStart = formatDateISO(new Date(today.getFullYear(), 0, 1));
+      const yearEnd = formatDateISO(new Date(today.getFullYear() + 1, 0, 1));
 
       let created = 0, updated = 0, errors = 0;
 
       for (const room of rooms) {
         try {
-          const existingChannexId = mapping[String(room.id)];
+          let channexRoomTypeId = mapping[String(room.id)];
 
-          if (existingChannexId) {
-            // Update existing room type title/occupancy
-            const upResp = await fetch(`${proxyBase}?path=room_types/${existingChannexId}`, {
+          if (channexRoomTypeId) {
+            // Update existing room type
+            const upResp = await fetch(`${proxyBase}?path=room_types/${channexRoomTypeId}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 room_type: {
                   title: room.roomName || `ნომერი ${room.roomNumber}`,
                   count_of_rooms: 1,
-                  occ_adults: Number(room.maxGuests || 2),
-                  default_occupancy: Number(room.maxGuests || 2),
+                  occ_adults: Math.max(1, Number(room.maxGuests || 2)),
+                  occ_children: 0,
+                  occ_infants: 0,
+                  default_occupancy: Math.max(1, Number(room.maxGuests || 2)),
                 }
               })
             });
-            if (upResp.ok) updated++; else errors++;
+            if (upResp.ok) updated++; else { const t = await upResp.text(); console.warn('update room_type failed:', t); errors++; }
           } else {
-            // Create new room type — use same payload as createRoomTypeInChannex
-            const payload = {
-              room_type: {
-                property_id: c.propertyId,
-                title: room.roomName || `ნომერი ${room.roomNumber}`,
-                count_of_rooms: 1,
-                occ_adults: Math.max(1, Number(room.maxGuests || 2)),
-                occ_children: 0,
-                occ_infants: 0,
-                default_occupancy: Math.max(1, Number(room.maxGuests || 2)),
-              }
-            };
+            // Create new room type
             const crResp = await fetch(`${proxyBase}?path=room_types`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload)
+              body: JSON.stringify({
+                room_type: {
+                  property_id: c.propertyId,
+                  title: room.roomName || `ნომერი ${room.roomNumber}`,
+                  count_of_rooms: 1,
+                  occ_adults: Math.max(1, Number(room.maxGuests || 2)),
+                  occ_children: 0,
+                  occ_infants: 0,
+                  default_occupancy: Math.max(1, Number(room.maxGuests || 2)),
+                }
+              })
             });
             const crData = await crResp.json();
             if (!crResp.ok) {
-              console.warn('fullSync room_types 422:', JSON.stringify(crData), 'payload:', JSON.stringify(payload));
-              errors++;
-              continue;
+              console.warn('fullSync room_types error:', JSON.stringify(crData));
+              errors++; continue;
             }
-            const newId = crData?.data?.id || crData?.id;
-            if (newId) {
-              mapping[String(room.id)] = newId;
-              created++;
+            channexRoomTypeId = crData?.data?.id || crData?.id;
+            if (!channexRoomTypeId) { console.warn('fullSync no id:', JSON.stringify(crData)); errors++; continue; }
+            mapping[String(room.id)] = channexRoomTypeId;
+            // Save mapping immediately so pushAvailabilityToChannex can find this room
+            setChannelRoomMapping(mapping);
+            created++;
+          }
+
+          // Ensure this room type has a rate plan in Channex
+          let ratePlanId = ratePlanMapping[String(room.id)];
+          if (!ratePlanId) {
+            const rpResp = await fetch(`${proxyBase}?path=rate_plans`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                rate_plan: {
+                  property_id: c.propertyId,
+                  room_type_id: channexRoomTypeId,
+                  title: 'Standard Rate',
+                  sell_mode: 'per_room',
+                  rate_mode: 'manual',
+                  closed_to_arrival: false,
+                  closed_to_departure: false,
+                  min_stay_arrival: 1,
+                  max_stay: 0,
+                }
+              })
+            });
+            const rpData = await rpResp.json();
+            ratePlanId = rpData?.data?.id || rpData?.id;
+            if (ratePlanId) {
+              ratePlanMapping[String(room.id)] = ratePlanId;
+              setChannelRatePlanMapping(ratePlanMapping);
             } else {
-              console.warn('fullSync no id in response:', JSON.stringify(crData));
-              errors++;
-              continue;
+              console.warn('fullSync rate_plan create failed:', JSON.stringify(rpData));
             }
           }
 
-          // Push availability for this room (365 days)
+          // Push availability for 365 days
           await pushAvailabilityToChannex(room.id, todayStr, yearAhead);
 
-          // Push rates for this room (current month rate plan)
-          const currentMonth = today.getMonth() + 1;
-          const monthRates = rates[currentMonth] || {};
-          const rate = Number(monthRates[room.roomType] || room.basePrice || 0);
-          if (rate > 0 && c.ratePlanId) {
-            const monthStart = new Date(today.getFullYear(), currentMonth - 1, 1);
-            const monthEnd = new Date(today.getFullYear(), currentMonth, 1);
-            await pushRateToChannex(room.id, formatDateISO(monthStart), formatDateISO(monthEnd), rate);
+          // Push rates for the full year using this room's rate plan
+          if (ratePlanId) {
+            const monthRates = monthlyRates[currentMonth] || {};
+            const rate = Number(monthRates[room.roomType] || room.basePrice || 0);
+            if (rate > 0) {
+              const rResp = await fetch(`${proxyBase}?path=rates`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  values: [{ property_id: c.propertyId, rate_plan_id: ratePlanId, date_from: yearStart, date_to: yearEnd, rate }]
+                })
+              });
+              if (!rResp.ok) { const t = await rResp.text(); console.warn('rate push failed:', t); }
+            }
           }
 
         } catch (e) {
@@ -5382,6 +5427,7 @@
       }
 
       setChannelRoomMapping(mapping);
+      setChannelRatePlanMapping(ratePlanMapping);
       setChannelConfig({
         lastSyncAt: new Date().toISOString(),
         lastSyncStatus: errors === 0 ? 'success' : 'error',
