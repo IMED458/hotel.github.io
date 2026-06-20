@@ -5178,7 +5178,6 @@
       try {
         firebaseDb.collection('channexPendingBookings')
           .where('processed', '==', false)
-          .orderBy('receivedAt', 'asc')
           .onSnapshot(snapshot => {
             if (snapshot.empty) return;
             snapshot.docs.forEach(doc => {
