@@ -535,10 +535,20 @@
       if (!raw || raw.includes('direct') || raw.includes('walkin') || raw.includes('walk-in')) return { icon: 'https://cdn.simpleicons.org/homeadvisor/475569', title: 'Direct' };
       return { icon: 'https://cdn.simpleicons.org/googlemaps/6B7280', title: reservation?.source || reservation?.channel || 'OTA' };
     }
+    function isExternalChannelReservation(reservation) {
+      const source = getReservationSourceInfo(reservation || {});
+      return !!(reservation?.channelBookingId || reservation?.externalReservationId || reservation?.ota || (source.title && source.title !== 'Direct'));
+    }
+    function renderChannelLogoBadge(reservation, size = 'sm') {
+      if (!isExternalChannelReservation(reservation)) return '';
+      const source = getReservationSourceInfo(reservation || {});
+      return `<span class="channel-logo-badge ${size === 'calendar' ? 'calendar-source-badge' : ''}" title="${escapeHtml(source.title)}"><img class="channel-logo-image" src="${escapeHtml(source.icon)}" alt="${escapeHtml(source.title)}"></span>`;
+    }
     function renderReservationBarContent(reservation) {
       const vip = reservation?.vip || reservation?.vipFlag;
       return `
         <div class="reservation-bar-content">
+          ${renderChannelLogoBadge(reservation, 'calendar')}
           ${vip ? '<span class="vip-badge">VIP</span>' : ''}
           <span class="reservation-guest-name">${escapeHtml(reservation?.guestName || '-')}</span>
         </div>
@@ -547,6 +557,12 @@
     function updateModalHeaderSourceLogo(reservation) {
       const logoEl = document.getElementById('modal-header-source-logo');
       if (!logoEl) return;
+      if (!isExternalChannelReservation(reservation)) {
+        logoEl.classList.add('hidden');
+        logoEl.innerHTML = '';
+        logoEl.title = '';
+        return;
+      }
       const source = getReservationSourceInfo(reservation || {});
       logoEl.innerHTML = `<img class="channel-logo-image" src="${escapeHtml(source.icon)}" alt="${escapeHtml(source.title)}">`;
       logoEl.title = source.title || '';
@@ -1705,21 +1721,27 @@
         extraBedEnabled: !!current.extraBedEnabled,
         extraBedQty: Number(current.extraBedQty || 0)
       });
+      const isExternal = isExternalChannelReservation(current);
+      const externalBase = getReservationBaseRoomCharge(current, findRoomById(current.roomId), durationNights);
+      const minibarTotal = Math.max(0, Number(current.minibarTotal || getMinibarTotalFromItems(current.minibarItems || [])));
+      const nextTotal = isExternal
+        ? Number((externalBase + Number(current.additionalFeeAmount || 0) + charges.lateCheckoutFee + charges.extraBedFee + minibarTotal + sumFolioServices(current)).toFixed(2))
+        : charges.grossTotal;
       let nextPaidAmount = Number(current.paidAmount || 0);
-      if (current.paymentStatus === 'paid') nextPaidAmount = charges.grossTotal;
+      if (current.paymentStatus === 'paid') nextPaidAmount = nextTotal;
       if (current.paymentStatus === 'unpaid') nextPaidAmount = 0;
-      nextPaidAmount = Math.max(0, Math.min(charges.grossTotal, nextPaidAmount));
+      nextPaidAmount = Math.max(0, Math.min(nextTotal, nextPaidAmount));
       reservations[idx] = {
         ...current,
         roomId: Number(targetRoomId),
         checkinDate: newCheckinDate,
         checkoutDate: newCheckoutDate,
-        nightlyRate: charges.nightlyRate,
+        nightlyRate: isExternal ? Number((externalBase / Math.max(1, durationNights || 1)).toFixed(2)) : charges.nightlyRate,
         lateCheckoutFee: charges.lateCheckoutFee,
         extraBedEnabled: charges.extraBedEnabled,
         extraBedQty: charges.extraBedQty,
         extraBedFee: charges.extraBedFee,
-        totalPrice: charges.grossTotal,
+        totalPrice: nextTotal,
         paidAmount: nextPaidAmount
       };
       setReservationsData(reservations);
@@ -3958,19 +3980,38 @@
       return Math.max(0, total - paidAmount);
     }
 
+    function sumFolioServices(res) {
+      return (Array.isArray(res?.folioServices) ? res.folioServices : [])
+        .reduce((sum, item) => sum + Math.max(0, Number(item.total || 0)), 0);
+    }
+
+    function getReservationBaseRoomCharge(res, room, nights) {
+      const safeNights = Math.max(1, Number(nights || 1));
+      const standardRoomCharge = Math.max(0, Number(res?.nightlyRate || room?.basePrice || 0) * safeNights);
+      if (!isExternalChannelReservation(res)) return standardRoomCharge;
+      const extras = Math.max(0, Number(res?.additionalFeeAmount || 0))
+        + Math.max(0, Number(res?.lateCheckoutFee || 0))
+        + Math.max(0, Number(res?.extraBedFee || 0))
+        + Math.max(0, Number(res?.minibarTotal || getMinibarTotalFromItems(res?.minibarItems || [])))
+        + sumFolioServices(res);
+      const importedRoomCharge = Math.max(0, Number(res?.totalPrice || 0) - extras);
+      return importedRoomCharge || standardRoomCharge;
+    }
+
     function getReservationFolioRows(res) {
       const rows = [];
       const nights = calculateNights(res.checkinDate, res.checkoutDate);
       const room = findRoomById(res.roomId);
-      const roomCharge = Math.max(0, Number(res.nightlyRate || room?.basePrice || 0) * Math.max(1, nights || 1));
+      const safeNights = Math.max(1, nights || 1);
+      const roomCharge = getReservationBaseRoomCharge(res, room, safeNights);
       rows.push({
         source: 'room',
         id: 'room',
         date: `${res.checkinDate || todayISO()} 15:00`,
         category: roomTypeLabel(room?.roomType || 'ოთახი'),
-        name: `${room?.roomName || room?.roomNumber || 'ნომრის საფასური'} - ${Math.max(1, nights || 1)} ღამე`,
-        price: Number(res.nightlyRate || room?.basePrice || 0),
-        qty: Math.max(1, nights || 1),
+        name: `${room?.roomName || room?.roomNumber || 'ნომრის საფასური'} - ${safeNights} ღამე`,
+        price: roomCharge / safeNights,
+        qty: safeNights,
         total: roomCharge
       });
       if (Number(res.additionalFeeAmount || 0) > 0) rows.push({ source: 'additional_fee', id: 'additional_fee', date: res.checkinDate || todayISO(), category: 'დამატებითი გადასახადი', name: res.additionalFeeName || 'დამატებითი სერვისი', price: Number(res.additionalFeeAmount || 0), qty: 1, total: Number(res.additionalFeeAmount || 0) });
@@ -4171,6 +4212,8 @@
     }
 
     function recalcEditReservationTotal() {
+      const reservationId = Number(document.getElementById('editReservationId')?.value || 0);
+      const currentReservation = getReservationsData().find(r => Number(r.id) === reservationId);
       const roomId = Number(document.getElementById('editRoomId')?.value);
       const checkinDate = document.getElementById('editCheckinDate')?.value;
       const checkoutDate = document.getElementById('editCheckoutDate')?.value;
@@ -4185,13 +4228,35 @@
       const minibarFeeEl = document.getElementById('editMinibarFee');
       if (!roomId || !checkinDate || !checkoutDate || !totalEl) return;
       const charges = computeReservationCharges({ roomId, checkinDate, checkoutDate, checkoutTime, additionalFeeAmount, extraBedEnabled, extraBedQty, minibarAmount: minibarTotal });
-      totalEl.value = String(charges.grossTotal);
+      const folioServicesTotal = sumFolioServices(currentReservation);
+      const isExternal = isExternalChannelReservation(currentReservation);
+      const externalBaseEl = document.getElementById('editExternalBaseRoomCharge');
+      const externalBase = Math.max(0, Number(externalBaseEl?.value || 0));
+      const recalculatedTotal = isExternal
+        ? externalBase + charges.lateCheckoutFee + charges.extraBedFee + charges.minibarAmount + additionalFeeAmount + folioServicesTotal
+        : charges.grossTotal + folioServicesTotal;
+      totalEl.value = String(Number(recalculatedTotal.toFixed(2)));
       if (lateFeeEl) lateFeeEl.textContent = `${config.currency_symbol}${charges.lateCheckoutFee.toLocaleString('en-US')}`;
       if (extraBedFeeEl) extraBedFeeEl.textContent = `${config.currency_symbol}${charges.extraBedFee.toLocaleString('en-US')}`;
       if (minibarFeeEl) minibarFeeEl.textContent = `${config.currency_symbol}${charges.minibarAmount.toLocaleString('en-US')}`;
       const minibarTotalLabel = document.getElementById('editMinibarTotalLabel');
       if (minibarTotalLabel) minibarTotalLabel.textContent = `${config.currency_symbol}${charges.minibarAmount.toLocaleString('en-US')}`;
       updateRoomPriceHint('editRoomId', 'editRoomPriceHint');
+      recalcEditDueAmount();
+    }
+
+    function updateExternalBaseRoomChargeFromManualTotal() {
+      const reservationId = Number(document.getElementById('editReservationId')?.value || 0);
+      const currentReservation = getReservationsData().find(r => Number(r.id) === reservationId);
+      if (!isExternalChannelReservation(currentReservation)) return;
+      const total = Math.max(0, Number(document.getElementById('editTotalPrice')?.value || 0));
+      const additionalFeeAmount = Math.max(0, Number(document.getElementById('editAdditionalFeeAmount')?.value || 0));
+      const minibarTotal = getMinibarTotalFromItems(collectMinibarSelection('edit'));
+      const lateCheckoutFee = Math.max(0, Number((document.getElementById('editLateCheckoutFee')?.textContent || '').replace(/[^\d.]/g, '') || 0));
+      const extraBedFee = Math.max(0, Number((document.getElementById('editExtraBedFee')?.textContent || '').replace(/[^\d.]/g, '') || 0));
+      const base = Math.max(0, total - additionalFeeAmount - minibarTotal - lateCheckoutFee - extraBedFee - sumFolioServices(currentReservation));
+      const externalBaseEl = document.getElementById('editExternalBaseRoomCharge');
+      if (externalBaseEl) externalBaseEl.value = String(Number(base.toFixed(2)));
       recalcEditDueAmount();
     }
 
@@ -4271,6 +4336,8 @@
       const dueAmount = reservationDueAmount(res);
       const folioRows = getReservationFolioRows(res);
       const reservationPayments = getPaymentsData().filter(p => Number(p.reservationId) === Number(res.id));
+      const externalChannel = isExternalChannelReservation(res);
+      const externalBaseRoomCharge = getReservationBaseRoomCharge(res, room, calculateNights(res.checkinDate, res.checkoutDate));
       openModal('custom');
       document.getElementById('modal-container')?.classList.add('folio-context');
       document.getElementById('modal-title').textContent = 'ანგარიშსწორება, ინვოისები და გადახდები / Folio';
@@ -4328,6 +4395,8 @@
               <section class="folio-card">
                 <div class="folio-section-title"><span>✎</span><h4>ჯავშნის მონაცემები</h4></div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <input id="editReservationId" type="hidden" value="${Number(res.id)}">
+                  <input id="editExternalBaseRoomCharge" type="hidden" value="${Number(externalBaseRoomCharge || 0)}">
                   <label class="text-xs text-gray-500">სტუმრის სახელი<input id="editGuestName" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.guestName || '')}"></label>
                   <label class="text-xs text-gray-500">ტელეფონი<input id="editGuestPhone" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.guestPhone || '')}"></label>
                   <label class="text-xs text-gray-500">ელფოსტა<input id="editGuestEmail" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.guestEmail || '')}"></label>
@@ -4349,7 +4418,7 @@
                     <label class="text-xs text-gray-500">დამატებითი საწოლი რაოდენობა<select id="editExtraBedQty" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full"></select></label>
                     <div class="text-xs text-gray-500 mt-6" id="editExtraBedRateInfo"></div>
                   </div>
-                  <label class="text-xs text-gray-500">სრული თანხა<input id="editTotalPrice" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(res.totalPrice||0)}" readonly></label>
+                  <label class="text-xs text-gray-500">${externalChannel ? 'არხიდან მიღებული სრული თანხა' : 'სრული თანხა'}<input id="editTotalPrice" type="number" min="0" step="0.01" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(res.totalPrice||0)}" ${externalChannel ? '' : 'readonly'}></label>
                   <label class="text-xs text-gray-500">დასარჩენი გადასახდელი თანხა<input id="editDueAmount" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${dueAmount}" readonly></label>
                   <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="editReservationVip" type="checkbox" class="rounded" ${res.vip || res.vipFlag ? 'checked' : ''}> VIP სტუმარი</label>
                   <label class="md:col-span-2 text-xs text-gray-500">კომენტარი<textarea id="editReservationComment" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" rows="3">${escapeHtml(res.comment || res.comments || res.internalNotes || '')}</textarea></label>
@@ -4402,6 +4471,7 @@
       document.getElementById('editCheckoutDate')?.addEventListener('change', recalcEditReservationTotal);
       document.getElementById('editCheckoutTime')?.addEventListener('change', recalcEditReservationTotal);
       document.getElementById('editAdditionalFeeAmount')?.addEventListener('input', recalcEditReservationTotal);
+      document.getElementById('editTotalPrice')?.addEventListener('input', updateExternalBaseRoomChargeFromManualTotal);
       initMinibarSelector('edit', res.minibarItems || []);
       document.getElementById('editRoomId')?.addEventListener('change', () => {
         updateExtraBedOptions('editRoomId', 'editExtraBedWrap', 'editExtraBedEnabled', 'editExtraBedQty', 'editExtraBedRateInfo');
@@ -4453,7 +4523,12 @@
         return;
       }
       const charges = computeReservationCharges({ roomId: nextRoomId, checkinDate: nextCheckinDate, checkoutDate: nextCheckoutDate, checkoutTime: nextCheckoutTime, additionalFeeAmount: nextAdditionalFeeAmount, extraBedEnabled: nextExtraBedEnabled, extraBedQty: nextExtraBedQty, minibarAmount: minibarTotal });
-      const recalculatedTotal = charges.grossTotal;
+      const isExternal = isExternalChannelReservation(reservations[idx]);
+      const folioServicesTotal = sumFolioServices(reservations[idx]);
+      const externalBase = Math.max(0, Number(document.getElementById('editExternalBaseRoomCharge')?.value || 0));
+      const recalculatedTotal = isExternal
+        ? Number((externalBase + charges.lateCheckoutFee + charges.extraBedFee + charges.minibarAmount + nextAdditionalFeeAmount + folioServicesTotal).toFixed(2))
+        : Number((charges.grossTotal + folioServicesTotal).toFixed(2));
       let paidAmount = Number(document.getElementById('editPaidAmount')?.value || 0);
       if (nextPaymentStatus === 'paid') paidAmount = recalculatedTotal;
       if (nextPaymentStatus === 'unpaid') paidAmount = 0;
@@ -4477,7 +4552,7 @@
         additionalFeeAmount: nextAdditionalFeeAmount,
         extraBedEnabled: charges.extraBedEnabled,
         extraBedQty: charges.extraBedQty,
-        nightlyRate: charges.nightlyRate,
+        nightlyRate: isExternal ? Number((externalBase / Math.max(1, calculateNights(nextCheckinDate, nextCheckoutDate) || 1)).toFixed(2)) : charges.nightlyRate,
         lateCheckoutFee: charges.lateCheckoutFee,
         extraBedFee: charges.extraBedFee,
         minibarItems: normalizeMinibarItems(minibarItems),
@@ -5593,8 +5668,8 @@
             const checkinDate = String(b?.arrival_date || '').trim();
             const checkoutDate = String(b?.departure_date || '').trim();
             if (!checkinDate || !checkoutDate || checkoutDate <= checkinDate) return;
-            const amount = Math.max(0, Number(b?.amount || b?.total_amount || 0));
-            const source = String(b?.channel_id || b?.channel || b?.source || 'direct').trim();
+            const amount = Math.max(0, Number(b?.amount || b?.total_amount || b?.total || b?.price || 0));
+            const source = String(b?.channel_name || b?.channel_title || b?.ota_name || b?.channel || b?.source || b?.provider || b?.channel_id || 'direct').trim();
             const customer = b?.customer || {};
             const guestName = String(customer?.name || b?.guest_name || b?.customer_name || 'სტუმარი').trim();
             const guestEmail = String(customer?.email || b?.guest_email || '').trim();
@@ -5631,12 +5706,14 @@
               additionalFeeAmount: 0,
               extraBedEnabled: false,
               extraBedQty: 0,
-              nightlyRate: Number(room?.basePrice || 0),
+              nightlyRate: Number((amount / Math.max(1, calculateNights(checkinDate, checkoutDate) || 1)).toFixed(2)),
               lateCheckoutFee: 0,
               extraBedFee: 0,
               totalPrice: amount,
               channelBookingId,
               source,
+              channelName: source,
+              externalReservationId: channelBookingId,
               channelRoomTypeId: remoteRoomTypeId,
               invoiceNo: `INV-${Number(getState('nextInvoiceNo', 1001))}`,
               invoiceStatus: 'issued'
