@@ -5401,49 +5401,75 @@
             ratePlanMapping[String(room.id)] = ratePlanId;
             setChannelRatePlanMapping(ratePlanMapping);
 
-            // ── 3. PUSH RATES for full year ───────────────────────────────
+            // ── 3. PUSH RATES — try per-resource then bulk fallback ───────
             const monthRates = monthlyRates[currentMonth] || {};
             const rate = Number(monthRates[room.roomType] || room.basePrice || 0);
             if (rate > 0) {
-              const rR = await fetch(`${proxyBase}?path=rates`, {
+              // Try 1: per rate_plan endpoint
+              let rateOk = false;
+              const rR1 = await fetch(`${proxyBase}?path=${encodeURIComponent(`rate_plans/${ratePlanId}/rates`)}`, {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ values: [{
-                  rate_plan_id: ratePlanId,
-                  date_from: yearStart, date_to: yearEnd, rate
-                }]})
+                body: JSON.stringify({ values: [{ date_from: yearStart, date_to: yearEnd, rate }] })
               });
-              if (!rR.ok) { const t = await rR.text(); console.warn('rates push failed:', t); rateErrors++; }
+              if (rR1.ok) { rateOk = true; }
+              if (!rateOk) {
+                // Try 2: bulk endpoint without property_id
+                const rR2 = await fetch(`${proxyBase}?path=rates`, {
+                  method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ values: [{ rate_plan_id: ratePlanId, date_from: yearStart, date_to: yearEnd, rate }] })
+                });
+                if (rR2.ok) { rateOk = true; }
+                else { const t = await rR2.text(); console.warn('rates push failed:', t); rateErrors++; }
+              }
             }
           }
 
-          // ── 4. PUSH AVAILABILITY for 365 days ────────────────────────────
-          // Build compact bulk payload (30-day chunks to avoid limits)
-          const avlValues = [];
-          let cur = new Date(todayStr);
-          const end = new Date(yearAhead);
+          // ── 4. PUSH AVAILABILITY — try per-resource then bulk fallback ──
           const activeRes = getReservationsData().filter(r =>
             !['Cancelled', 'Checked-out'].includes(r.status) && String(r.roomId) === String(room.id)
           );
+          const avlValues = [];
+          let cur = new Date(todayStr);
+          const end = new Date(yearAhead);
           while (cur < end) {
             const ds = formatDateISO(cur);
             const ns = formatDateISO(addDays(cur, 1));
             const occ = activeRes.filter(r => r.checkinDate <= ds && r.checkoutDate > ds).length;
-            avlValues.push({ room_type_id: channexRoomTypeId,
-              date_from: ds, date_to: ns, availability: Math.max(0, 1 - occ) });
+            avlValues.push({ date_from: ds, date_to: ns, availability: Math.max(0, 1 - occ) });
             cur = addDays(cur, 1);
           }
-          // Send in chunks of 30
+
+          let availOk = false;
+          // Try 1: per room_type endpoint, chunks of 30
           for (let i = 0; i < avlValues.length; i += 30) {
             const chunk = avlValues.slice(i, i + 30);
-            const aR = await fetch(`${proxyBase}?path=availability`, {
+            const aR = await fetch(`${proxyBase}?path=${encodeURIComponent(`room_types/${channexRoomTypeId}/availability`)}`, {
               method: 'PUT', headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ values: chunk })
             });
             if (!aR.ok) {
               const t = await aR.text();
-              console.warn(`avail chunk ${i} failed:`, t, 'room_type_id:', channexRoomTypeId);
-              availErrors++;
+              console.warn(`per-RT avail chunk ${i} failed (${aR.status}):`, t);
               break;
+            }
+            if (i + 30 >= avlValues.length) availOk = true;
+          }
+          if (!availOk) {
+            // Try 2: bulk /availability with room_type_id in each value
+            const bulkValues = avlValues.map(v => ({ ...v, room_type_id: channexRoomTypeId }));
+            for (let i = 0; i < bulkValues.length; i += 30) {
+              const chunk = bulkValues.slice(i, i + 30);
+              const aR2 = await fetch(`${proxyBase}?path=availability`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ values: chunk })
+              });
+              if (!aR2.ok) {
+                const t = await aR2.text();
+                console.warn(`bulk avail chunk ${i} failed (${aR2.status}):`, t, 'RT:', channexRoomTypeId);
+                availErrors++;
+                break;
+              }
+              if (i + 30 >= bulkValues.length) availOk = true;
             }
           }
 
