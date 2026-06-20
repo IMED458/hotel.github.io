@@ -33,7 +33,7 @@ exports.channexProxy = onRequest({ cors: true, timeoutSeconds: 30 }, async (req,
     method: req.method,
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${CHANNEX_API_KEY}`,
+      'user-api-key': CHANNEX_API_KEY,
     },
   };
 
