@@ -517,27 +517,59 @@
       ].map(([value, label]) => `<option value="${value}" ${selected === value ? 'selected' : ''}>${label}</option>`).join('');
     }
     function getReservationSourceInfo(reservation) {
-      const raw = String(
-        reservation?.source ||
-        reservation?.channel ||
-        reservation?.channelName ||
-        reservation?.ota ||
-        reservation?.platform ||
-        ''
-      ).toLowerCase().trim();
+      const sourceParts = [
+        reservation?.source,
+        reservation?.channel,
+        reservation?.channelName,
+        reservation?.ota,
+        reservation?.platform,
+        reservation?.provider,
+        reservation?.bookingSource,
+        reservation?.booking_source,
+        reservation?.channelCode,
+        reservation?.channel_code,
+        reservation?.channelTitle,
+        reservation?.channel_title
+      ].filter(Boolean).map((item) => String(item));
+      const raw = sourceParts.join(' ').toLowerCase().trim();
+      const isOpaqueId = /^[a-f0-9-]{20,}$/i.test(raw) || /^[a-z0-9]{20,}$/i.test(raw);
+      const otaIcon = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0f172a"/><text x="32" y="39" text-anchor="middle" font-family="Arial, sans-serif" font-size="21" font-weight="800" fill="#fff">OTA</text></svg>');
 
-      if (raw.includes('booking')) return { icon: 'https://cdn.simpleicons.org/bookingdotcom/1D4ED8', title: 'Booking.com' };
+      if (raw.includes('booking') || raw.includes('bcom') || raw.includes('bookingcom') || raw.includes('booking.com')) return { icon: 'https://cdn.simpleicons.org/bookingdotcom/1D4ED8', title: 'Booking.com' };
       if (raw.includes('tripadvisor') || raw.includes('trip advisor') || raw.includes('trip')) return { icon: 'https://cdn.simpleicons.org/tripadvisor/16A34A', title: 'Tripadvisor' };
       if (raw.includes('airbnb') || raw.includes('air bnb')) return { icon: 'https://cdn.simpleicons.org/airbnb/EF4444', title: 'Airbnb' };
       if (raw.includes('expedia')) return { icon: 'https://cdn.simpleicons.org/expedia/F59E0B', title: 'Expedia' };
       if (raw.includes('agoda')) return { icon: 'https://cdn.simpleicons.org/agoda/8B5CF6', title: 'Agoda' };
       if (raw.includes('hotels.com') || raw.includes('hotelscom') || raw.includes('hotel.com')) return { icon: 'https://cdn.simpleicons.org/hotelsdotcom/0F172A', title: 'Hotels.com' };
       if (!raw || raw.includes('direct') || raw.includes('walkin') || raw.includes('walk-in')) return { icon: 'https://cdn.simpleicons.org/homeadvisor/475569', title: 'Direct' };
-      return { icon: 'https://cdn.simpleicons.org/googlemaps/6B7280', title: reservation?.source || reservation?.channel || 'OTA' };
+      return { icon: otaIcon, title: isOpaqueId ? 'OTA' : (reservation?.source || reservation?.channel || reservation?.channelName || 'OTA') };
     }
     function isExternalChannelReservation(reservation) {
       const source = getReservationSourceInfo(reservation || {});
       return !!(reservation?.channelBookingId || reservation?.externalReservationId || reservation?.ota || (source.title && source.title !== 'Direct'));
+    }
+    function getChannelSourceFromBookingPayload(booking) {
+      const b = booking || {};
+      const attrs = b.attributes || {};
+      const relationships = b.relationships || {};
+      const candidates = [
+        b.channel_name, attrs.channel_name,
+        b.channel_title, attrs.channel_title,
+        b.ota_name, attrs.ota_name,
+        b.booking_source, attrs.booking_source,
+        b.bookingSource, attrs.bookingSource,
+        b.provider, attrs.provider,
+        b.source, attrs.source,
+        b.channel, attrs.channel,
+        b.channel_code, attrs.channel_code,
+        b.channelCode, attrs.channelCode,
+        relationships.channel?.data?.attributes?.title,
+        relationships.channel?.data?.attributes?.name,
+        relationships.channel?.data?.id,
+        b.channel_id, attrs.channel_id
+      ].filter(Boolean).map((item) => String(item).trim()).filter(Boolean);
+      const named = candidates.find((item) => !/^[a-f0-9-]{20,}$/i.test(item) && !/^[a-z0-9]{20,}$/i.test(item));
+      return named || candidates[0] || 'OTA';
     }
     function renderChannelLogoBadge(reservation, size = 'sm') {
       if (!isExternalChannelReservation(reservation)) return '';
@@ -5467,8 +5499,8 @@
 
       const customer = b.customer || {};
       const guestName = String(customer.name || b.guest_name || 'OTA სტუმარი').trim();
-      const amount = Math.max(0, Number(b.amount || b.total_amount || 0));
-      const source = String(b.channel_id || b.channel || b.source || 'ota').trim();
+      const amount = Math.max(0, Number(b.amount || b.total_amount || b.total || b.price || 0));
+      const source = getChannelSourceFromBookingPayload(b);
       const room = findRoomById(roomId);
       const available = isRoomAvailableInRange(roomId, checkinDate, checkoutDate);
 
@@ -5492,7 +5524,7 @@
         additionalFeeAmount: 0,
         extraBedEnabled: false,
         extraBedQty: 0,
-        nightlyRate: Number(room?.basePrice || 0),
+        nightlyRate: Number((amount / Math.max(1, calculateNights(checkinDate, checkoutDate) || 1)).toFixed(2)),
         lateCheckoutFee: 0,
         extraBedFee: 0,
         minibarItems: [],
@@ -5500,6 +5532,8 @@
         totalPrice: amount,
         channelBookingId,
         source,
+        channelName: source,
+        externalReservationId: channelBookingId,
         channelRoomTypeId: remoteRoomTypeId,
         invoiceNo: `INV-${getState('nextInvoiceNo', 1001)}`,
         invoiceStatus: 'issued'
@@ -5767,7 +5801,7 @@
             const checkoutDate = String(b?.departure_date || '').trim();
             if (!checkinDate || !checkoutDate || checkoutDate <= checkinDate) return;
             const amount = Math.max(0, Number(b?.amount || b?.total_amount || b?.total || b?.price || 0));
-            const source = String(b?.channel_name || b?.channel_title || b?.ota_name || b?.channel || b?.source || b?.provider || b?.channel_id || 'direct').trim();
+            const source = getChannelSourceFromBookingPayload(b);
             const customer = b?.customer || {};
             const guestName = String(customer?.name || b?.guest_name || b?.customer_name || 'სტუმარი').trim();
             const guestEmail = String(customer?.email || b?.guest_email || '').trim();
