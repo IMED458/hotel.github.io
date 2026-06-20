@@ -5328,31 +5328,39 @@
         existingRoomTypes = d?.data || [];
       } catch (e) { console.warn('room_types list error:', e.message); }
 
-      // ── Try to activate property for ARI (go live) ───────────────────────
-      try {
-        // Some Channex staging setups need explicit "go live" before ARI works
-        const actR = await fetch(`${proxyBase}?path=${encodeURIComponent(`properties/${c.propertyId}`)}`, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ property: { status: 'live' } })
-        });
-        const actT = await actR.text();
-        console.log(`property activate → ${actR.status}:`, actT.slice(0, 200));
-      } catch(e) { console.warn('property activate error:', e.message); }
-
-      // Test ARI with default room type after activation attempt
-      const DEFAULT_RT_ID = 'c713a157-af35-4a4d-a05b-18fada9491c2';
+      // ── Probe ARI: GET current availability + try all body/endpoint formats ─
       const tomorrow = formatDateISO(addDays(today, 1));
+      // Use first room type from Channex list (should be mapped to Booking.com)
+      const firstRT = existingRoomTypes[0];
+      const probeRtId = firstRT?.id || 'c713a157-af35-4a4d-a05b-18fada9491c2';
+      console.log('ARI probe using RT:', probeRtId, firstRT?.attributes?.title);
+
+      // GET /availability — see what format Channex returns
       try {
-        const testR = await fetch(`${proxyBase}?path=availability`, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ values: [{ room_type_id: DEFAULT_RT_ID, date_from: todayStr, date_to: tomorrow, availability: 1 }] })
-        });
-        const testT = await testR.text();
-        console.log(`ARI test after activate → ${testR.status}:`, testT.slice(0, 200));
-        if (!testR.ok) {
-          showToast('Channex ARI: property activation საჭიროა dashboard-ზე. staging.channex.io → Property → Go Live', 'warning');
-        }
-      } catch(e) { console.warn('ARI test error:', e.message); }
+        const gR = await fetch(`${proxyBase}?path=${encodeURIComponent(`availability?room_type_id=${probeRtId}&date_from=${todayStr}&date_to=${tomorrow}`)}`, { headers: { 'Content-Type': 'application/json' } });
+        const gT = await gR.text();
+        console.log(`GET availability → ${gR.status}:`, gT.slice(0, 300));
+      } catch(e) { console.warn('GET avail error:', e.message); }
+
+      // Try PUT with various body formats
+      const probeTests = [
+        ['PUT /availability {values}', 'availability', { values: [{ room_type_id: probeRtId, date_from: todayStr, date_to: tomorrow, availability: 1 }] }],
+        ['PUT /availability {data}', 'availability', { data: [{ room_type_id: probeRtId, date_from: todayStr, date_to: tomorrow, availability: 1 }] }],
+        ['PUT /availability top+values', 'availability', { property_id: c.propertyId, room_type_id: probeRtId, date_from: todayStr, date_to: tomorrow, availability: 1 }],
+        ['PUT /inventory', 'inventory', { values: [{ room_type_id: probeRtId, date_from: todayStr, date_to: tomorrow, availability: 1 }] }],
+        ['PUT /restrictions', 'restrictions', { values: [{ room_type_id: probeRtId, date_from: todayStr, date_to: tomorrow, availability: 1 }] }],
+      ];
+      for (const [label, path, body] of probeTests) {
+        try {
+          const r = await fetch(`${proxyBase}?path=${encodeURIComponent(path)}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+          const t = await r.text();
+          console.log(`${label} → ${r.status}:`, t.slice(0, 150));
+          if (r.ok) { console.log('✓ WORKING:', label); }
+        } catch(e) { console.warn(`${label} error:`, e.message); }
+      }
       // ─────────────────────────────────────────────────────────────────────
 
       let connectedChannels = [];
