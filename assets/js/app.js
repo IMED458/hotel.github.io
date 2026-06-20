@@ -79,13 +79,16 @@
     };
 
     const DEFAULT_CHANNEL_CONFIG = {
-      connectionMode: 'oauth',
-      proxyUrl: '',
+      connectionMode: 'apikey',
+      proxyUrl: 'https://us-central1-hotel-7497c.cloudfunctions.net/channexProxy',
       apiBaseUrl: 'https://staging.channex.io/api/v1',
       authStartUrl: '/auth/channex/start',
       authStatusUrl: '/auth/channex/status',
-      apiKey: '',
-      propertyId: '',
+      apiKey: 'uhaIv0j0OZ5RjNq3coBzAFrRnFHpt4RidQults/vZl4nLlosoIEMpLB/8eJUVqxi',
+      propertyId: '313fecb5-4fb4-425d-9b35-efa820655e36',
+      ratePlanId: 'd88c6b4e-e5cd-4633-a243-1b3478bdc837',
+      defaultRoomTypeId: 'c713a157-af35-4a4d-a05b-18fada9491c2',
+      webhookUrl: 'https://us-central1-hotel-7497c.cloudfunctions.net/channexWebhook',
       autoSyncEnabled: true,
       syncIntervalMinutes: 15,
       isConnected: false,
@@ -574,6 +577,7 @@
         syncLocalStorageToFirebase();
         window.hotelFirebase = { app: firebaseApp, db: firebaseDb, collection: FIREBASE_STATE_COLLECTION };
         console.info(`Firebase სინქი აქტიურია: ${FIREBASE_CONFIG.projectId}`);
+        startChannexWebhookListener();
       } catch (error) {
         firebaseHydrating = false;
         firebaseReady = false;
@@ -3696,6 +3700,7 @@
       closeModal();
       showToast('ჯავშანი წარმატებით დაემატა');
       appendFinanceAudit('reservation_create', 'reservation', `#${createdReservation.id} • ${guestName}`);
+      pushAvailabilityToChannex(roomId, checkinDate, checkoutDate);
       renderCurrentPage();
     }
 
@@ -4452,6 +4457,7 @@
       upsertPaymentFromReservation(reservations[idx]);
       appendFinanceAudit('reservation_update', 'reservation', `#${resId}`);
       showToast('ჯავშანი განახლდა');
+      pushAvailabilityToChannex(reservations[idx].roomId, reservations[idx].checkinDate, reservations[idx].checkoutDate);
       closeModal();
       renderCurrentPage();
     }
@@ -4474,6 +4480,8 @@
       setReservationsData(reservations);
       appendFinanceAudit('reservation_cancel', 'reservation', `#${resId}`);
       showToast('ჯავშანი გაუქმდა და ისტორია შენარჩუნდა', 'warning');
+      const cancelled = reservations[idx];
+      pushAvailabilityToChannex(cancelled.roomId, cancelled.checkinDate, cancelled.checkoutDate);
       closeModal();
       renderCurrentPage();
     }
@@ -4524,6 +4532,7 @@
       createHousekeepingTaskForCheckout(reservations[idx]);
       showToast('Check-out დასრულდა');
       appendFinanceAudit('reservation_checkout', 'reservation', `#${resId}`);
+      pushAvailabilityToChannex(reservations[idx].roomId, reservations[idx].checkinDate, reservations[idx].checkoutDate);
       closeModal();
       renderCurrentPage();
     }
@@ -5071,6 +5080,186 @@
       renderChannels();
     }
 
+    // -----------------------------------------------------------------------
+    // Channex ARI push — called after any reservation change
+    // Recalculates real availability per date and pushes to Channex
+    // -----------------------------------------------------------------------
+    async function pushAvailabilityToChannex(affectedRoomId, dateFrom, dateTo) {
+      try {
+        const c = getChannelConfig();
+        if (!c.isConnected || !c.proxyUrl) return;
+        const mapping = getChannelRoomMapping();
+        const channexRoomTypeId = mapping[String(affectedRoomId)] || c.defaultRoomTypeId || '';
+        if (!channexRoomTypeId) return;
+
+        // All local room IDs that share this Channex room_type_id
+        const sharedLocalIds = Object.keys(mapping)
+          .filter(rid => (mapping[rid] || '') === channexRoomTypeId)
+          .map(Number);
+        if (!sharedLocalIds.length) sharedLocalIds.push(Number(affectedRoomId));
+
+        const activeReservations = getReservationsData().filter(r =>
+          !['Cancelled', 'Checked-out'].includes(r.status) &&
+          sharedLocalIds.includes(Number(r.roomId))
+        );
+
+        // Build one ARI value per date
+        const values = [];
+        let cursor = new Date(dateFrom);
+        const endDate = new Date(dateTo);
+        while (cursor < endDate) {
+          const dateStr = formatDateISO(cursor);
+          const nextStr = formatDateISO(addDays(cursor, 1));
+          const occupied = activeReservations.filter(
+            r => r.checkinDate <= dateStr && r.checkoutDate > dateStr
+          ).length;
+          const available = Math.max(0, sharedLocalIds.length - occupied);
+          values.push({
+            property_id: c.propertyId,
+            room_type_id: channexRoomTypeId,
+            date_from: dateStr,
+            date_to: nextStr,
+            availability: available
+          });
+          cursor = addDays(cursor, 1);
+        }
+
+        if (!values.length) return;
+
+        const proxyBase = c.proxyUrl.replace(/\/$/, '');
+        const resp = await fetch(`${proxyBase}?path=availability`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ values })
+        });
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => '');
+          console.warn('Channex ARI push failed:', resp.status, txt);
+        } else {
+          console.info(`Channex availability updated for ${values.length} dates (room ${affectedRoomId})`);
+        }
+      } catch (e) {
+        console.warn('pushAvailabilityToChannex error:', e.message);
+      }
+    }
+
+    // Also push rate update for the given rate plan
+    async function pushRateToChannex(affectedRoomId, dateFrom, dateTo, rate) {
+      try {
+        const c = getChannelConfig();
+        if (!c.isConnected || !c.proxyUrl || !c.ratePlanId) return;
+        const proxyBase = c.proxyUrl.replace(/\/$/, '');
+        const resp = await fetch(`${proxyBase}?path=rates`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            values: [{
+              property_id: c.propertyId,
+              rate_plan_id: c.ratePlanId,
+              date_from: dateFrom,
+              date_to: dateTo,
+              rate: rate
+            }]
+          })
+        });
+        if (!resp.ok) console.warn('Channex rate push failed:', resp.status);
+      } catch (e) {
+        console.warn('pushRateToChannex error:', e.message);
+      }
+    }
+
+    // Start listening to channexPendingBookings in Firestore and import them
+    function startChannexWebhookListener() {
+      if (!firebaseReady || !firebaseDb) return;
+      try {
+        firebaseDb.collection('channexPendingBookings')
+          .where('processed', '==', false)
+          .orderBy('receivedAt', 'asc')
+          .onSnapshot(snapshot => {
+            if (snapshot.empty) return;
+            snapshot.docs.forEach(doc => {
+              const data = doc.data();
+              const b = data.booking || {};
+              importChannexBooking(b);
+              doc.ref.update({ processed: true }).catch(() => {});
+            });
+            if (currentPage === 'reservations' || currentPage === 'calendar') renderCurrentPage();
+          }, err => console.warn('channexPendingBookings listener error:', err.message));
+      } catch (e) {
+        console.warn('startChannexWebhookListener error:', e.message);
+      }
+    }
+
+    function importChannexBooking(b) {
+      if (!b) return;
+      const channelBookingId = String(b.id || b.booking_id || '').trim();
+      if (!channelBookingId) return;
+      const reservations = getReservationsData();
+      if (reservations.some(r => String(r.channelBookingId || '').trim() === channelBookingId)) return;
+
+      const c = getChannelConfig();
+      const mapping = getChannelRoomMapping();
+      const inverseMapping = {};
+      Object.keys(mapping).forEach(rid => {
+        const remoteId = String(mapping[rid] || '').trim();
+        if (remoteId) inverseMapping[remoteId] = Number(rid);
+      });
+
+      const rooms = getRoomsData();
+      const remoteRoomTypeId = String(b.room_type_id || c.defaultRoomTypeId || '').trim();
+      let roomId = inverseMapping[remoteRoomTypeId];
+      if (!roomId && rooms.length) roomId = Number(rooms[0].id);
+      if (!roomId) return;
+
+      const checkinDate = String(b.arrival_date || b.checkin || '').trim();
+      const checkoutDate = String(b.departure_date || b.checkout || '').trim();
+      if (!checkinDate || !checkoutDate || checkoutDate <= checkinDate) return;
+
+      const customer = b.customer || {};
+      const guestName = String(customer.name || b.guest_name || 'OTA სტუმარი').trim();
+      const amount = Math.max(0, Number(b.amount || b.total_amount || 0));
+      const source = String(b.channel_id || b.channel || b.source || 'ota').trim();
+      const room = findRoomById(roomId);
+      const available = isRoomAvailableInRange(roomId, checkinDate, checkoutDate);
+
+      const nextId = Number(getState('nextReservationId', 1));
+      reservations.push({
+        id: nextId,
+        guestName,
+        guestPhone: String(customer.phone || b.guest_phone || '').trim(),
+        guestEmail: String(customer.email || b.guest_email || '').trim(),
+        guestIdNumber: '',
+        guestCitizenship: '',
+        guestBirthDate: '',
+        roomId,
+        checkinDate,
+        checkoutDate,
+        checkoutTime: getPolicySettings().checkoutTime,
+        status: available ? (String(b.status || '').toLowerCase() === 'cancelled' ? 'Cancelled' : 'Reserved') : 'conflict',
+        paymentStatus: amount > 0 ? 'unpaid' : 'paid',
+        paidAmount: 0,
+        additionalFeeName: '',
+        additionalFeeAmount: 0,
+        extraBedEnabled: false,
+        extraBedQty: 0,
+        nightlyRate: Number(room?.basePrice || 0),
+        lateCheckoutFee: 0,
+        extraBedFee: 0,
+        minibarItems: [],
+        minibarTotal: 0,
+        totalPrice: amount,
+        channelBookingId,
+        source,
+        channelRoomTypeId: remoteRoomTypeId,
+        invoiceNo: `INV-${getState('nextInvoiceNo', 1001)}`,
+        invoiceStatus: 'issued'
+      });
+      setState('reservations', reservations);
+      setState('nextReservationId', nextId + 1);
+      setState('nextInvoiceNo', Number(getState('nextInvoiceNo', 1001)) + 1);
+      showToast(`ახალი OTA ჯავშანი: ${guestName} (${checkinDate})`, 'success');
+    }
+
     function readChannexCollection(payload) {
       if (!payload) return [];
       if (Array.isArray(payload)) return payload;
@@ -5142,6 +5331,14 @@
           </div>
           <div class="text-xs text-gray-500">ბოლო დაკავშირება: ${c.connectedAt ? formatDate(c.connectedAt) : '-'} | ბოლო სინქი: ${c.lastSyncAt ? formatDate(c.lastSyncAt) : '-'}</div>
         </div>
+        <div class="mt-4 bg-sky-50 dark:bg-sky-900/20 rounded-2xl p-5 border border-sky-200 dark:border-sky-700">
+          <div class="font-semibold text-sky-800 dark:text-sky-300 mb-2">Channex Webhook URL (Booking.com/OTA → თქვენი სისტემა)</div>
+          <div class="text-xs text-gray-600 dark:text-gray-400 mb-2">ჩაწერეთ ეს URL Channex Dashboard → Settings → Webhooks სექციაში, რათა OTA-დან შემოსული ჯავშნები ავტომატურად გადმოვიდეს თქვენს სისტემაში:</div>
+          <div class="flex items-center gap-2">
+            <code class="flex-1 bg-white dark:bg-gray-900 border border-sky-200 dark:border-sky-700 rounded-lg px-3 py-2 text-sm font-mono select-all">${escapeHtml(c.webhookUrl || 'https://us-central1-hotel-7497c.cloudfunctions.net/channexWebhook')}</code>
+            <button onclick="navigator.clipboard.writeText('${escapeHtml(c.webhookUrl || 'https://us-central1-hotel-7497c.cloudfunctions.net/channexWebhook')}').then(()=>showToast('URL დაკოპირდა'))" class="px-3 py-2 bg-sky-600 text-white rounded-lg text-sm">კოპირება</button>
+          </div>
+        </div>
         <div class="mt-4 bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
           <div class="flex items-center justify-between mb-4">
             <h3 class="font-semibold">ოთახების მიბმა (Local → Channex room_type_id)</h3>
@@ -5155,7 +5352,7 @@
                   <tr class="border-t border-gray-100 dark:border-gray-700">
                     <td class="py-2">${escapeHtml(room.roomNumber || '-')} • ${escapeHtml(room.roomName || '-')}</td>
                     <td class="py-2">
-                      <input id="ch-map-${room.id}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: room-type-uuid" value="${escapeHtml(mapping[String(room.id)] || '')}">
+                      <input id="ch-map-${room.id}" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: room-type-uuid" value="${escapeHtml(mapping[String(room.id)] || c.defaultRoomTypeId || '')}">
                     </td>
                   </tr>
                 `).join('') || '<tr><td colspan="2" class="py-6 text-center text-gray-500">ოთახები ვერ მოიძებნა</td></tr>'}
@@ -5226,15 +5423,16 @@
           const ok = await refreshChannexOAuthConnection();
           showToast(ok ? 'OAuth კავშირი დადასტურდა' : 'OAuth ჯერ არაა დასრულებული', ok ? 'success' : 'warning');
         } else {
-          if (!c.apiKey && !c.proxyUrl) throw new Error('API გასაღები ან პროქსი მისამართი აუცილებელია');
-          const base = (c.proxyUrl || c.apiBaseUrl || '').replace(/\/$/, '');
-          const r = await fetch(`${base}/properties?pagination[limit]=1`, {
-            headers: c.apiKey ? { Authorization: `Bearer ${c.apiKey}` } : {},
-            credentials: 'include'
-          });
-          if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+          if (!c.apiKey) throw new Error('API გასაღები აუცილებელია');
+          if (!c.proxyUrl) throw new Error('Firebase Functions proxy URL აუცილებელია');
+          const proxyBase = c.proxyUrl.replace(/\/$/, '');
+          const r = await fetch(`${proxyBase}?path=properties%3Fpagination%5Blimit%5D%3D1`);
+          if (!r.ok) {
+            const txt = await r.text().catch(() => r.statusText);
+            throw new Error(`${r.status}: ${txt}`);
+          }
           setChannelConfig({ isConnected: true, connectedAt: new Date().toISOString() });
-          showToast('API კავშირი წარმატებულია');
+          showToast('Channex API კავშირი წარმატებულია ✓');
         }
       } catch (e) {
         setChannelConfig({ isConnected: false });
@@ -5286,13 +5484,12 @@
         if (!silent) showToast('ჯერ დააკავშირეთ Channex', 'warning');
         return;
       }
-      const base = (c.proxyUrl || c.apiBaseUrl || '').replace(/\/$/, '');
-      const path = kind === 'rates' ? `/room_types?filter[property_id]=${encodeURIComponent(c.propertyId || '')}&pagination[limit]=5` : `/bookings?filter[property_id]=${encodeURIComponent(c.propertyId || '')}&pagination[limit]=20`;
+      const proxyBase = (c.proxyUrl || '').replace(/\/$/, '');
+      const channexPath = kind === 'rates'
+        ? `room_types?filter[property_id]=${encodeURIComponent(c.propertyId || '')}&pagination[limit]=5`
+        : `bookings?filter[property_id]=${encodeURIComponent(c.propertyId || '')}&pagination[limit]=50`;
       try {
-        const res = await fetch(`${base}${path}`, {
-          headers: c.apiKey ? { Authorization: `Bearer ${c.apiKey}` } : {},
-          credentials: 'include'
-        });
+        const res = await fetch(`${proxyBase}?path=${encodeURIComponent(channexPath)}`);
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
         const payload = await res.json();
         const rows = readChannexCollection(payload);
