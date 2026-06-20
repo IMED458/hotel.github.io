@@ -3924,6 +3924,8 @@
       const room = findRoomById(res.roomId);
       const roomCharge = Math.max(0, Number(res.nightlyRate || room?.basePrice || 0) * Math.max(1, nights || 1));
       rows.push({
+        source: 'room',
+        id: 'room',
         date: `${res.checkinDate || todayISO()} 15:00`,
         category: roomTypeLabel(room?.roomType || 'ოთახი'),
         name: `${room?.roomName || room?.roomNumber || 'ნომრის საფასური'} - ${Math.max(1, nights || 1)} ღამე`,
@@ -3931,11 +3933,13 @@
         qty: Math.max(1, nights || 1),
         total: roomCharge
       });
-      if (Number(res.additionalFeeAmount || 0) > 0) rows.push({ date: res.checkinDate || todayISO(), category: 'დამატებითი გადასახადი', name: res.additionalFeeName || 'დამატებითი სერვისი', price: Number(res.additionalFeeAmount || 0), qty: 1, total: Number(res.additionalFeeAmount || 0) });
-      if (Number(res.lateCheckoutFee || 0) > 0) rows.push({ date: res.checkoutDate || todayISO(), category: 'გვიანი გასვლა', name: 'გვიანი გასვლის გადასახადი', price: Number(res.lateCheckoutFee || 0), qty: 1, total: Number(res.lateCheckoutFee || 0) });
-      if (Number(res.extraBedFee || 0) > 0) rows.push({ date: res.checkinDate || todayISO(), category: 'დამატებითი საწოლი', name: `დამატებითი საწოლი x${Number(res.extraBedQty || 1)}`, price: Number(res.extraBedFee || 0), qty: 1, total: Number(res.extraBedFee || 0) });
-      normalizeMinibarItems(res.minibarItems || []).forEach((item) => rows.push({ date: res.checkoutDate || todayISO(), category: 'მინიბარი', name: item.name, price: item.unitPrice, qty: item.quantity, total: item.unitPrice * item.quantity }));
+      if (Number(res.additionalFeeAmount || 0) > 0) rows.push({ source: 'additional_fee', id: 'additional_fee', date: res.checkinDate || todayISO(), category: 'დამატებითი გადასახადი', name: res.additionalFeeName || 'დამატებითი სერვისი', price: Number(res.additionalFeeAmount || 0), qty: 1, total: Number(res.additionalFeeAmount || 0) });
+      if (Number(res.lateCheckoutFee || 0) > 0) rows.push({ source: 'late_checkout', id: 'late_checkout', date: res.checkoutDate || todayISO(), category: 'გვიანი გასვლა', name: 'გვიანი გასვლის გადასახადი', price: Number(res.lateCheckoutFee || 0), qty: 1, total: Number(res.lateCheckoutFee || 0) });
+      if (Number(res.extraBedFee || 0) > 0) rows.push({ source: 'extra_bed', id: 'extra_bed', date: res.checkinDate || todayISO(), category: 'დამატებითი საწოლი', name: `დამატებითი საწოლი x${Number(res.extraBedQty || 1)}`, price: Number(res.extraBedFee || 0), qty: 1, total: Number(res.extraBedFee || 0) });
+      normalizeMinibarItems(res.minibarItems || []).forEach((item, idx) => rows.push({ source: 'reservation_minibar', id: idx, date: res.checkoutDate || todayISO(), category: 'მინიბარი', name: item.name, price: item.unitPrice, qty: item.quantity, total: item.unitPrice * item.quantity }));
       (Array.isArray(res.folioServices) ? res.folioServices : []).forEach((item) => rows.push({
+        source: 'folio_service',
+        id: item.id,
         date: item.createdAt ? item.createdAt.slice(0, 16).replace('T', ' ') : todayISO(),
         category: item.category || 'სერვისი',
         name: item.name || 'დამატებითი სერვისი',
@@ -3969,6 +3973,54 @@
       setReservationsData(reservations);
       appendFinanceAudit('folio_service_add', 'reservation', `#${resId} • ${name} • ${total}`);
       showToast('სერვისი ანგარიშზე დაერიცხა');
+      openReservationDetails(resId);
+    }
+
+    function folioRowActionHtml(resId, row) {
+      if (row.source === 'folio_service' || row.source === 'reservation_minibar') {
+        return `<div class="folio-row-actions"><button onclick="printInvoice(${resId})">ბეჭდვა</button><button class="folio-danger-action" onclick="deleteFolioCharge(${resId}, '${escapeHtml(row.source)}', '${escapeHtml(row.id)}')">წაშლა</button></div>`;
+      }
+      return `<button onclick="printInvoice(${resId})">ბეჭდვა</button>`;
+    }
+
+    function deleteFolioCharge(resId, source, rowId) {
+      if (!can('paymentsManage') && !can('reservationsManage')) return showFolioMessage('დარიცხვის წაშლის უფლება არ გაქვთ', 'error');
+      const reservations = getReservationsData();
+      const idx = reservations.findIndex(r => Number(r.id) === Number(resId));
+      if (idx === -1) return showFolioMessage('ჯავშანი ვერ მოიძებნა', 'error');
+      if (!canMutateForDate(todayISO(), 'დახურულ პერიოდზე დარიცხვის წაშლა შეუძლებელია')) return;
+      const res = reservations[idx];
+      let removed = null;
+
+      if (source === 'folio_service') {
+        const services = Array.isArray(res.folioServices) ? res.folioServices : [];
+        const serviceIdx = services.findIndex((item) => String(item.id) === String(rowId));
+        if (serviceIdx === -1) return showFolioMessage('დარიცხული სერვისი ვერ მოიძებნა', 'error');
+        removed = services[serviceIdx];
+        services.splice(serviceIdx, 1);
+        res.folioServices = services;
+      } else if (source === 'reservation_minibar') {
+        const items = normalizeMinibarItems(res.minibarItems || []);
+        const minibarIdx = Number(rowId);
+        if (!Number.isInteger(minibarIdx) || minibarIdx < 0 || minibarIdx >= items.length) return showFolioMessage('მინიბარის ჩანაწერი ვერ მოიძებნა', 'error');
+        removed = items[minibarIdx];
+        items.splice(minibarIdx, 1);
+        res.minibarItems = items;
+        res.minibarTotal = getMinibarTotalFromItems(items);
+      } else {
+        return showFolioMessage('ამ ხაზის წაშლა Folio-დან არ შეიძლება', 'error');
+      }
+
+      const removedTotal = source === 'reservation_minibar'
+        ? Number(removed.unitPrice || 0) * Number(removed.quantity || 1)
+        : Number(removed.total || 0);
+      res.totalPrice = Math.max(0, Number(res.totalPrice || 0) - Math.max(0, removedTotal));
+      const paid = normalizeReservationPayment(res);
+      res.paymentStatus = paid <= 0 ? 'unpaid' : paid >= Number(res.totalPrice || 0) ? 'paid' : 'partial';
+      reservations[idx] = res;
+      setReservationsData(reservations);
+      appendFinanceAudit('folio_charge_delete', 'reservation', `#${resId} • ${removed.name || removed.category || 'დარიცხვა'} • -${removedTotal}`);
+      showToast('დარიცხული სერვისი წაიშალა');
       openReservationDetails(resId);
     }
 
@@ -4217,7 +4269,7 @@
                 <div class="folio-table-wrap">
                   <table class="folio-table">
                     <thead><tr><th>დარიცხვის თარიღი</th><th>სერვისი / კატეგორია</th><th>ფასი</th><th>რაოდენობა</th><th>ჯამი</th><th>ქმედება</th></tr></thead>
-                    <tbody>${folioRows.map(row => `<tr><td>${escapeHtml(row.date)}</td><td><strong>${escapeHtml(row.name)}</strong><small>${escapeHtml(row.category)}</small></td><td>${Number(row.price || 0).toLocaleString('en-US')}${config.currency_symbol}</td><td>x${Number(row.qty || 1)}</td><td><strong>${Number(row.total || 0).toLocaleString('en-US')}${config.currency_symbol}</strong></td><td><button onclick="printInvoice(${res.id})">ბეჭდვა</button></td></tr>`).join('')}</tbody>
+                    <tbody>${folioRows.map(row => `<tr><td>${escapeHtml(row.date)}</td><td><strong>${escapeHtml(row.name)}</strong><small>${escapeHtml(row.category)}</small></td><td>${Number(row.price || 0).toLocaleString('en-US')}${config.currency_symbol}</td><td>x${Number(row.qty || 1)}</td><td><strong>${Number(row.total || 0).toLocaleString('en-US')}${config.currency_symbol}</strong></td><td>${folioRowActionHtml(res.id, row)}</td></tr>`).join('')}</tbody>
                   </table>
                 </div>
               </section>
@@ -5610,7 +5662,7 @@
       exportFinanceDebtorsCSV, exportFinanceInvoicesCSV, exportFinanceExpensesCSV, exportFinanceJournalCSV, exportFinanceTaxCSV, exportFinanceვადაგადაცილებაCSV, exportFinanceშეჯერებაCSV, exportFinanceAuditCSV, exportFinanceWorkbookExcel,
       saveMonthlyRates, addMinibarProductFromPricing, saveMinibarProductsFromPricing, deleteMinibarProductFromPricing,
       addMinibarRow, removeMinibarRow, recalcMinibarUI, togglePaidAmountField, togglePaymentModalAmountField,
-      addFolioServiceFromDetails, addPaymentFromReservationDetails, updateFolioServiceCategoryUI, updateFolioMinibarProduct, updateFolioServicePreview,
+      addFolioServiceFromDetails, deleteFolioCharge, addPaymentFromReservationDetails, updateFolioServiceCategoryUI, updateFolioMinibarProduct, updateFolioServicePreview,
       addHousekeepingTask, saveHousekeepingTaskFromForm, updateHousekeepingTask, completeHousekeepingTask, addMaintenanceTicket, saveMaintenanceTicketFromForm, updateMaintenanceTicket, completeMaintenanceTicket, addGenericTask, saveGenericTaskFromForm,
       addApprovalRequest, saveApprovalRequestFromForm, resolveApproval, addDocumentRecord, saveDocumentRecordFromForm, addEmployeeRecord, saveEmployeeFromForm, saveCreditNoteFromForm, exportAuditCSV,
       saveHotelSettings, savePolicySettings, saveChannelSettings, saveChannelRoomMapping, startChannexOAuth,

@@ -88,6 +88,8 @@
     .folio-table td { padding: 16px 12px; border-bottom: 1px solid #263348; vertical-align: middle; }
     .folio-table small { display: block; width: fit-content; margin-top: 5px; padding: 3px 8px; border-radius: 7px; color: #4f46e5; background: #eef2ff; font-weight: 800; }
     .folio-table button { color: #94a3b8; font-weight: 800; }
+    .folio-row-actions { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
+    .folio-table button.folio-danger-action { color: #e11d48; }
     .folio-payment-history { display: grid; gap: 10px; }
     .folio-payment-history div { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; padding: 12px 0; border-bottom: 1px solid #e8eef6; color: #718096; }
     .folio-payment-history strong { color: #047857; }
