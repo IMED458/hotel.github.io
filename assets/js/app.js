@@ -5273,10 +5273,12 @@
         if (!values.length) return;
 
         const proxyBase = c.proxyUrl.replace(/\/$/, '');
+        const body = { values };
+        console.log('ARI push sample:', JSON.stringify(values[0]));
         const resp = await fetch(`${proxyBase}?path=availability`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ values })
+          body: JSON.stringify(body)
         });
         if (!resp.ok) {
           const txt = await resp.text().catch(() => '');
