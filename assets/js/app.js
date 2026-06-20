@@ -5328,27 +5328,31 @@
         existingRoomTypes = d?.data || [];
       } catch (e) { console.warn('room_types list error:', e.message); }
 
-      // ── DIAGNOSTIC: probe ARI endpoint variants with default room type ───
+      // ── Try to activate property for ARI (go live) ───────────────────────
+      try {
+        // Some Channex staging setups need explicit "go live" before ARI works
+        const actR = await fetch(`${proxyBase}?path=${encodeURIComponent(`properties/${c.propertyId}`)}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ property: { status: 'live' } })
+        });
+        const actT = await actR.text();
+        console.log(`property activate → ${actR.status}:`, actT.slice(0, 200));
+      } catch(e) { console.warn('property activate error:', e.message); }
+
+      // Test ARI with default room type after activation attempt
       const DEFAULT_RT_ID = 'c713a157-af35-4a4d-a05b-18fada9491c2';
       const tomorrow = formatDateISO(addDays(today, 1));
-      const ariPayload = { values: [{ room_type_id: DEFAULT_RT_ID, date_from: todayStr, date_to: tomorrow, availability: 1 }] };
-      const ariPaths = [
-        'availability',
-        `properties/${c.propertyId}/availability`,
-        'ari/availability',
-        `v1/availability`,
-      ];
-      for (const ariPath of ariPaths) {
-        try {
-          const r = await fetch(`${proxyBase}?path=${encodeURIComponent(ariPath)}`, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(ariPayload)
-          });
-          const t = await r.text();
-          console.log(`ARI probe [${ariPath}] → ${r.status}:`, t.slice(0, 120));
-          if (r.ok) { console.log('✓ WORKING ARI PATH:', ariPath); break; }
-        } catch(e) { console.warn(`ARI probe [${ariPath}] error:`, e.message); }
-      }
+      try {
+        const testR = await fetch(`${proxyBase}?path=availability`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ values: [{ room_type_id: DEFAULT_RT_ID, date_from: todayStr, date_to: tomorrow, availability: 1 }] })
+        });
+        const testT = await testR.text();
+        console.log(`ARI test after activate → ${testR.status}:`, testT.slice(0, 200));
+        if (!testR.ok) {
+          showToast('Channex ARI: property activation საჭიროა dashboard-ზე. staging.channex.io → Property → Go Live', 'warning');
+        }
+      } catch(e) { console.warn('ARI test error:', e.message); }
       // ─────────────────────────────────────────────────────────────────────
 
       let connectedChannels = [];
