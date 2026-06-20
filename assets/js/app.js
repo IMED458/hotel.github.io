@@ -5374,30 +5374,27 @@
           // Ensure this room type has a rate plan in Channex
           let ratePlanId = ratePlanMapping[String(room.id)];
           if (!ratePlanId) {
+            const rpPayload = {
+              rate_plan: {
+                property_id: c.propertyId,
+                room_type_id: channexRoomTypeId,
+                title: 'Standard Rate',
+                sell_mode: 'per_room',
+              }
+            };
             const rpResp = await fetch(`${proxyBase}?path=rate_plans`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                rate_plan: {
-                  property_id: c.propertyId,
-                  room_type_id: channexRoomTypeId,
-                  title: 'Standard Rate',
-                  sell_mode: 'per_room',
-                  rate_mode: 'manual',
-                  closed_to_arrival: false,
-                  closed_to_departure: false,
-                  min_stay_arrival: 1,
-                  max_stay: 0,
-                }
-              })
+              body: JSON.stringify(rpPayload)
             });
             const rpData = await rpResp.json();
+            console.log('rate_plan create response:', rpResp.status, JSON.stringify(rpData));
             ratePlanId = rpData?.data?.id || rpData?.id;
             if (ratePlanId) {
               ratePlanMapping[String(room.id)] = ratePlanId;
               setChannelRatePlanMapping(ratePlanMapping);
             } else {
-              console.warn('fullSync rate_plan create failed:', JSON.stringify(rpData));
+              console.warn('fullSync rate_plan create failed:', rpResp.status, JSON.stringify(rpData));
             }
           }
 
