@@ -604,7 +604,11 @@
       if (!firebaseReady || !firebaseDb) return;
       Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i))
         .filter(Boolean)
-        .filter((key) => !String(key).startsWith('firebase:') && !String(key).startsWith('_'))
+        .filter((key) => {
+          const k = String(key);
+          return !k.startsWith('firebase:') && !k.startsWith('_') &&
+            !k.startsWith('firestore_') && !k.includes('/');
+        })
         .forEach((key) => {
           try {
             persistStateToFirebase(key, JSON.parse(localStorage.getItem(key)));
