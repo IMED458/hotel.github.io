@@ -5326,28 +5326,34 @@
             });
             if (upResp.ok) updated++; else errors++;
           } else {
-            // Create new room type
+            // Create new room type — use same payload as createRoomTypeInChannex
+            const payload = {
+              room_type: {
+                property_id: c.propertyId,
+                title: room.roomName || `ნომერი ${room.roomNumber}`,
+                count_of_rooms: 1,
+                occ_adults: Math.max(1, Number(room.maxGuests || 2)),
+                occ_children: 0,
+                default_occupancy: Math.max(1, Number(room.maxGuests || 2)),
+              }
+            };
             const crResp = await fetch(`${proxyBase}?path=room_types`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                room_type: {
-                  property_id: c.propertyId,
-                  title: room.roomName || `ნომერი ${room.roomNumber}`,
-                  count_of_rooms: 1,
-                  occ_adults: Number(room.maxGuests || 2),
-                  occ_children: 0,
-                  default_occupancy: Number(room.maxGuests || 2),
-                  facilities: []
-                }
-              })
+              body: JSON.stringify(payload)
             });
             const crData = await crResp.json();
+            if (!crResp.ok) {
+              console.warn('fullSync room_types 422:', JSON.stringify(crData), 'payload:', JSON.stringify(payload));
+              errors++;
+              continue;
+            }
             const newId = crData?.data?.id || crData?.id;
             if (newId) {
               mapping[String(room.id)] = newId;
               created++;
             } else {
+              console.warn('fullSync no id in response:', JSON.stringify(crData));
               errors++;
               continue;
             }
