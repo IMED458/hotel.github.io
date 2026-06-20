@@ -5261,7 +5261,6 @@
           ).length;
           const available = Math.max(0, sharedLocalIds.length - occupied);
           values.push({
-            property_id: c.propertyId,
             room_type_id: channexRoomTypeId,
             date_from: dateStr,
             date_to: nextStr,
@@ -5409,7 +5408,7 @@
               const rR = await fetch(`${proxyBase}?path=rates`, {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ values: [{
-                  property_id: c.propertyId, rate_plan_id: ratePlanId,
+                  rate_plan_id: ratePlanId,
                   date_from: yearStart, date_to: yearEnd, rate
                 }]})
               });
@@ -5429,7 +5428,7 @@
             const ds = formatDateISO(cur);
             const ns = formatDateISO(addDays(cur, 1));
             const occ = activeRes.filter(r => r.checkinDate <= ds && r.checkoutDate > ds).length;
-            avlValues.push({ property_id: c.propertyId, room_type_id: channexRoomTypeId,
+            avlValues.push({ room_type_id: channexRoomTypeId,
               date_from: ds, date_to: ns, availability: Math.max(0, 1 - occ) });
             cur = addDays(cur, 1);
           }
@@ -5520,7 +5519,6 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             values: [{
-              property_id: c.propertyId,
               rate_plan_id: c.ratePlanId,
               date_from: dateFrom,
               date_to: dateTo,
