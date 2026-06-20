@@ -5336,6 +5336,7 @@
                 count_of_rooms: 1,
                 occ_adults: Math.max(1, Number(room.maxGuests || 2)),
                 occ_children: 0,
+                occ_infants: 0,
                 default_occupancy: Math.max(1, Number(room.maxGuests || 2)),
               }
             };
@@ -5408,6 +5409,7 @@
               count_of_rooms: 1,
               occ_adults: Number(room.maxGuests || 2),
               occ_children: 0,
+              occ_infants: 0,
               default_occupancy: Number(room.maxGuests || 2),
               facilities: []
             }
