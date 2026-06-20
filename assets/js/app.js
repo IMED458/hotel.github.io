@@ -5308,8 +5308,11 @@
 
       showToast('სრული სინქი დაიწყო...', 'info');
       const proxyBase = c.proxyUrl.replace(/\/$/, '');
-      const mapping = getChannelRoomMapping();
-      const ratePlanMapping = getChannelRatePlanMapping();
+      // Always start fresh — clear stale IDs so everything is recreated
+      const mapping = {};
+      const ratePlanMapping = {};
+      setChannelRoomMapping({});
+      setChannelRatePlanMapping({});
       const monthlyRates = getMonthlyRates();
       const today = new Date();
       const todayStr = formatDateISO(today);
