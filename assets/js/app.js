@@ -5401,30 +5401,52 @@
             ratePlanMapping[String(room.id)] = ratePlanId;
             setChannelRatePlanMapping(ratePlanMapping);
 
-            // ── 3. PUSH RATES — try per-resource then bulk fallback ───────
+            // ── 3. PUSH RATES ─────────────────────────────────────────────
             const monthRates = monthlyRates[currentMonth] || {};
             const rate = Number(monthRates[room.roomType] || room.basePrice || 0);
             if (rate > 0) {
-              // Try 1: per rate_plan endpoint
               let rateOk = false;
-              const rR1 = await fetch(`${proxyBase}?path=${encodeURIComponent(`rate_plans/${ratePlanId}/rates`)}`, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ values: [{ date_from: yearStart, date_to: yearEnd, rate }] })
-              });
-              if (rR1.ok) { rateOk = true; }
-              if (!rateOk) {
-                // Try 2: bulk endpoint without property_id
-                const rR2 = await fetch(`${proxyBase}?path=rates`, {
+              // Try 1: per rate_plan sub-resource
+              try {
+                const rR1 = await fetch(`${proxyBase}?path=${encodeURIComponent(`rate_plans/${ratePlanId}/rates`)}`, {
                   method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ values: [{ rate_plan_id: ratePlanId, date_from: yearStart, date_to: yearEnd, rate }] })
+                  body: JSON.stringify({ values: [{ date_from: yearStart, date_to: yearEnd, rate }] })
                 });
-                if (rR2.ok) { rateOk = true; }
-                else { const t = await rR2.text(); console.warn('rates push failed:', t); rateErrors++; }
+                const t1 = await rR1.text();
+                console.log(`rates try1 (rate_plans/${ratePlanId.slice(0,8)}/rates) → ${rR1.status}:`, t1.slice(0,120));
+                if (rR1.ok) rateOk = true;
+              } catch(e) { console.warn('rates try1 error:', e.message); }
+
+              // Try 2: bulk /rates with property_id as query param
+              if (!rateOk) {
+                try {
+                  const rR2 = await fetch(`${proxyBase}?path=${encodeURIComponent(`rates?property_id=${c.propertyId}`)}`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ values: [{ rate_plan_id: ratePlanId, date_from: yearStart, date_to: yearEnd, rate }] })
+                  });
+                  const t2 = await rR2.text();
+                  console.log(`rates try2 (rates?property_id) → ${rR2.status}:`, t2.slice(0,120));
+                  if (rR2.ok) rateOk = true;
+                } catch(e) { console.warn('rates try2 error:', e.message); }
+              }
+
+              // Try 3: plain bulk /rates
+              if (!rateOk) {
+                try {
+                  const rR3 = await fetch(`${proxyBase}?path=rates`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ values: [{ rate_plan_id: ratePlanId, date_from: yearStart, date_to: yearEnd, rate }] })
+                  });
+                  const t3 = await rR3.text();
+                  console.log(`rates try3 (rates bulk) → ${rR3.status}:`, t3.slice(0,120));
+                  if (rR3.ok) rateOk = true;
+                  else rateErrors++;
+                } catch(e) { console.warn('rates try3 error:', e.message); rateErrors++; }
               }
             }
           }
 
-          // ── 4. PUSH AVAILABILITY — try per-resource then bulk fallback ──
+          // ── 4. PUSH AVAILABILITY ───────────────────────────────────────
           const activeRes = getReservationsData().filter(r =>
             !['Cancelled', 'Checked-out'].includes(r.status) && String(r.roomId) === String(room.id)
           );
@@ -5440,36 +5462,55 @@
           }
 
           let availOk = false;
-          // Try 1: per room_type endpoint, chunks of 30
+          // Try 1: per room_type sub-resource, chunks of 30
           for (let i = 0; i < avlValues.length; i += 30) {
             const chunk = avlValues.slice(i, i + 30);
-            const aR = await fetch(`${proxyBase}?path=${encodeURIComponent(`room_types/${channexRoomTypeId}/availability`)}`, {
-              method: 'PUT', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ values: chunk })
-            });
-            if (!aR.ok) {
-              const t = await aR.text();
-              console.warn(`per-RT avail chunk ${i} failed (${aR.status}):`, t);
-              break;
-            }
-            if (i + 30 >= avlValues.length) availOk = true;
-          }
-          if (!availOk) {
-            // Try 2: bulk /availability with room_type_id in each value
-            const bulkValues = avlValues.map(v => ({ ...v, room_type_id: channexRoomTypeId }));
-            for (let i = 0; i < bulkValues.length; i += 30) {
-              const chunk = bulkValues.slice(i, i + 30);
-              const aR2 = await fetch(`${proxyBase}?path=availability`, {
+            try {
+              const aR1 = await fetch(`${proxyBase}?path=${encodeURIComponent(`room_types/${channexRoomTypeId}/availability`)}`, {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ values: chunk })
               });
-              if (!aR2.ok) {
-                const t = await aR2.text();
-                console.warn(`bulk avail chunk ${i} failed (${aR2.status}):`, t, 'RT:', channexRoomTypeId);
-                availErrors++;
-                break;
-              }
-              if (i + 30 >= bulkValues.length) availOk = true;
+              const t1 = await aR1.text();
+              if (i === 0) console.log(`avail try1 (room_types/${channexRoomTypeId.slice(0,8)}/availability) chunk0 → ${aR1.status}:`, t1.slice(0,120));
+              if (!aR1.ok) { break; }
+              if (i + 30 >= avlValues.length) availOk = true;
+            } catch(e) { console.warn('avail try1 error chunk', i, e.message); break; }
+          }
+
+          // Try 2: bulk /availability?property_id=..., chunks of 30
+          if (!availOk) {
+            for (let i = 0; i < avlValues.length; i += 30) {
+              const chunk = avlValues.slice(i, i + 30).map(v => ({ ...v, room_type_id: channexRoomTypeId }));
+              try {
+                const aR2 = await fetch(`${proxyBase}?path=${encodeURIComponent(`availability?property_id=${c.propertyId}`)}`, {
+                  method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ values: chunk })
+                });
+                const t2 = await aR2.text();
+                if (i === 0) console.log(`avail try2 (availability?property_id) chunk0 → ${aR2.status}:`, t2.slice(0,120));
+                if (!aR2.ok) { break; }
+                if (i + 30 >= avlValues.length) availOk = true;
+              } catch(e) { console.warn('avail try2 error chunk', i, e.message); break; }
+            }
+          }
+
+          // Try 3: plain bulk /availability, chunks of 30
+          if (!availOk) {
+            for (let i = 0; i < avlValues.length; i += 30) {
+              const chunk = avlValues.slice(i, i + 30).map(v => ({ ...v, room_type_id: channexRoomTypeId }));
+              try {
+                const aR3 = await fetch(`${proxyBase}?path=availability`, {
+                  method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ values: chunk })
+                });
+                const t3 = await aR3.text();
+                if (i === 0) console.log(`avail try3 (availability bulk) chunk0 → ${aR3.status}:`, t3.slice(0,120));
+                if (!aR3.ok) {
+                  if (i === 0) availErrors++;
+                  break;
+                }
+                if (i + 30 >= avlValues.length) availOk = true;
+              } catch(e) { console.warn('avail try3 error chunk', i, e.message); if (i === 0) availErrors++; break; }
             }
           }
 
