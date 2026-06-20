@@ -67,6 +67,8 @@ export default {
         headers: {
           'Content-Type': 'application/json',
           'user-api-key': CHANNEX_API_KEY,
+          'Authorization': `Bearer ${CHANNEX_API_KEY}`,
+          'X-Api-Key': CHANNEX_API_KEY,
         },
       };
 

@@ -5328,38 +5328,18 @@
         existingRoomTypes = d?.data || [];
       } catch (e) { console.warn('room_types list error:', e.message); }
 
-      // ── Probe ARI: GET current availability + try all body/endpoint formats ─
       const tomorrow = formatDateISO(addDays(today, 1));
-      // Use first room type from Channex list (should be mapped to Booking.com)
-      const firstRT = existingRoomTypes[0];
-      const probeRtId = firstRT?.id || 'c713a157-af35-4a4d-a05b-18fada9491c2';
-      console.log('ARI probe using RT:', probeRtId, firstRT?.attributes?.title);
-
-      // GET /availability — see what format Channex returns
-      try {
-        const gR = await fetch(`${proxyBase}?path=${encodeURIComponent(`availability?room_type_id=${probeRtId}&date_from=${todayStr}&date_to=${tomorrow}`)}`, { headers: { 'Content-Type': 'application/json' } });
-        const gT = await gR.text();
-        console.log(`GET availability → ${gR.status}:`, gT.slice(0, 300));
-      } catch(e) { console.warn('GET avail error:', e.message); }
-
-      // Try PUT with various body formats
-      const probeTests = [
-        ['PUT /availability {values}', 'availability', { values: [{ room_type_id: probeRtId, date_from: todayStr, date_to: tomorrow, availability: 1 }] }],
-        ['PUT /availability {data}', 'availability', { data: [{ room_type_id: probeRtId, date_from: todayStr, date_to: tomorrow, availability: 1 }] }],
-        ['PUT /availability top+values', 'availability', { property_id: c.propertyId, room_type_id: probeRtId, date_from: todayStr, date_to: tomorrow, availability: 1 }],
-        ['PUT /inventory', 'inventory', { values: [{ room_type_id: probeRtId, date_from: todayStr, date_to: tomorrow, availability: 1 }] }],
-        ['PUT /restrictions', 'restrictions', { values: [{ room_type_id: probeRtId, date_from: todayStr, date_to: tomorrow, availability: 1 }] }],
-      ];
-      for (const [label, path, body] of probeTests) {
+      const probeRtId = existingRoomTypes[0]?.id || 'c713a157-af35-4a4d-a05b-18fada9491c2';
+      for (const [lbl, path, body] of [
+        ['availability', 'availability', { values: [{ room_type_id: probeRtId, date_from: todayStr, date_to: tomorrow, availability: 1 }] }],
+        ['ari', 'ari', { property_id: c.propertyId, values: [{ room_type_id: probeRtId, date_from: todayStr, date_to: tomorrow, availability: 1 }] }],
+        ['inventory', 'inventory', { values: [{ room_type_id: probeRtId, date_from: todayStr, date_to: tomorrow, availability: 1 }] }],
+      ]) {
         try {
-          const r = await fetch(`${proxyBase}?path=${encodeURIComponent(path)}`, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-          });
+          const r = await fetch(`${proxyBase}?path=${encodeURIComponent(path)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
           const t = await r.text();
-          console.log(`${label} → ${r.status}:`, t.slice(0, 150));
-          if (r.ok) { console.log('✓ WORKING:', label); }
-        } catch(e) { console.warn(`${label} error:`, e.message); }
+          console.log(`ARI [${lbl}] → ${r.status}:`, t.slice(0, 120));
+        } catch(e) { console.warn(`ARI [${lbl}] err:`, e.message); }
       }
       // ─────────────────────────────────────────────────────────────────────
 
