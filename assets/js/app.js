@@ -5325,23 +5325,20 @@
           let channexRoomTypeId = mapping[String(room.id)];
 
           if (channexRoomTypeId) {
-            // Update existing room type
-            const upResp = await fetch(`${proxyBase}?path=room_types/${channexRoomTypeId}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                room_type: {
-                  title: room.roomName || `ნომერი ${room.roomNumber}`,
-                  count_of_rooms: 1,
-                  occ_adults: Math.max(1, Number(room.maxGuests || 2)),
-                  occ_children: 0,
-                  occ_infants: 0,
-                  default_occupancy: Math.max(1, Number(room.maxGuests || 2)),
-                }
-              })
+            // Check if room type still exists in Channex (mapping might be stale)
+            const checkResp = await fetch(`${proxyBase}?path=room_types/${channexRoomTypeId}`, {
+              method: 'GET', headers: { 'Content-Type': 'application/json' }
             });
-            if (upResp.ok) updated++; else { const t = await upResp.text(); console.warn('update room_type failed:', t); errors++; }
-          } else {
+            if (!checkResp.ok) {
+              console.warn('Stale room_type mapping, recreating:', channexRoomTypeId);
+              channexRoomTypeId = null;
+              delete mapping[String(room.id)];
+              delete ratePlanMapping[String(room.id)];
+            } else {
+              updated++;
+            }
+          }
+          if (!channexRoomTypeId) {
             // Create new room type
             const crResp = await fetch(`${proxyBase}?path=room_types`, {
               method: 'POST',
@@ -5374,12 +5371,15 @@
           // Ensure this room type has a rate plan in Channex
           let ratePlanId = ratePlanMapping[String(room.id)];
           if (!ratePlanId) {
+            const occ = Math.max(1, Number(room.maxGuests || 2));
+            const baseRate = Number(room.basePrice || 100);
             const rpPayload = {
               rate_plan: {
                 property_id: c.propertyId,
                 room_type_id: channexRoomTypeId,
                 title: 'Standard Rate',
                 sell_mode: 'per_room',
+                options: Array.from({ length: occ }, (_, i) => ({ occupancy: i + 1, rate: baseRate })),
               }
             };
             const rpResp = await fetch(`${proxyBase}?path=rate_plans`, {
