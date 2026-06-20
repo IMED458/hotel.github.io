@@ -787,7 +787,23 @@
       syncCurrentMonthRatesFromRooms();
     }
     function getRoomsData() { return getState('rooms', []); }
-    function setRoomsData(rooms) { setState('rooms', rooms); }
+    function setRoomsData(rooms, skipChannexPush = false) {
+      const prev = getRoomsData();
+      setState('rooms', rooms);
+      if (skipChannexPush) return;
+      // Push availability for rooms whose status changed
+      rooms.forEach(room => {
+        const old = prev.find(r => Number(r.id) === Number(room.id));
+        const wasAvailable = !old || ['available', 'booked', 'occupied'].includes(old.status || 'available');
+        const isAvailable = ['available', 'booked', 'occupied'].includes(room.status || 'available');
+        if (!old || old.status !== room.status) {
+          // Push 30-day window for this room
+          const today = formatDateISO(new Date());
+          const future = formatDateISO(addDays(new Date(), 30));
+          pushAvailabilityToChannex(room.id, today, future);
+        }
+      });
+    }
     function getReservationsData() { return getState('reservations', []); }
     function setReservationsData(items) { setState('reservations', items); }
     function getGuestsData() { return getState('guests', []); }
