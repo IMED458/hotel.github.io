@@ -15,7 +15,7 @@
 1. `/_sdk/element_sdk.js`
 2. `/_sdk/data_sdk.js`
 
-- ჩაემატა Channel Manager გვერდი:
+- ჩაემატა არხების მენეჯერი გვერდი:
 1. OAuth რეჟიმი (რეკომენდებული)
 2. API key რეჟიმი
 3. Proxy URL მხარდაჭერა
@@ -32,7 +32,7 @@
 
 Frontend-ში მზად არის შემდეგი flow:
 
-1. Channel Manager გვერდზე შეავსე:
+1. არხების მენეჯერი გვერდზე შეავსე:
    - `Proxy URL`
    - `OAuth Start URL`
    - `OAuth Status URL`

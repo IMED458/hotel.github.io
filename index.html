@@ -6,6 +6,9 @@
   <title>სასტუმროს მართვის სისტემა</title>
   <link id="site-favicon" rel="icon" type="image/png" href="Green%20Tower%20Hotel.png">
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-analytics-compat.js"></script>
   <script src="/_sdk/element_sdk.js"></script>
   <script src="/_sdk/data_sdk.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -64,7 +67,7 @@
             <p id="user-role-email" class="text-xs text-gray-500">manager@hotel.ge</p>
             <select id="role-switcher" class="mt-2 w-full text-xs px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
               <option value="manager">მენეჯერი</option>
-              <option value="front_office">Front Office</option>
+              <option value="front_office">რეცეფციონისტი</option>
               <option value="accountant">ბუღალტერი</option>
             </select>
           </div>
@@ -81,6 +84,7 @@
           <div class="flex items-center gap-4">
             <button onclick="toggleSidebar()" class="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">☰</button>
             <input id="global-search" type="text" placeholder="ძებნა..." class="px-4 py-2.5 w-64 bg-gray-100 dark:bg-gray-700 border-0 rounded-xl text-sm focus:ring-2 focus:ring-sky-500">
+            <select id="module-jump" class="hidden md:block px-3 py-2.5 bg-gray-100 dark:bg-gray-700 border-0 rounded-xl text-sm focus:ring-2 focus:ring-sky-500"></select>
           </div>
           <div class="flex items-center gap-3">
             <button onclick="openModal('new-reservation')" class="px-4 py-2.5 bg-gradient-to-r from-sky-500 to-blue-600 text-white rounded-xl text-sm font-medium">ახალი ჯავშანი</button>
@@ -101,6 +105,13 @@
         <section id="page-payments" class="page-section hidden"></section>
         <section id="page-finance" class="page-section hidden"></section>
         <section id="page-pricing" class="page-section hidden"></section>
+        <section id="page-housekeeping" class="page-section hidden"></section>
+        <section id="page-maintenance" class="page-section hidden"></section>
+        <section id="page-tasks" class="page-section hidden"></section>
+        <section id="page-approvals" class="page-section hidden"></section>
+        <section id="page-documents" class="page-section hidden"></section>
+        <section id="page-hr" class="page-section hidden"></section>
+        <section id="page-audit" class="page-section hidden"></section>
         <section id="page-channels" class="page-section hidden"></section>
         <section id="page-reports" class="page-section hidden"></section>
         <section id="page-settings" class="page-section hidden"></section>

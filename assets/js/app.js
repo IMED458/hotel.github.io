@@ -1,23 +1,64 @@
     const NAV_ITEMS = [
-      ['dashboard', 'დეშბორდი', 'dashboard'], ['calendar', 'კალენდარი', 'calendar'], ['rooms', 'ნომრები', 'rooms'], ['reservations', 'ჯავშნები', 'reservations'],
-      ['guests', 'სტუმრები', 'guests'], ['checkin', 'Check-in / Check-out', 'checkin'], ['payments', 'გადახდები / ინვოისები', 'payments'],
-      ['finance', 'ფინანსები', 'finance'], ['pricing', 'ფასები / ტარიფები', 'pricing'], ['channels', 'Channel Manager', 'channels'],
-      ['reports', 'რეპორტები', 'reports'], ['settings', 'პარამეტრები', 'settings']
+      ['dashboard', 'მთავარი პანელი', 'dashboard'], ['calendar', 'კალენდარი', 'calendar'], ['housekeeping', 'დალაგება', 'rooms'],
+      ['maintenance', 'ტექნიკური მომსახურება', 'settings'], ['tasks', 'დავალებები', 'reservations'], ['approvals', 'დამტკიცებები', 'checkin'],
+      ['rooms', 'ნომრები', 'rooms'], ['reservations', 'ჯავშნები', 'reservations'], ['guests', 'სტუმრები', 'guests'],
+      ['checkin', 'შესახლება / გასვლა', 'checkin'], ['payments', 'გადახდები / ინვოისები', 'payments'], ['finance', 'ფინანსები', 'finance'],
+      ['pricing', 'ფასები / ტარიფები', 'pricing'], ['documents', 'დოკუმენტები', 'reports'], ['hr', 'თანამშრომლები', 'guests'],
+      ['audit', 'აუდიტის ჟურნალი', 'reports'], ['channels', 'არხების მენეჯერი', 'channels'], ['reports', 'ანგარიშები', 'reports'], ['settings', 'პარამეტრები', 'settings']
     ];
     const ROLE_ACCOUNTS = {
-      manager: { name: 'მენეჯერი', email: 'manager@hotel.ge', avatar: 'M' },
-      front_office: { name: 'Front Office', email: 'frontoffice@hotel.ge', avatar: 'F' },
-      accountant: { name: 'ბუღალტერი', email: 'accounting@hotel.ge', avatar: 'B' }
+      owner: { name: 'მფლობელი', email: 'owner@hotel.ge', avatar: 'O' },
+      manager: { name: 'გენერალური მენეჯერი', email: 'manager@hotel.ge', avatar: 'M' },
+      operations: { name: 'ოპერაციების მენეჯერი', email: 'operations@hotel.ge', avatar: 'O' },
+      front_office: { name: 'რეცეფციონისტი', email: 'frontoffice@hotel.ge', avatar: 'R' },
+      reservations_agent: { name: 'ჯავშნების ოპერატორი', email: 'reservations@hotel.ge', avatar: 'J' },
+      night_auditor: { name: 'ღამის აუდიტორი', email: 'night@hotel.ge', avatar: 'N' },
+      revenue_manager: { name: 'შემოსავლების მენეჯერი', email: 'revenue@hotel.ge', avatar: 'S' },
+      housekeeping_manager: { name: 'დალაგების მენეჯერი', email: 'housekeeping@hotel.ge', avatar: 'H' },
+      room_attendant: { name: 'დამლაგებელი', email: 'attendant@hotel.ge', avatar: 'D' },
+      maintenance_manager: { name: 'ტექნიკური მენეჯერი', email: 'maintenance@hotel.ge', avatar: 'T' },
+      technician: { name: 'ტექნიკოსი', email: 'technician@hotel.ge', avatar: 'T' },
+      accountant: { name: 'ბუღალტერი', email: 'accounting@hotel.ge', avatar: 'B' },
+      hr_manager: { name: 'HR მენეჯერი', email: 'hr@hotel.ge', avatar: 'H' },
+      system_admin: { name: 'სისტემის ადმინისტრატორი', email: 'admin@hotel.ge', avatar: 'A' }
     };
+    const ALL_PAGES = NAV_ITEMS.map(([id]) => id);
     const ROLE_PAGE_ACCESS = {
-      manager: ['dashboard', 'calendar', 'rooms', 'reservations', 'guests', 'checkin', 'payments', 'finance', 'pricing', 'channels', 'reports', 'settings'],
+      owner: ALL_PAGES,
+      manager: ALL_PAGES,
+      operations: ['dashboard', 'calendar', 'rooms', 'reservations', 'guests', 'checkin', 'housekeeping', 'maintenance', 'tasks', 'approvals', 'documents', 'reports'],
       front_office: ['dashboard', 'calendar', 'rooms', 'reservations', 'guests', 'checkin', 'payments'],
-      accountant: ['dashboard', 'reservations', 'payments', 'finance', 'reports']
+      reservations_agent: ['dashboard', 'calendar', 'rooms', 'reservations', 'guests', 'tasks', 'reports'],
+      night_auditor: ['dashboard', 'calendar', 'reservations', 'checkin', 'payments', 'finance', 'reports', 'audit'],
+      revenue_manager: ['dashboard', 'calendar', 'rooms', 'reservations', 'pricing', 'channels', 'reports'],
+      housekeeping_manager: ['dashboard', 'rooms', 'housekeeping', 'tasks', 'maintenance', 'documents', 'reports'],
+      room_attendant: ['dashboard', 'rooms', 'housekeeping', 'tasks'],
+      maintenance_manager: ['dashboard', 'rooms', 'maintenance', 'tasks', 'documents', 'reports'],
+      technician: ['dashboard', 'rooms', 'maintenance', 'tasks'],
+      accountant: ['dashboard', 'reservations', 'payments', 'finance', 'reports', 'audit'],
+      hr_manager: ['dashboard', 'hr', 'tasks', 'documents', 'reports'],
+      system_admin: ['dashboard', 'users', 'settings', 'audit', 'documents'].filter((p) => ALL_PAGES.includes(p))
+    };
+    const FULL_PERMISSIONS = {
+      roomManage: true, pricingManage: true, channelsView: true, settingsView: true, reservationsManage: true, guestManage: true,
+      paymentsManage: true, financeView: true, expensesManage: true, periodCloseManage: true, housekeepingManage: true,
+      maintenanceManage: true, tasksManage: true, approvalsManage: true, documentsManage: true, hrManage: true, auditView: true
     };
     const ROLE_PERMISSIONS = {
-      manager: { roomManage: true, pricingManage: true, channelsView: true, settingsView: true, reservationsManage: true, guestManage: true, paymentsManage: true, financeView: true, expensesManage: true, periodCloseManage: true },
-      front_office: { roomManage: false, pricingManage: false, channelsView: false, settingsView: false, reservationsManage: true, guestManage: true, paymentsManage: true, financeView: false, expensesManage: false, periodCloseManage: false },
-      accountant: { roomManage: false, pricingManage: false, channelsView: false, settingsView: false, reservationsManage: false, guestManage: false, paymentsManage: true, financeView: true, expensesManage: true, periodCloseManage: false }
+      owner: { ...FULL_PERMISSIONS },
+      manager: { ...FULL_PERMISSIONS },
+      operations: { ...FULL_PERMISSIONS, pricingManage: false, channelsView: false, financeView: false, expensesManage: false, periodCloseManage: false, settingsView: false },
+      front_office: { roomManage: false, pricingManage: false, channelsView: false, settingsView: false, reservationsManage: true, guestManage: true, paymentsManage: true, financeView: false, expensesManage: false, periodCloseManage: false, housekeepingManage: false, maintenanceManage: false, tasksManage: true, approvalsManage: false, documentsManage: false, hrManage: false, auditView: false },
+      reservations_agent: { reservationsManage: true, guestManage: true, tasksManage: true, roomManage: false, pricingManage: false, paymentsManage: false },
+      night_auditor: { reservationsManage: true, guestManage: true, paymentsManage: true, financeView: true, expensesManage: false, periodCloseManage: true, auditView: true },
+      revenue_manager: { pricingManage: true, channelsView: true, reservationsManage: false, financeView: false, auditView: true },
+      housekeeping_manager: { housekeepingManage: true, tasksManage: true, maintenanceManage: true, documentsManage: true, roomManage: true },
+      room_attendant: { housekeepingManage: true, tasksManage: true },
+      maintenance_manager: { maintenanceManage: true, tasksManage: true, roomManage: true, documentsManage: true },
+      technician: { maintenanceManage: true, tasksManage: true },
+      accountant: { roomManage: false, pricingManage: false, channelsView: false, settingsView: false, reservationsManage: false, guestManage: false, paymentsManage: true, financeView: true, expensesManage: true, periodCloseManage: false, auditView: true },
+      hr_manager: { hrManage: true, tasksManage: true, documentsManage: true },
+      system_admin: { settingsView: true, documentsManage: true, auditView: true }
     };
 
     const defaultConfig = {
@@ -54,6 +95,16 @@
       lastSyncMessage: ''
     };
     const DEFAULT_HOTEL_LOGO_PATH = 'Green%20Tower%20Hotel.png';
+    const FIREBASE_CONFIG = {
+      apiKey: 'AIzaSyCc0oY_7fn-SEDLRF1WdfUDumWURrRLiy4',
+      authDomain: 'hotel-7497c.firebaseapp.com',
+      projectId: 'hotel-7497c',
+      storageBucket: 'hotel-7497c.firebasestorage.app',
+      messagingSenderId: '546085625244',
+      appId: '1:546085625244:web:4010ba38977ba1713cfc59',
+      measurementId: 'G-TF08NQ8VVM'
+    };
+    const FIREBASE_STATE_COLLECTION = 'hotelState';
 
     let config = { ...defaultConfig };
     let currentPage = 'dashboard';
@@ -66,6 +117,11 @@
     let autoSyncTimerId = null;
     let autoSyncInProgress = false;
     let financeTab = 'overview';
+    let firebaseApp = null;
+    let firebaseDb = null;
+    let firebaseReady = false;
+    let firebaseHydrating = false;
+    let firebaseWriteQueue = Promise.resolve();
     let roomFilters = { roomType: '', minPrice: '', maxPrice: '', fromDate: '', toDate: '' };
     let calendarFilters = { roomType: '', maxPrice: '' };
     const GEO_MONTHS = ['იანვარი', 'თებერვალი', 'მარტი', 'აპრილი', 'მაისი', 'ივნისი', 'ივლისი', 'აგვისტო', 'სექტემბერი', 'ოქტომბერი', 'ნოემბერი', 'დეკემბერი'];
@@ -85,7 +141,7 @@
     }
 
     function setChannelConfig(next) {
-      localStorage.setItem('channelManagerConfig', JSON.stringify({ ...getChannelConfig(), ...next }));
+      setState('channelManagerConfig', { ...getChannelConfig(), ...next });
     }
 
     function showToast(message, type = 'success') {
@@ -115,6 +171,13 @@
           <span class="sidebar-label">${label}</span>
         </button>
       `).join('');
+      nav.querySelectorAll('[data-page]').forEach((btn) => {
+        btn.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          navigateTo(btn.dataset.page);
+        });
+      });
     }
 
     function hasPageAccess(page) {
@@ -142,7 +205,17 @@
       if (roleNameEl) roleNameEl.textContent = account.name;
       if (roleEmailEl) roleEmailEl.textContent = account.email;
       if (avatarEl) avatarEl.textContent = account.avatar;
-      if (roleSwitcher) roleSwitcher.value = currentRole;
+      if (roleSwitcher) {
+        roleSwitcher.innerHTML = Object.entries(ROLE_ACCOUNTS).map(([id, item]) => `<option value="${id}">${item.name}</option>`).join('');
+        roleSwitcher.value = currentRole;
+      }
+      const moduleJump = document.getElementById('module-jump');
+      if (moduleJump) {
+        moduleJump.innerHTML = NAV_ITEMS
+          .filter(([id]) => hasPageAccess(id))
+          .map(([id, label]) => `<option value="${id}" ${id === currentPage ? 'selected' : ''}>${label}</option>`)
+          .join('');
+      }
 
       initNav();
       if (!hasPageAccess(currentPage)) currentPage = 'dashboard';
@@ -220,6 +293,7 @@
     }
 
     async function initialize() {
+      await initFirebasePersistence();
       currentRole = getState('currentRole', 'manager');
       if (!ROLE_ACCOUNTS[currentRole]) currentRole = 'manager';
       initNav();
@@ -265,6 +339,8 @@
         roleSwitcher.value = currentRole;
         roleSwitcher.addEventListener('change', (e) => setRole(e.target.value));
       }
+      const moduleJump = document.getElementById('module-jump');
+      if (moduleJump) moduleJump.addEventListener('change', (e) => navigateTo(e.target.value));
       applyRoleUI();
       navigateTo('dashboard');
     }
@@ -287,6 +363,8 @@
         el.classList.remove('bg-sky-50', 'dark:bg-sky-900/20', 'text-sky-700', 'dark:text-sky-400');
         if (el.dataset.page === page) el.classList.add('bg-sky-50', 'dark:bg-sky-900/20', 'text-sky-700', 'dark:text-sky-400');
       });
+      const moduleJump = document.getElementById('module-jump');
+      if (moduleJump && moduleJump.value !== page) moduleJump.value = page;
 
       document.getElementById('sidebar').classList.remove('open');
       renderCurrentPage();
@@ -303,6 +381,13 @@
       if (currentPage === 'payments') return renderPayments();
       if (currentPage === 'finance') return renderFinance();
       if (currentPage === 'pricing') return renderPricing();
+      if (currentPage === 'housekeeping') return renderHousekeeping();
+      if (currentPage === 'maintenance') return renderMaintenance();
+      if (currentPage === 'tasks') return renderTasks();
+      if (currentPage === 'approvals') return renderApprovals();
+      if (currentPage === 'documents') return renderDocuments();
+      if (currentPage === 'hr') return renderHR();
+      if (currentPage === 'audit') return renderAudit();
       if (currentPage === 'channels') return renderChannels();
       if (currentPage === 'reports') return renderReports();
       if (currentPage === 'settings') return renderSettings();
@@ -400,7 +485,7 @@
     }
     function getRoomTypes() { return ['Single', 'Double', 'Triple', 'Family', 'Suite']; }
     function roomTypeLabel(v) {
-      const map = { Single: 'Single', Double: 'Double', Triple: 'Triple', Family: 'Family', Suite: 'Suite' };
+      const map = { Single: 'ერთადგილიანი', Double: 'ორადგილიანი', Triple: 'სამადგილიანი', Family: 'საოჯახო', Suite: 'ლუქსი' };
       return map[v] || v || '-';
     }
     function roomStatusLabel(v) {
@@ -408,16 +493,25 @@
       return map[v] || v || '-';
     }
     function reservationStatusLabel(v) {
-      const map = { Reserved: 'დაჯავშნილი', 'Checked-in': 'Check-in', 'Checked-out': 'Check-out', Cancelled: 'გაუქმებული' };
+      const map = { Reserved: 'დაჯავშნილი', 'Checked-in': 'შესახლებული', 'Checked-out': 'გასული', Cancelled: 'გაუქმებული', 'No-show': 'არ გამოცხადდა' };
       return map[v] || v || '-';
     }
     function paymentStatusLabel(v) {
-      const map = { unpaid: 'გადაუხდელი', partial: 'ნაწილობრივ', paid: 'გადახდილი', advance: 'ავანსი' };
+      const map = { unpaid: 'გადაუხდელი', partial: 'ნაწილობრივ გადახდილი', paid: 'გადახდილი', advance: 'ავანსი', correction: 'კორექტირება' };
       return map[v] || v || '-';
     }
     function paymentMethodLabel(v) {
-      const map = { cash: 'ნაღდი', card: 'ბარათი', bank: 'ბანკი' };
+      const map = { transfer: 'გადარიცხვა', cash: 'ქეში', tbc: 'TBC', bog: 'BOG', other_bank_card: 'სხვა ბანკის ბარათი', card: 'ბარათი', bank: 'საბანკო გადარიცხვა', online: 'ონლაინ გადახდა' };
       return map[v] || v || '-';
+    }
+    function paymentMethodOptions(selected = '') {
+      return [
+        ['transfer', 'გადარიცხვა'],
+        ['cash', 'ქეში'],
+        ['tbc', 'TBC'],
+        ['bog', 'BOG'],
+        ['other_bank_card', 'სხვა ბანკის ბარათი']
+      ].map(([value, label]) => `<option value="${value}" ${selected === value ? 'selected' : ''}>${label}</option>`).join('');
     }
     function getReservationSourceInfo(reservation) {
       const raw = String(
@@ -439,8 +533,10 @@
       return { icon: 'https://cdn.simpleicons.org/googlemaps/6B7280', title: reservation?.source || reservation?.channel || 'OTA' };
     }
     function renderReservationBarContent(reservation) {
+      const vip = reservation?.vip || reservation?.vipFlag;
       return `
         <div class="reservation-bar-content">
+          ${vip ? '<span class="vip-badge">VIP</span>' : ''}
           <span class="reservation-guest-name">${escapeHtml(reservation?.guestName || '-')}</span>
         </div>
       `;
@@ -453,6 +549,67 @@
       logoEl.title = source.title || '';
       logoEl.classList.remove('hidden');
     }
+
+    async function initFirebasePersistence() {
+      if (!window.firebase?.initializeApp || !window.firebase?.firestore) {
+        console.warn('Firebase SDK არ ჩაიტვირთა; მონაცემები დროებით localStorage-ში დარჩება.');
+        return;
+      }
+      try {
+        firebaseApp = window.firebase.apps?.length ? window.firebase.app() : window.firebase.initializeApp(FIREBASE_CONFIG);
+        firebaseDb = window.firebase.firestore();
+        if (window.firebase.analytics) {
+          try { window.firebase.analytics(); } catch (analyticsError) { console.warn('Firebase Analytics ვერ გაეშვა', analyticsError); }
+        }
+        firebaseHydrating = true;
+        const snapshot = await firebaseDb.collection(FIREBASE_STATE_COLLECTION).get();
+        snapshot.forEach((doc) => {
+          const payload = doc.data() || {};
+          if (Object.prototype.hasOwnProperty.call(payload, 'value')) {
+            localStorage.setItem(doc.id, JSON.stringify(payload.value));
+          }
+        });
+        firebaseReady = true;
+        firebaseHydrating = false;
+        syncLocalStorageToFirebase();
+        window.hotelFirebase = { app: firebaseApp, db: firebaseDb, collection: FIREBASE_STATE_COLLECTION };
+        console.info(`Firebase სინქი აქტიურია: ${FIREBASE_CONFIG.projectId}`);
+      } catch (error) {
+        firebaseHydrating = false;
+        firebaseReady = false;
+        console.error('Firebase სინქის ინიციალიზაცია ვერ მოხერხდა', error);
+      }
+    }
+
+    function persistStateToFirebase(key, value) {
+      if (!firebaseReady || firebaseHydrating || !firebaseDb) return;
+      firebaseWriteQueue = firebaseWriteQueue
+        .catch(() => {})
+        .then(() => firebaseDb.collection(FIREBASE_STATE_COLLECTION).doc(String(key)).set({
+          key: String(key),
+          value,
+          updatedAt: window.firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true }))
+        .catch((error) => {
+          console.error(`Firebase-ზე შენახვა ვერ მოხერხდა: ${key}`, error);
+          if (document?.body) showToast('Firebase-ზე მონაცემის შენახვა ვერ მოხერხდა. შეამოწმეთ Firestore rules.', 'error');
+        });
+    }
+
+    function syncLocalStorageToFirebase() {
+      if (!firebaseReady || !firebaseDb) return;
+      Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i))
+        .filter(Boolean)
+        .filter((key) => !String(key).startsWith('firebase:') && !String(key).startsWith('_'))
+        .forEach((key) => {
+          try {
+            persistStateToFirebase(key, JSON.parse(localStorage.getItem(key)));
+          } catch {
+            persistStateToFirebase(key, localStorage.getItem(key));
+          }
+        });
+    }
+
     function getState(key, fallback) {
       try {
         const v = localStorage.getItem(key);
@@ -463,6 +620,7 @@
     }
     function setState(key, value) {
       localStorage.setItem(key, JSON.stringify(value));
+      persistStateToFirebase(key, value);
     }
     function ensureHotelState() {
       if (!Array.isArray(getState('rooms', null))) {
@@ -479,7 +637,7 @@
           rooms.push({
             id: i - 100,
             roomNumber: String(i),
-            roomName: `Room ${i}`,
+            roomName: `ნომერი ${i}`,
             roomType,
             basePrice,
             floor: Math.floor(i / 100),
@@ -496,12 +654,12 @@
       if (Array.isArray(existingRooms) && existingRooms.length) {
         const migratedRooms = existingRooms.map(r => {
           const num = String(r.roomNumber || '').trim();
-          if (typeof r.roomName === 'string' && /^ნომერი\s+\d+$/i.test(r.roomName) && num) {
+          if (typeof r.roomName === 'string' && /^Room\s+\d+$/i.test(r.roomName) && num) {
             const supportsExtraBed = typeof r.supportsExtraBed === 'boolean' ? r.supportsExtraBed : ['Double', 'Triple', 'Family', 'Suite'].includes(r.roomType);
             const maxExtraBeds = Number.isFinite(Number(r.maxExtraBeds))
               ? Number(r.maxExtraBeds)
               : (r.roomType === 'Suite' || r.roomType === 'Family' ? 2 : supportsExtraBed ? 1 : 0);
-            return { ...r, roomName: `Room ${num}`, supportsExtraBed, maxExtraBeds };
+            return { ...r, roomName: `ნომერი ${num}`, supportsExtraBed, maxExtraBeds };
           }
           const supportsExtraBed = typeof r.supportsExtraBed === 'boolean' ? r.supportsExtraBed : ['Double', 'Triple', 'Family', 'Suite'].includes(r.roomType);
           const maxExtraBeds = Number.isFinite(Number(r.maxExtraBeds))
@@ -568,6 +726,38 @@
       if (!Array.isArray(getState('creditNotes', null))) setState('creditNotes', []);
       if (!getState('nextCreditNoteId', null)) setState('nextCreditNoteId', 1);
       if (!Array.isArray(getState('financeAuditLog', null))) setState('financeAuditLog', []);
+      if (!Array.isArray(getState('auditLog', null))) setState('auditLog', []);
+      if (!Array.isArray(getState('housekeepingTasks', null))) {
+        setState('housekeepingTasks', [
+          { id: 1, roomId: 2, type: 'vacant_dirty', priority: 'high', attendant: 'ნინო', status: 'assigned', dueAt: '13:00', checklist: ['თეთრეული', 'აბაზანა', 'მინიბარი'], notes: 'ადრეული შესახლება' },
+          { id: 2, roomId: 6, type: 'stayover', priority: 'normal', attendant: 'მარიამი', status: 'in_progress', dueAt: '15:00', checklist: ['პირსახოცები', 'ნაგავი'], notes: '' }
+        ]);
+      }
+      if (!getState('nextHousekeepingTaskId', null)) setState('nextHousekeepingTaskId', 3);
+      if (!Array.isArray(getState('maintenanceTickets', null))) {
+        setState('maintenanceTickets', [
+          { id: 1, roomId: 9, category: 'კონდიცირება', priority: 'critical', status: 'assigned', assignee: 'გიორგი', title: 'AC არ აგრილებს', deadline: todayISO(), outOfOrder: true, cost: 0 },
+          { id: 2, roomId: 4, category: 'Wi-Fi', priority: 'normal', status: 'new', assignee: '', title: 'სუსტი სიგნალი', deadline: todayISO(), outOfOrder: false, cost: 0 }
+        ]);
+      }
+      if (!getState('nextMaintenanceTicketId', null)) setState('nextMaintenanceTicketId', 3);
+      if (!Array.isArray(getState('tasks', null))) setState('tasks', []);
+      if (!getState('nextTaskId', null)) setState('nextTaskId', 1);
+      if (!Array.isArray(getState('approvals', null))) setState('approvals', []);
+      if (!getState('nextApprovalId', null)) setState('nextApprovalId', 1);
+      const existingDocs = getState('documents', null);
+      if (!Array.isArray(existingDocs) || !existingDocs.length) {
+        setState('documents', [
+          { id: 1, title: 'სტუმრის რეგისტრაციის ბარათი', category: 'სტუმრის დოკუმენტი', expiresAt: '', accessRole: 'რეცეფცია / ბუღალტერია', version: '1.0', owner: 'რეცეფცია', url: '', notes: 'შესახლებისას დასაბეჭდი/შესავსები ფორმა', createdAt: new Date().toISOString() },
+          { id: 2, title: 'ინვოისის შაბლონი', category: 'ფინანსები', expiresAt: '', accessRole: 'ბუღალტერი', version: '1.0', owner: 'ბუღალტერია', url: '', notes: 'ყველა ინვოისის სანახავად გამოიყენება გადახდებისა და ფინანსების მოდულები', createdAt: new Date().toISOString() },
+          { id: 3, title: 'დალაგების სტანდარტული ჩეკლისტი', category: 'SOP', expiresAt: '', accessRole: 'დალაგება', version: '1.0', owner: 'Housekeeping', url: '', notes: 'ოთახის შემოწმების ძირითადი პუნქტები', createdAt: new Date().toISOString() }
+        ]);
+      }
+      if (!getState('nextDocumentId', null)) setState('nextDocumentId', 4);
+      if (!Array.isArray(getState('employees', null))) setState('employees', []);
+      if (!getState('nextEmployeeId', null)) setState('nextEmployeeId', 1);
+      if (!Array.isArray(getState('users', null))) setState('users', []);
+      if (!getState('nextUserId', null)) setState('nextUserId', 1);
       if (!getState('financeCloseUntil', null)) setState('financeCloseUntil', '');
       if (!getState('financeVatRate', null)) setState('financeVatRate', 18);
       if (!getState('nextInvoiceNo', null)) setState('nextInvoiceNo', 1001);
@@ -608,6 +798,22 @@
     function setCreditNotesData(items) { setState('creditNotes', items); }
     function getFinanceAuditData() { return getState('financeAuditLog', []); }
     function setFinanceAuditData(items) { setState('financeAuditLog', items); }
+    function getAuditData() { return getState('auditLog', []); }
+    function setAuditData(items) { setState('auditLog', items); }
+    function getHousekeepingData() { return getState('housekeepingTasks', []); }
+    function setHousekeepingData(items) { setState('housekeepingTasks', items); }
+    function getMaintenanceData() { return getState('maintenanceTickets', []); }
+    function setMaintenanceData(items) { setState('maintenanceTickets', items); }
+    function getTasksData() { return getState('tasks', []); }
+    function setTasksData(items) { setState('tasks', items); }
+    function getApprovalsData() { return getState('approvals', []); }
+    function setApprovalsData(items) { setState('approvals', items); }
+    function getDocumentsData() { return getState('documents', []); }
+    function setDocumentsData(items) { setState('documents', items); }
+    function getEmployeesData() { return getState('employees', []); }
+    function setEmployeesData(items) { setState('employees', items); }
+    function getUsersData() { return getState('users', []); }
+    function setUsersData(items) { setState('users', items); }
     function getFinanceCloseUntil() { return String(getState('financeCloseUntil', '') || ''); }
     function setFinanceCloseUntil(value) { setState('financeCloseUntil', String(value || '')); }
     function getFinanceVatRate() {
@@ -729,6 +935,24 @@
         details: String(details || '')
       });
       setFinanceAuditData(items.slice(0, 500));
+      appendAudit(action, entity, details);
+    }
+
+    function appendAudit(action, entity, details = '', before = null, after = null) {
+      const items = getAuditData();
+      items.unshift({
+        id: `audit_${Date.now()}_${Math.floor(Math.random() * 9999)}`,
+        createdAt: new Date().toISOString(),
+        role: currentRole,
+        roleName: ROLE_ACCOUNTS[currentRole]?.name || currentRole,
+        action,
+        entity,
+        details: String(details || ''),
+        before,
+        after,
+        device: navigator.userAgent || 'browser'
+      });
+      setAuditData(items.slice(0, 1000));
     }
 
     function getSystemJournalEntries() {
@@ -743,7 +967,7 @@
         entries.push({
           id: `sys_inv_${r.id}`,
           date,
-          source: 'system',
+          source: 'სისტემა',
           reference: r.invoiceNo || `INV-${r.id}`,
           description: `ინვოისი #${r.id} • ${r.guestName || 'სტუმარი'}`,
           debitAccount: 'დებიტორი',
@@ -758,7 +982,7 @@
         entries.push({
           id: `sys_pay_${p.id}`,
           date,
-          source: 'system',
+          source: 'სისტემა',
           reference: `PAY-${p.id}`,
           description: `გადახდა • ჯავშანი #${p.reservationId}`,
           debitAccount: 'ბანკი/ნაღდი',
@@ -772,7 +996,7 @@
         entries.push({
           id: `sys_exp_${e.id}`,
           date: e.date || todayISO(),
-          source: 'system',
+          source: 'სისტემა',
           reference: `EXP-${e.id}`,
           description: `ხარჯი • ${e.category || 'სხვა'}`,
           debitAccount: 'ხარჯი',
@@ -784,7 +1008,7 @@
     }
 
     function getAllJournalEntries() {
-      const manual = getManualJournalData().map((m) => ({ ...m, source: 'manual' }));
+      const manual = getManualJournalData().map((m) => ({ ...m, source: 'ხელით' }));
       return [...getSystemJournalEntries(), ...manual].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
     }
 
@@ -797,6 +1021,31 @@
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(link.href);
+    }
+
+    function downloadExcel(filename, columns, rows) {
+      downloadExcelWorkbook(filename, [{ name: 'მონაცემები', columns, rows }]);
+    }
+
+    function downloadExcelWorkbook(filename, sheets) {
+      const esc = (v) => escapeHtml(v ?? '');
+      const html = `<!doctype html><html><head><meta charset="utf-8"></head><body>${
+        sheets.map((sheet) => `
+          <h2>${esc(sheet.name)}</h2>
+          <table border="1">
+            <thead><tr>${sheet.columns.map((c) => `<th>${esc(c.label)}</th>`).join('')}</tr></thead>
+            <tbody>${sheet.rows.map((r) => `<tr>${sheet.columns.map((c) => `<td>${esc(r[c.key])}</td>`).join('')}</tr>`).join('')}</tbody>
+          </table>
+        `).join('<br>')
+      }</body></html>`;
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename.replace(/\.csv$/i, '.xls').replace(/\.xlsx$/i, '.xls');
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -821,8 +1070,8 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           ${card('დაკავებულობა', `${occupancy}%`, 'hotel')}
           ${card('სულ შემოსავალი', `${config.currency_symbol}${revenue.toLocaleString('en-US')}`, 'revenue')}
-          ${card('დღეს Check-in', String(checkinsToday), 'checkin')}
-          ${card('დღეს Check-out', String(checkoutsToday), 'checkout')}
+          ${card('დღეს შესახლება', String(checkinsToday), 'checkin')}
+          ${card('დღეს გასვლა', String(checkoutsToday), 'checkout')}
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
           <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
@@ -845,14 +1094,14 @@
             <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
               <h3 class="font-semibold mb-4">დღის აქტივობა</h3>
               <div class="space-y-3 text-sm">
-                <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">Check-in - ნომერი 102 (10:30)</div>
+                <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">შესახლება - ნომერი 102 (10:30)</div>
                 <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">ნომრის მომზადება დასრულდა (11:20)</div>
                 <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">ახალი ჯავშანი: ანა აბაშიძე (12:05)</div>
                 <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40">გადახდა მიღებულია ${config.currency_symbol}220 (13:10)</div>
               </div>
             </div>
             <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
-              <h3 class="font-semibold mb-4">Availability Checker</h3>
+              <h3 class="font-semibold mb-4">თავისუფალი ნომრების შემოწმება</h3>
               <div class="grid grid-cols-1 gap-2 text-sm">
                 <input id="dashAvailFrom" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${defaultFrom}">
                 <input id="dashAvailTo" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${defaultTo}">
@@ -873,7 +1122,7 @@
         <div class="mt-6 bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 overflow-x-auto">
           <h3 class="font-semibold mb-4">უახლესი ჯავშნები</h3>
           <table class="w-full text-sm">
-            <thead class="text-left text-gray-500"><tr><th class="pb-3">სტუმარი</th><th class="pb-3">ნომერი</th><th class="pb-3">Check-in</th><th class="pb-3">Check-out</th><th class="pb-3">სტატუსი</th><th class="pb-3">თანხა</th></tr></thead>
+            <thead class="text-left text-gray-500"><tr><th class="pb-3">სტუმარი</th><th class="pb-3">ნომერი</th><th class="pb-3">შესახლება</th><th class="pb-3">გასვლა</th><th class="pb-3">სტატუსი</th><th class="pb-3">თანხა</th></tr></thead>
             <tbody>
               ${reservations.slice(0, 5).map(r => `
                 <tr class="border-t border-gray-100 dark:border-gray-700">
@@ -1210,10 +1459,35 @@
       ensureHotelState();
       const reservations = getReservationsData();
       const payments = getPaymentsData();
+      const expenses = getExpensesData();
+      const today = todayISO();
+      const monthPrefix = today.slice(0, 7);
       const totalBilled = reservations.reduce((s, r) => s + Number(r.totalPrice || 0), 0);
       const totalPaid = reservations.reduce((s, r) => s + normalizeReservationPayment(r), 0);
       const totalDue = reservations.reduce((s, r) => s + reservationDueAmount(r), 0);
-      const invoicesCount = payments.length;
+      const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+      const todayPaid = payments.filter(p => String(p.createdAt || '').startsWith(today)).reduce((s, p) => s + Number(p.amount || 0), 0);
+      const monthPaid = payments.filter(p => String(p.createdAt || '').startsWith(monthPrefix)).reduce((s, p) => s + Number(p.amount || 0), 0);
+      const vatRate = getFinanceVatRate();
+      const salesVat = totalBilled * vatRate / (100 + vatRate);
+      const purchaseVat = expenses.filter(e => e.hasVat).reduce((s, e) => s + (Number(e.amount || 0) * vatRate / (100 + vatRate)), 0);
+      const methodTotals = payments.reduce((acc, p) => {
+        const key = p.method || 'transfer';
+        acc[key] = (acc[key] || 0) + Number(p.amount || 0);
+        return acc;
+      }, {});
+      const agingRows = reservations.map((r) => {
+        const due = reservationDueAmount(r);
+        const dueDate = parseISODateLocal(r.checkoutDate || r.checkinDate || today);
+        const days = dueDate ? Math.max(0, Math.floor((parseISODateLocal(today) - dueDate) / (1000 * 60 * 60 * 24))) : 0;
+        return { ...r, due, days };
+      }).filter(r => r.due > 0);
+      const aging = {
+        d30: agingRows.filter(r => r.days <= 30).reduce((s, r) => s + r.due, 0),
+        d60: agingRows.filter(r => r.days > 30 && r.days <= 60).reduce((s, r) => s + r.due, 0),
+        d90: agingRows.filter(r => r.days > 60).reduce((s, r) => s + r.due, 0)
+      };
+      const invoicesCount = reservations.length;
       const topDebtors = reservations
         .map((r) => ({ ...r, due: reservationDueAmount(r) }))
         .filter((r) => r.due > 0)
@@ -1221,11 +1495,24 @@
         .slice(0, 8);
 
       document.getElementById('page-dashboard').innerHTML = `
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold">ბუღალტრის ფინანსური პანელი</h2>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="navigateTo('finance')" class="px-3 py-2 rounded-lg bg-sky-600 text-white text-sm">ფინანსური მოდული</button>
+            <button onclick="exportFinanceWorkbookExcel()" class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm">Excel ექსპორტი</button>
+          </div>
+        </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           ${card('სულ დარიცხული', `${config.currency_symbol}${totalBilled.toLocaleString('en-US')}`, 'revenue')}
           ${card('მიღებული გადახდები', `${config.currency_symbol}${totalPaid.toLocaleString('en-US')}`, 'revenue')}
           ${card('დასარჩენი', `${config.currency_symbol}${totalDue.toLocaleString('en-US')}`, 'checkout')}
           ${card('ინვოისების რაოდენობა', `${invoicesCount}`, 'dashboard')}
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+          ${card('დღეს მიღებული', `${config.currency_symbol}${todayPaid.toLocaleString('en-US')}`, 'checkin')}
+          ${card('თვეში მიღებული', `${config.currency_symbol}${monthPaid.toLocaleString('en-US')}`, 'revenue')}
+          ${card('ხარჯები', `${config.currency_symbol}${totalExpenses.toLocaleString('en-US')}`, 'checkout')}
+          ${card('მოგება / Cash Flow', `${config.currency_symbol}${(totalPaid - totalExpenses).toLocaleString('en-US')}`, 'revenue')}
         </div>
         <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
@@ -1251,12 +1538,36 @@
           </div>
           <div class="space-y-6">
             <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+              <h3 class="font-semibold mb-4">გადახდები მეთოდების მიხედვით</h3>
+              <div class="space-y-3 text-sm">
+                ${Object.entries(methodTotals).map(([method, amount]) => `<div class="flex justify-between border-b border-gray-100 dark:border-gray-700 pb-2"><span>${paymentMethodLabel(method)}</span><strong>${config.currency_symbol}${Number(amount || 0).toLocaleString('en-US')}</strong></div>`).join('') || '<div class="text-gray-500">გადახდები არ არის</div>'}
+              </div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+              <h3 class="font-semibold mb-4">დღგ / გადასახადები</h3>
+              <div class="space-y-3 text-sm">
+                <div class="flex justify-between"><span>დღგ განაკვეთი</span><strong>${vatRate}%</strong></div>
+                <div class="flex justify-between"><span>გაყიდვების დღგ</span><strong>${config.currency_symbol}${salesVat.toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></div>
+                <div class="flex justify-between"><span>შესყიდვების დღგ</span><strong>${config.currency_symbol}${purchaseVat.toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></div>
+                <div class="flex justify-between text-red-600"><span>გადასახდელი დღგ</span><strong>${config.currency_symbol}${Math.max(0, salesVat - purchaseVat).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></div>
+              </div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
+              <h3 class="font-semibold mb-4">AR Aging</h3>
+              <div class="space-y-3 text-sm">
+                <div class="flex justify-between"><span>0-30 დღე</span><strong>${config.currency_symbol}${aging.d30.toLocaleString('en-US')}</strong></div>
+                <div class="flex justify-between"><span>31-60 დღე</span><strong>${config.currency_symbol}${aging.d60.toLocaleString('en-US')}</strong></div>
+                <div class="flex justify-between"><span>60+ დღე</span><strong>${config.currency_symbol}${aging.d90.toLocaleString('en-US')}</strong></div>
+              </div>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
               <h3 class="font-semibold mb-4">სწრაფი მოქმედებები</h3>
               <div class="space-y-2 text-sm">
                 <button onclick="navigateTo('payments')" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-left">გადახდების მართვა</button>
                 <button onclick="navigateTo('finance')" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-left">ფინანსური მოდული</button>
                 <button onclick="navigateTo('reports')" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-left">ფინანსური რეპორტები</button>
                 <button onclick="navigateTo('reservations')" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-left">ინვოისების გენერირება</button>
+                <button onclick="setFinanceTab('reconciliation'); navigateTo('finance')" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-left">საბანკო შეჯერება</button>
               </div>
             </div>
           </div>
@@ -1496,7 +1807,7 @@
             <div class="col-span-2">ტიპი</div>
             <div class="col-span-2">სტატუსი</div>
             <div class="col-span-2">ტევადობა</div>
-            <div class="col-span-3">Extra Bed</div>
+            <div class="col-span-3">დამატებითი საწოლი</div>
             <div class="col-span-1 text-right">ფასი</div>
             <div class="col-span-1 text-right">მოქმედება</div>
           </div>
@@ -1533,7 +1844,7 @@
         <div class="bg-white dark:bg-gray-800 rounded-xl p-4 mb-6 border border-gray-100 dark:border-gray-700 flex flex-wrap gap-3">
           <input type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
           <input type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
-          <select class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>ყველა სტატუსი</option><option>მოლოდინში</option><option>დადასტურებული</option><option>Check-in</option><option>Check-out</option><option>გაუქმებული</option></select>
+          <select class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>ყველა სტატუსი</option><option>მოლოდინში</option><option>დადასტურებული</option><option>შესახლება</option><option>გასვლა</option><option>გაუქმებული</option></select>
           <button class="px-3 py-2 rounded-lg bg-sky-600 text-white">ფილტრი</button>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto">
@@ -1543,8 +1854,8 @@
                 <th class="px-4 py-3 text-left">სტუმარი</th>
                 <th class="px-4 py-3 text-left">OTA</th>
                 <th class="px-4 py-3 text-left">ნომერი</th>
-                <th class="px-4 py-3 text-left">Check-in</th>
-                <th class="px-4 py-3 text-left">Check-out</th>
+                <th class="px-4 py-3 text-left">შესახლება</th>
+                <th class="px-4 py-3 text-left">გასვლა</th>
                 <th class="px-4 py-3 text-left">სტატუსი</th>
                 <th class="px-4 py-3 text-left">გადახდა</th>
                 <th class="px-4 py-3 text-left">თანხა</th>
@@ -1618,7 +1929,7 @@
       const pendingIn = reservations.filter(r => r.status === 'Reserved');
       const pendingOut = reservations.filter(r => r.status === 'Checked-in');
       document.getElementById('page-checkin').innerHTML = `
-        <h2 class="text-xl font-bold mb-6">Check-in / Check-out</h2>
+        <h2 class="text-xl font-bold mb-6">შესახლება / გასვლა</h2>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
             <h3 class="font-semibold mb-4">მოლოდინში Check-in</h3>
@@ -1696,28 +2007,31 @@
       const closeUntil = getFinanceCloseUntil();
 
       const tabs = [
-        ['overview', 'Overview'],
+        ['overview', 'მიმოხილვა'],
         ['invoices', 'ინვოისი/კორექტირება'],
         ['expenses', 'ხარჯები'],
-        ['journal', 'Ledger/Journal'],
+        ['journal', 'ბუღალტრული ჟურნალი'],
         ['taxes', 'დღგ/გადასახადი'],
-        ['aging', 'Aging'],
-        ['reconciliation', 'Reconciliation'],
-        ['close', 'Period Close'],
-        ['audit', 'Audit Log']
+        ['aging', 'ვადაგადაცილება'],
+        ['reconciliation', 'შეჯერება'],
+        ['close', 'პერიოდის დახურვა'],
+        ['audit', 'აუდიტის ჟურნალი']
       ];
 
       document.getElementById('page-finance').innerHTML = `
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-bold">ფინანსური ადმინისტრირება</h2>
-          <div class="text-xs ${closeUntil ? 'text-red-600' : 'text-gray-500'}">${closeUntil ? `დახურული პერიოდი: ${closeUntil}` : 'პერიოდი ღიაა'}</div>
+          <div class="flex items-center gap-3">
+            <button onclick="exportFinanceWorkbookExcel()" class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm">ყველას Excel ექსპორტი</button>
+            <div class="text-xs ${closeUntil ? 'text-red-600' : 'text-gray-500'}">${closeUntil ? `დახურული პერიოდი: ${closeUntil}` : 'პერიოდი ღიაა'}</div>
+          </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
           <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700"><p class="text-xs text-gray-500">დარიცხული</p><p class="text-2xl font-bold">${config.currency_symbol}${totalInvoiced.toLocaleString('en-US')}</p></div>
           <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700"><p class="text-xs text-gray-500">მიღებული</p><p class="text-2xl font-bold text-emerald-600">${config.currency_symbol}${totalPaid.toLocaleString('en-US')}</p></div>
           <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700"><p class="text-xs text-gray-500">დებიტორი</p><p class="text-2xl font-bold text-red-600">${config.currency_symbol}${totalDue.toLocaleString('en-US')}</p></div>
           <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700"><p class="text-xs text-gray-500">ხარჯები</p><p class="text-2xl font-bold text-amber-600">${config.currency_symbol}${totalExpenses.toLocaleString('en-US')}</p></div>
-          <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700"><p class="text-xs text-gray-500">მოგება (Cash)</p><p class="text-2xl font-bold ${profit >= 0 ? 'text-emerald-600' : 'text-red-600'}">${config.currency_symbol}${profit.toLocaleString('en-US')}</p></div>
+          <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700"><p class="text-xs text-gray-500">მოგება (ნაღდი ნაკადი)</p><p class="text-2xl font-bold ${profit >= 0 ? 'text-emerald-600' : 'text-red-600'}">${config.currency_symbol}${profit.toLocaleString('en-US')}</p></div>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 mb-6">
           <div class="flex flex-wrap gap-2">
@@ -1735,14 +2049,14 @@
       if (tab === 'expenses') return renderFinanceExpensesTab();
       if (tab === 'journal') return renderFinanceJournalTab();
       if (tab === 'taxes') return renderFinanceTaxesTab();
-      if (tab === 'aging') return renderFinanceAgingTab();
-      if (tab === 'reconciliation') return renderFinanceReconciliationTab();
+      if (tab === 'aging') return renderFinanceვადაგადაცილებაTab();
+      if (tab === 'reconciliation') return renderFinanceშეჯერებაTab();
       if (tab === 'close') return renderFinanceCloseTab();
       if (tab === 'audit') return renderFinanceAuditTab();
-      return renderFinanceOverviewTab();
+      return renderFinanceმიმოხილვაTab();
     }
 
-    function renderFinanceOverviewTab() {
+    function renderFinanceმიმოხილვაTab() {
       const reservations = getReservationsData();
       const overdue = reservations
         .map((r) => ({ ...r, due: reservationDueAmount(r) }))
@@ -1753,7 +2067,7 @@
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
           <div class="flex items-center justify-between mb-4">
             <h3 class="font-semibold">უმსხვილესი დავალიანებები</h3>
-            <button onclick="exportFinanceDebtorsCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Export CSV</button>
+            <button onclick="exportFinanceDebtorsCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Excel ექსპორტი</button>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
@@ -1774,7 +2088,7 @@
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
           <div class="flex items-center justify-between mb-4">
             <h3 class="font-semibold">ინვოისები და სტატუსები</h3>
-            <button onclick="exportFinanceInvoicesCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Export CSV</button>
+            <button onclick="exportFinanceInvoicesCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Excel ექსპორტი</button>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
@@ -1795,7 +2109,7 @@
                           <option value="cancelled" ${r.invoiceStatus === 'cancelled' ? 'selected' : ''}>cancelled</option>
                         </select>
                         <button onclick="setInvoiceStatusFromFinance(${r.id})" class="px-2 py-1 rounded bg-sky-600 text-white text-xs">შენახვა</button>
-                        <button onclick="openCreditNotePrompt(${r.id})" class="px-2 py-1 rounded bg-amber-500 text-white text-xs">Credit Note</button>
+                        <button onclick="openCreditNotePrompt(${r.id})" class="px-2 py-1 rounded bg-amber-500 text-white text-xs">საკორექტირებელი დოკუმენტი</button>
                       </div>
                     </td>
                   </tr>
@@ -1805,12 +2119,12 @@
           </div>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
-          <h3 class="font-semibold mb-4">Credit Notes</h3>
+          <h3 class="font-semibold mb-4">საკორექტირებელი დოკუმენტები</h3>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead class="text-left text-gray-500"><tr><th class="pb-2">თარიღი</th><th class="pb-2">ინვოისი</th><th class="pb-2">თანხა</th><th class="pb-2">მიზეზი</th></tr></thead>
               <tbody>
-                ${creditNotes.map((c) => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-2">${formatDate(c.createdAt)}</td><td class="py-2">${escapeHtml(c.invoiceNo || '-')}</td><td class="py-2 text-amber-600">${config.currency_symbol}${Number(c.amount || 0).toLocaleString('en-US')}</td><td class="py-2">${escapeHtml(c.reason || '-')}</td></tr>`).join('') || '<tr><td colspan="4" class="py-6 text-center text-gray-500">Credit Note არ არის</td></tr>'}
+                ${creditNotes.map((c) => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-2">${formatDate(c.createdAt)}</td><td class="py-2">${escapeHtml(c.invoiceNo || '-')}</td><td class="py-2 text-amber-600">${config.currency_symbol}${Number(c.amount || 0).toLocaleString('en-US')}</td><td class="py-2">${escapeHtml(c.reason || '-')}</td></tr>`).join('') || '<tr><td colspan="4" class="py-6 text-center text-gray-500">საკორექტირებელი დოკუმენტი არ არის</td></tr>'}
               </tbody>
             </table>
           </div>
@@ -1828,19 +2142,19 @@
             <input id="finExpenseCategory" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="კატეგორია">
             <input id="finExpenseVendor" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მომწოდებელი">
             <input id="finExpenseAmount" type="number" min="0" step="0.01" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="თანხა">
-            <label class="flex items-center gap-2 text-sm px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><input id="finExpenseHasVat" type="checkbox" class="rounded"> VAT</label>
+            <label class="flex items-center gap-2 text-sm px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><input id="finExpenseHasVat" type="checkbox" class="rounded"> დღგ</label>
             <input id="finExpenseReceiptUrl" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="ქვითრის URL (არასავალდებულო)">
           </div>
           <div class="mt-3 flex gap-2">
             <button onclick="addExpenseFromFinance()" class="px-3 py-2 rounded-lg bg-sky-600 text-white text-sm">ხარჯის დამატება</button>
-            <button onclick="exportFinanceExpensesCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Export CSV</button>
+            <button onclick="exportFinanceExpensesCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Excel ექსპორტი</button>
           </div>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
           <h3 class="font-semibold mb-4">ხარჯების სია</h3>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
-              <thead class="text-left text-gray-500"><tr><th class="pb-2">თარიღი</th><th class="pb-2">კატეგორია</th><th class="pb-2">მომწოდებელი</th><th class="pb-2">თანხა</th><th class="pb-2">VAT</th><th class="pb-2">ქვითარი</th><th class="pb-2">მოქმედება</th></tr></thead>
+              <thead class="text-left text-gray-500"><tr><th class="pb-2">თარიღი</th><th class="pb-2">კატეგორია</th><th class="pb-2">მომწოდებელი</th><th class="pb-2">თანხა</th><th class="pb-2">დღგ</th><th class="pb-2">ქვითარი</th><th class="pb-2">მოქმედება</th></tr></thead>
               <tbody>
                 ${expenses.map((e) => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-2">${formatDate(e.date)}</td><td class="py-2">${escapeHtml(e.category || '-')}</td><td class="py-2">${escapeHtml(e.vendor || '-')}</td><td class="py-2">${config.currency_symbol}${Number(e.amount || 0).toLocaleString('en-US')}</td><td class="py-2">${e.hasVat ? 'დიახ' : 'არა'}</td><td class="py-2">${e.receiptUrl ? `<a class="text-sky-600 underline" target="_blank" href="${escapeHtml(e.receiptUrl)}">ბმული</a>` : '-'}</td><td class="py-2"><button onclick="deleteExpenseFromFinance(${e.id})" class="px-2 py-1 rounded bg-red-100 text-red-700 text-xs">წაშლა</button></td></tr>`).join('') || '<tr><td colspan="7" class="py-6 text-center text-gray-500">ხარჯები არ არის</td></tr>'}
               </tbody>
@@ -1854,27 +2168,27 @@
       const rows = getAllJournalEntries();
       return `
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
-          <h3 class="font-semibold mb-4">Manual Journal Entry</h3>
+          <h3 class="font-semibold mb-4">ხელით დამატებული journal ჩანაწერი</h3>
           <div class="grid grid-cols-1 md:grid-cols-6 gap-3">
             <input id="finJDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${todayISO()}">
-            <input id="finJRef" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="Reference">
+            <input id="finJRef" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მითითება">
             <input id="finJDesc" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="აღწერა">
-            <input id="finJDebit" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="Debit ანგარიში">
-            <input id="finJCredit" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="Credit ანგარიში">
+            <input id="finJდებეტი" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="დებეტი ანგარიში">
+            <input id="finJკრედიტი" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="კრედიტი ანგარიში">
             <input id="finJAmount" type="number" min="0" step="0.01" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="თანხა">
           </div>
           <div class="mt-3 flex gap-2">
             <button onclick="addManualJournalEntryFromFinance()" class="px-3 py-2 rounded-lg bg-sky-600 text-white text-sm">დამატება</button>
-            <button onclick="exportFinanceJournalCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Export CSV</button>
+            <button onclick="exportFinanceJournalCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Excel ექსპორტი</button>
           </div>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
-          <h3 class="font-semibold mb-4">General Journal</h3>
+          <h3 class="font-semibold mb-4">საერთო ჟურნალი</h3>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
-              <thead class="text-left text-gray-500"><tr><th class="pb-2">თარიღი</th><th class="pb-2">Reference</th><th class="pb-2">აღწერა</th><th class="pb-2">Debit</th><th class="pb-2">Credit</th><th class="pb-2">თანხა</th><th class="pb-2">წყარო</th></tr></thead>
+              <thead class="text-left text-gray-500"><tr><th class="pb-2">თარიღი</th><th class="pb-2">მითითება</th><th class="pb-2">აღწერა</th><th class="pb-2">დებეტი</th><th class="pb-2">კრედიტი</th><th class="pb-2">თანხა</th><th class="pb-2">წყარო</th></tr></thead>
               <tbody>
-                ${rows.map((j) => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-2">${formatDate(j.date)}</td><td class="py-2">${escapeHtml(j.reference || '-')}</td><td class="py-2">${escapeHtml(j.description || '-')}</td><td class="py-2">${escapeHtml(j.debitAccount || '-')}</td><td class="py-2">${escapeHtml(j.creditAccount || '-')}</td><td class="py-2">${config.currency_symbol}${Number(j.amount || 0).toLocaleString('en-US')}</td><td class="py-2">${j.source === 'manual' ? 'manual' : 'system'}</td></tr>`).join('') || '<tr><td colspan="7" class="py-6 text-center text-gray-500">ჩანაწერები არ არის</td></tr>'}
+                ${rows.map((j) => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-2">${formatDate(j.date)}</td><td class="py-2">${escapeHtml(j.reference || '-')}</td><td class="py-2">${escapeHtml(j.description || '-')}</td><td class="py-2">${escapeHtml(j.debitAccount || '-')}</td><td class="py-2">${escapeHtml(j.creditAccount || '-')}</td><td class="py-2">${config.currency_symbol}${Number(j.amount || 0).toLocaleString('en-US')}</td><td class="py-2">${j.source === 'ხელით' ? 'ხელით' : 'სისტემა'}</td></tr>`).join('') || '<tr><td colspan="7" class="py-6 text-center text-gray-500">ჩანაწერები არ არის</td></tr>'}
               </tbody>
             </table>
           </div>
@@ -1896,7 +2210,7 @@
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
           <h3 class="font-semibold mb-4">დღგ და გადასახადი</h3>
           <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <label class="text-xs text-gray-500">VAT %
+            <label class="text-xs text-gray-500">დღგ %
               <input id="finVatRate" type="number" min="0" step="0.01" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${vatRate}">
             </label>
             <label class="text-xs text-gray-500">პერიოდი From
@@ -1907,19 +2221,19 @@
             </label>
             <div class="flex items-end gap-2">
               <button onclick="saveFinanceVatRate()" class="px-3 py-2 rounded-lg bg-sky-600 text-white text-sm">შენახვა</button>
-              <button onclick="exportFinanceTaxCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Export CSV</button>
+              <button onclick="exportFinanceTaxCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Excel ექსპორტი</button>
             </div>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-            <div class="p-4 rounded-xl bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-900/40"><p class="text-xs text-gray-500">Sales VAT</p><p class="text-xl font-bold">${config.currency_symbol}${salesVat.toLocaleString('en-US', { maximumFractionDigits: 2 })}</p></div>
-            <div class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900/40"><p class="text-xs text-gray-500">Purchase VAT</p><p class="text-xl font-bold">${config.currency_symbol}${purchaseVat.toLocaleString('en-US', { maximumFractionDigits: 2 })}</p></div>
-            <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/40"><p class="text-xs text-gray-500">VAT Payable</p><p class="text-xl font-bold">${config.currency_symbol}${payable.toLocaleString('en-US', { maximumFractionDigits: 2 })}</p></div>
+            <div class="p-4 rounded-xl bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-900/40"><p class="text-xs text-gray-500">Sales დღგ</p><p class="text-xl font-bold">${config.currency_symbol}${salesVat.toLocaleString('en-US', { maximumFractionDigits: 2 })}</p></div>
+            <div class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-900/40"><p class="text-xs text-gray-500">Purchase დღგ</p><p class="text-xl font-bold">${config.currency_symbol}${purchaseVat.toLocaleString('en-US', { maximumFractionDigits: 2 })}</p></div>
+            <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/40"><p class="text-xs text-gray-500">დღგ Payable</p><p class="text-xl font-bold">${config.currency_symbol}${payable.toLocaleString('en-US', { maximumFractionDigits: 2 })}</p></div>
           </div>
         </div>
       `;
     }
 
-    function renderFinanceAgingTab() {
+    function renderFinanceვადაგადაცილებაTab() {
       const today = parseISODateLocal(todayISO());
       const buckets = { current: 0, d30: 0, d60: 0, d90: 0 };
       const rows = getReservationsData().map((r) => {
@@ -1937,11 +2251,11 @@
       return `
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="font-semibold">Aging Report</h3>
-            <button onclick="exportFinanceAgingCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Export CSV</button>
+            <h3 class="font-semibold">ვადაგადაცილება Report</h3>
+            <button onclick="exportFinanceვადაგადაცილებაCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Excel ექსპორტი</button>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-            <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40"><p class="text-xs text-gray-500">Current</p><p class="text-lg font-bold">${config.currency_symbol}${buckets.current.toLocaleString('en-US')}</p></div>
+            <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40"><p class="text-xs text-gray-500">მიმდინარე</p><p class="text-lg font-bold">${config.currency_symbol}${buckets.current.toLocaleString('en-US')}</p></div>
             <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20"><p class="text-xs text-gray-500">1-30 დღე</p><p class="text-lg font-bold">${config.currency_symbol}${buckets.d30.toLocaleString('en-US')}</p></div>
             <div class="p-3 rounded-xl bg-orange-50 dark:bg-orange-900/20"><p class="text-xs text-gray-500">31-60 დღე</p><p class="text-lg font-bold">${config.currency_symbol}${buckets.d60.toLocaleString('en-US')}</p></div>
             <div class="p-3 rounded-xl bg-red-50 dark:bg-red-900/20"><p class="text-xs text-gray-500">60+ დღე</p><p class="text-lg font-bold">${config.currency_symbol}${buckets.d90.toLocaleString('en-US')}</p></div>
@@ -1958,28 +2272,28 @@
       `;
     }
 
-    function renderFinanceReconciliationTab() {
+    function renderFinanceშეჯერებაTab() {
       const items = getReconciliationsData().slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
       const systemPaid = getReservationsData().reduce((s, r) => s + normalizeReservationPayment(r), 0);
       return `
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
-          <h3 class="font-semibold mb-4">Bank Reconciliation</h3>
+          <h3 class="font-semibold mb-4">საბანკო შეჯერება</h3>
           <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
             <input id="finRecDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${todayISO()}">
-            <input id="finRecBankAmount" type="number" min="0" step="0.01" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="Statement total">
+            <input id="finRecBankAmount" type="number" min="0" step="0.01" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="ამონაწერის ჯამი">
             <input id="finRecSystemAmount" type="number" min="0" step="0.01" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(systemPaid || 0)}">
             <input id="finRecNotes" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="შენიშვნა">
           </div>
           <div class="mt-3 flex gap-2">
-            <button onclick="addReconciliationFromFinance()" class="px-3 py-2 rounded-lg bg-sky-600 text-white text-sm">შენახვა</button>
-            <button onclick="exportFinanceReconciliationCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Export CSV</button>
+            <button onclick="addშეჯერებაFromFinance()" class="px-3 py-2 rounded-lg bg-sky-600 text-white text-sm">შენახვა</button>
+            <button onclick="exportFinanceშეჯერებაCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Excel ექსპორტი</button>
           </div>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
           <h3 class="font-semibold mb-4">შეჯერების ისტორია</h3>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
-              <thead class="text-left text-gray-500"><tr><th class="pb-2">თარიღი</th><th class="pb-2">Statement</th><th class="pb-2">System</th><th class="pb-2">სხვაობა</th><th class="pb-2">სტატუსი</th><th class="pb-2">შენიშვნა</th></tr></thead>
+              <thead class="text-left text-gray-500"><tr><th class="pb-2">თარიღი</th><th class="pb-2">ამონაწერი</th><th class="pb-2">System</th><th class="pb-2">სხვაობა</th><th class="pb-2">სტატუსი</th><th class="pb-2">შენიშვნა</th></tr></thead>
               <tbody>
                 ${items.map((i) => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-2">${formatDate(i.date)}</td><td class="py-2">${config.currency_symbol}${Number(i.bankAmount || 0).toLocaleString('en-US')}</td><td class="py-2">${config.currency_symbol}${Number(i.systemAmount || 0).toLocaleString('en-US')}</td><td class="py-2 ${Number(i.diff || 0) === 0 ? 'text-emerald-600' : 'text-red-600'}">${config.currency_symbol}${Number(i.diff || 0).toLocaleString('en-US')}</td><td class="py-2">${Number(i.diff || 0) === 0 ? 'შეჯერებულია' : 'გასასწორებელია'}</td><td class="py-2">${escapeHtml(i.notes || '-')}</td></tr>`).join('') || '<tr><td colspan="6" class="py-6 text-center text-gray-500">შეჯერება არ არის</td></tr>'}
               </tbody>
@@ -1993,11 +2307,11 @@
       const closeUntil = getFinanceCloseUntil();
       return `
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
-          <h3 class="font-semibold mb-4">Period Close / Lock</h3>
+          <h3 class="font-semibold mb-4">პერიოდის დახურვა / Lock</h3>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <input id="finCloseMonth" type="month" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${closeUntil}">
             <button onclick="closeFinancePeriodFromUI()" class="px-3 py-2 rounded-lg bg-red-600 text-white text-sm" ${can('periodCloseManage') ? '' : 'disabled'}>პერიოდის დახურვა</button>
-            <button onclick="reopenFinancePeriodFromUI()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm" ${can('periodCloseManage') ? '' : 'disabled'}>Lock მოხსნა</button>
+            <button onclick="reopenFinancePeriodFromUI()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm" ${can('periodCloseManage') ? '' : 'disabled'}>დახურვის მოხსნა</button>
           </div>
           <p class="text-xs text-gray-500 mt-3">დახურულ პერიოდზე (და მის წინაზე) ფინანსური ცვლილებები იბლოკება: ხარჯი/გადახდა/ჯავშნის ფინანსური რედაქტირება.</p>
         </div>
@@ -2009,8 +2323,8 @@
       return `
         <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="font-semibold">Audit Log</h3>
-            <button onclick="exportFinanceAuditCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Export CSV</button>
+            <h3 class="font-semibold">აუდიტის ჟურნალი</h3>
+            <button onclick="exportFinanceAuditCSV()" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">Excel ექსპორტი</button>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
@@ -2044,12 +2358,29 @@
       const res = reservations.find((r) => Number(r.id) === Number(reservationId));
       if (!res) return;
       if (!can('paymentsManage')) return showToast('წვდომა შეზღუდულია', 'error');
-      if (!canMutateForDate(res.checkinDate, 'დახურულ პერიოდზე Credit Note ვერ დაემატება')) return;
-      const rawAmount = window.prompt('Credit Note თანხა (₾)', '0');
-      if (rawAmount === null) return;
-      const amount = Math.max(0, Number(rawAmount || 0));
+      if (!canMutateForDate(res.checkinDate, 'დახურულ პერიოდზე საკორექტირებელი დოკუმენტი ვერ დაემატება')) return;
+      openModal('custom');
+      document.getElementById('modal-title').textContent = 'საკორექტირებელი დოკუმენტი';
+      document.getElementById('modal-content').innerHTML = `
+        <div class="space-y-3">
+          <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/40 text-sm">ინვოისი: <strong>${escapeHtml(res.invoiceNo || `INV-${res.id}`)}</strong> • სტუმარი: ${escapeHtml(res.guestName || 'სტუმარი')}</div>
+          <label class="text-xs text-gray-500 block">თანხა (₾) *<input id="creditNoteAmount" type="number" min="0" step="0.01" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="0.00"></label>
+          <label class="text-xs text-gray-500 block">მიზეზი *<textarea id="creditNoteReason" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" rows="3" placeholder="კორექტირების მიზეზი"></textarea></label>
+        </div>
+        <div class="mt-4 flex gap-2"><button class="px-4 py-2 bg-amber-500 text-white rounded-lg" onclick="saveCreditNoteFromForm(${Number(reservationId)})">შენახვა</button><button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg" onclick="closeModal()">გაუქმება</button></div>
+      `;
+    }
+
+    function saveCreditNoteFromForm(reservationId) {
+      const reservations = getReservationsData();
+      const res = reservations.find((r) => Number(r.id) === Number(reservationId));
+      if (!res) return;
+      if (!can('paymentsManage')) return showToast('წვდომა შეზღუდულია', 'error');
+      if (!canMutateForDate(res.checkinDate, 'დახურულ პერიოდზე საკორექტირებელი დოკუმენტი ვერ დაემატება')) return;
+      const amount = Math.max(0, Number(document.getElementById('creditNoteAmount')?.value || 0));
       if (!amount) return showToast('თანხა არასწორია', 'error');
-      const reason = window.prompt('მიზეზი', 'კორექტირება') || 'კორექტირება';
+      const reason = document.getElementById('creditNoteReason')?.value.trim() || '';
+      if (!reason) return showToast('მიზეზი აუცილებელია', 'error');
       const notes = getCreditNotesData();
       const nextId = Number(getState('nextCreditNoteId', 1));
       notes.push({
@@ -2063,7 +2394,8 @@
       setCreditNotesData(notes);
       setState('nextCreditNoteId', nextId + 1);
       appendFinanceAudit('credit_note_create', 'credit_note', `${res.invoiceNo || `INV-${res.id}`} • ${amount}`);
-      showToast('Credit Note დამატებულია');
+      showToast('საკორექტირებელი დოკუმენტი დამატებულია');
+      closeModal();
       renderFinance();
     }
 
@@ -2093,10 +2425,22 @@
       const found = items.find((x) => Number(x.id) === Number(expenseId));
       if (!found) return;
       if (!canMutateForDate(found.date, 'დახურულ პერიოდზე ხარჯის წაშლა შეუძლებელია')) return;
-      if (!window.confirm('გსურთ ხარჯის წაშლა?')) return;
-      setExpensesData(items.filter((x) => Number(x.id) !== Number(expenseId)));
-      appendFinanceAudit('expense_delete', 'expense', `#${expenseId}`);
-      showToast('ხარჯი წაიშალა');
+      if (!window.confirm('გსურთ ხარჯის გაუქმების კორექტირების შექმნა?')) return;
+      const nextId = Number(getState('nextExpenseId', 1));
+      setExpensesData([...items, {
+        id: nextId,
+        date: todayISO(),
+        category: `კორექტირება: ${found.category || 'ხარჯი'}`,
+        vendor: found.vendor || '',
+        amount: -Math.abs(Number(found.amount || 0)),
+        hasVat: !!found.hasVat,
+        receiptUrl: found.receiptUrl || '',
+        reversalOf: found.id,
+        createdAt: new Date().toISOString()
+      }]);
+      setState('nextExpenseId', nextId + 1);
+      appendFinanceAudit('expense_reversal', 'expense', `#${expenseId}`);
+      showToast('ხარჯის კორექტირება დაემატა');
       renderFinance();
     }
 
@@ -2106,8 +2450,8 @@
       if (!canMutateForDate(date, 'დახურულ პერიოდზე ჩანაწერი ვერ დაემატება')) return;
       const reference = document.getElementById('finJRef')?.value.trim() || '';
       const description = document.getElementById('finJDesc')?.value.trim() || '';
-      const debitAccount = document.getElementById('finJDebit')?.value.trim() || '';
-      const creditAccount = document.getElementById('finJCredit')?.value.trim() || '';
+      const debitAccount = document.getElementById('finJდებეტი')?.value.trim() || '';
+      const creditAccount = document.getElementById('finJკრედიტი')?.value.trim() || '';
       const amount = Math.max(0, Number(document.getElementById('finJAmount')?.value || 0));
       if (!debitAccount || !creditAccount || !amount) return showToast('შეავსეთ journal ველები სწორად', 'error');
       const items = getManualJournalData();
@@ -2115,7 +2459,7 @@
       items.push({ id: `mj_${nextId}`, date, reference, description, debitAccount, creditAccount, amount });
       setManualJournalData(items);
       setState('nextManualJournalId', nextId + 1);
-      appendFinanceAudit('journal_create', 'manual_journal', `${reference || '-'} • ${amount}`);
+      appendFinanceAudit('journal_create', 'ხელით_journal', `${reference || '-'} • ${amount}`);
       showToast('Journal entry დაემატა');
       renderFinance();
     }
@@ -2125,11 +2469,11 @@
       const rate = Math.max(0, Number(document.getElementById('finVatRate')?.value || 0));
       setFinanceVatRate(rate);
       appendFinanceAudit('vat_rate_update', 'tax', `${rate}%`);
-      showToast('VAT განახლდა');
+      showToast('დღგ განახლდა');
       renderFinance();
     }
 
-    function addReconciliationFromFinance() {
+    function addშეჯერებაFromFinance() {
       if (!can('paymentsManage')) return showToast('წვდომა შეზღუდულია', 'error');
       const date = document.getElementById('finRecDate')?.value || todayISO();
       if (!canMutateForDate(date, 'დახურულ პერიოდზე შეჯერება ვერ დაემატება')) return;
@@ -2169,11 +2513,11 @@
       const rows = getReservationsData()
         .map((r) => ({ guest: r.guestName || 'სტუმარი', invoice_no: r.invoiceNo || `INV-${r.id}`, checkout_date: r.checkoutDate || '', due_amount: reservationDueAmount(r) }))
         .filter((r) => Number(r.due_amount) > 0);
-      downloadCSV('finance_debtors.csv', [
-        { key: 'guest', label: 'Guest' },
-        { key: 'invoice_no', label: 'Invoice No' },
-        { key: 'checkout_date', label: 'Checkout Date' },
-        { key: 'due_amount', label: 'Due Amount' }
+      downloadExcel('finance_debtors.xls', [
+        { key: 'guest', label: 'სტუმარი' },
+        { key: 'invoice_no', label: 'ინვოისი' },
+        { key: 'checkout_date', label: 'გასვლის თარიღი' },
+        { key: 'due_amount', label: 'დავალიანება' }
       ], rows);
     }
 
@@ -2187,14 +2531,14 @@
         due: reservationDueAmount(r),
         invoice_status: r.invoiceStatus || 'issued'
       }));
-      downloadCSV('finance_invoices.csv', [
-        { key: 'invoice_no', label: 'Invoice No' },
-        { key: 'reservation_id', label: 'Reservation ID' },
-        { key: 'guest', label: 'Guest' },
-        { key: 'total_price', label: 'Total' },
-        { key: 'paid', label: 'Paid' },
-        { key: 'due', label: 'Due' },
-        { key: 'invoice_status', label: 'Invoice Status' }
+      downloadExcel('finance_invoices.xls', [
+        { key: 'invoice_no', label: 'ინვოისი' },
+        { key: 'reservation_id', label: 'ჯავშნის ID' },
+        { key: 'guest', label: 'სტუმარი' },
+        { key: 'total_price', label: 'სრული თანხა' },
+        { key: 'paid', label: 'გადახდილია' },
+        { key: 'due', label: 'დასარჩენი' },
+        { key: 'invoice_status', label: 'ინვოისის სტატუსი' }
       ], rows);
     }
 
@@ -2207,13 +2551,13 @@
         vat: e.hasVat ? 'yes' : 'no',
         receipt_url: e.receiptUrl || ''
       }));
-      downloadCSV('finance_expenses.csv', [
-        { key: 'date', label: 'Date' },
-        { key: 'category', label: 'Category' },
-        { key: 'vendor', label: 'Vendor' },
-        { key: 'amount', label: 'Amount' },
-        { key: 'vat', label: 'VAT' },
-        { key: 'receipt_url', label: 'Receipt URL' }
+      downloadExcel('finance_expenses.xls', [
+        { key: 'date', label: 'თარიღი' },
+        { key: 'category', label: 'კატეგორია' },
+        { key: 'vendor', label: 'მომწოდებელი' },
+        { key: 'amount', label: 'თანხა' },
+        { key: 'vat', label: 'დღგ' },
+        { key: 'receipt_url', label: 'ქვითრის ბმული' }
       ], rows);
     }
 
@@ -2225,16 +2569,16 @@
         debit_account: j.debitAccount || '',
         credit_account: j.creditAccount || '',
         amount: Number(j.amount || 0),
-        source: j.source || 'system'
+        source: j.source || 'სისტემა'
       }));
-      downloadCSV('finance_journal.csv', [
-        { key: 'date', label: 'Date' },
-        { key: 'reference', label: 'Reference' },
-        { key: 'description', label: 'Description' },
-        { key: 'debit_account', label: 'Debit' },
-        { key: 'credit_account', label: 'Credit' },
-        { key: 'amount', label: 'Amount' },
-        { key: 'source', label: 'Source' }
+      downloadExcel('finance_journal.xls', [
+        { key: 'date', label: 'თარიღი' },
+        { key: 'reference', label: 'მითითება' },
+        { key: 'description', label: 'აღწერა' },
+        { key: 'debit_account', label: 'დებეტი' },
+        { key: 'credit_account', label: 'კრედიტი' },
+        { key: 'amount', label: 'თანხა' },
+        { key: 'source', label: 'წყარო' }
       ], rows);
     }
 
@@ -2250,15 +2594,15 @@
         purchase_vat: purchaseVat.toFixed(2),
         vat_payable: Math.max(0, salesVat - purchaseVat).toFixed(2)
       }];
-      downloadCSV('finance_tax_report.csv', [
-        { key: 'vat_rate', label: 'VAT %' },
-        { key: 'sales_vat', label: 'Sales VAT' },
-        { key: 'purchase_vat', label: 'Purchase VAT' },
-        { key: 'vat_payable', label: 'VAT Payable' }
+      downloadExcel('finance_tax_report.xls', [
+        { key: 'vat_rate', label: 'დღგ %' },
+        { key: 'sales_vat', label: 'გაყიდვების დღგ' },
+        { key: 'purchase_vat', label: 'შესყიდვების დღგ' },
+        { key: 'vat_payable', label: 'გადასახდელი დღგ' }
       ], rows);
     }
 
-    function exportFinanceAgingCSV() {
+    function exportFinanceვადაგადაცილებაCSV() {
       const today = parseISODateLocal(todayISO());
       const rows = getReservationsData().map((r) => {
         const dueDate = parseISODateLocal(r.checkoutDate || r.checkinDate || todayISO());
@@ -2271,29 +2615,29 @@
           due_amount: reservationDueAmount(r)
         };
       }).filter((r) => Number(r.due_amount) > 0);
-      downloadCSV('finance_aging.csv', [
-        { key: 'guest', label: 'Guest' },
-        { key: 'invoice_no', label: 'Invoice No' },
-        { key: 'due_date', label: 'Due Date' },
-        { key: 'overdue_days', label: 'Overdue Days' },
-        { key: 'due_amount', label: 'Due Amount' }
+      downloadExcel('finance_aging.xls', [
+        { key: 'guest', label: 'სტუმარი' },
+        { key: 'invoice_no', label: 'ინვოისი' },
+        { key: 'due_date', label: 'ვადა' },
+        { key: 'overdue_days', label: 'ვადაგადაცილებული დღეები' },
+        { key: 'due_amount', label: 'დავალიანება' }
       ], rows);
     }
 
-    function exportFinanceReconciliationCSV() {
+    function exportFinanceშეჯერებაCSV() {
       const rows = getReconciliationsData().map((r) => ({
         date: r.date || '',
         bank_amount: Number(r.bankAmount || 0),
-        system_amount: Number(r.systemAmount || 0),
+        სისტემა_amount: Number(r.systemAmount || 0),
         difference: Number(r.diff || 0),
         notes: r.notes || ''
       }));
-      downloadCSV('finance_reconciliation.csv', [
-        { key: 'date', label: 'Date' },
-        { key: 'bank_amount', label: 'Bank Amount' },
-        { key: 'system_amount', label: 'System Amount' },
-        { key: 'difference', label: 'Difference' },
-        { key: 'notes', label: 'Notes' }
+      downloadExcel('finance_reconciliation.xls', [
+        { key: 'date', label: 'თარიღი' },
+        { key: 'bank_amount', label: 'ბანკის თანხა' },
+        { key: 'სისტემა_amount', label: 'სისტემის თანხა' },
+        { key: 'difference', label: 'სხვაობა' },
+        { key: 'notes', label: 'შენიშვნა' }
       ], rows);
     }
 
@@ -2305,13 +2649,88 @@
         entity: l.entity || '',
         details: l.details || ''
       }));
-      downloadCSV('finance_audit_log.csv', [
-        { key: 'created_at', label: 'Created At' },
-        { key: 'role', label: 'Role' },
-        { key: 'action', label: 'Action' },
-        { key: 'entity', label: 'Entity' },
-        { key: 'details', label: 'Details' }
+      downloadExcel('finance_audit_log.xls', [
+        { key: 'created_at', label: 'შექმნის დრო' },
+        { key: 'role', label: 'როლი' },
+        { key: 'action', label: 'ქმედება' },
+        { key: 'entity', label: 'ობიექტი' },
+        { key: 'details', label: 'დეტალი' }
       ], rows);
+    }
+
+    function exportFinanceWorkbookExcel() {
+      const reservations = getReservationsData();
+      const expenses = getExpensesData();
+      const invoices = reservations.map((r) => ({
+        invoice_no: r.invoiceNo || `INV-${r.id}`,
+        reservation_id: r.id,
+        guest: r.guestName || 'სტუმარი',
+        total_price: Number(r.totalPrice || 0),
+        paid: normalizeReservationPayment(r),
+        due: reservationDueAmount(r),
+        invoice_status: invoiceStatusLabel(r.invoiceStatus)
+      }));
+      const debtors = invoices.filter((r) => Number(r.due) > 0);
+      downloadExcelWorkbook('finance_full_export.xls', [
+        {
+          name: 'ინვოისები',
+          columns: [
+            { key: 'invoice_no', label: 'ინვოისი' },
+            { key: 'reservation_id', label: 'ჯავშნის ID' },
+            { key: 'guest', label: 'სტუმარი' },
+            { key: 'total_price', label: 'სრული თანხა' },
+            { key: 'paid', label: 'გადახდილია' },
+            { key: 'due', label: 'დასარჩენი' },
+            { key: 'invoice_status', label: 'სტატუსი' }
+          ],
+          rows: invoices
+        },
+        {
+          name: 'დებიტორები',
+          columns: [
+            { key: 'invoice_no', label: 'ინვოისი' },
+            { key: 'guest', label: 'სტუმარი' },
+            { key: 'due', label: 'დავალიანება' }
+          ],
+          rows: debtors
+        },
+        {
+          name: 'ხარჯები',
+          columns: [
+            { key: 'date', label: 'თარიღი' },
+            { key: 'category', label: 'კატეგორია' },
+            { key: 'vendor', label: 'მომწოდებელი' },
+            { key: 'amount', label: 'თანხა' },
+            { key: 'hasVat', label: 'დღგ' }
+          ],
+          rows: expenses.map((e) => ({ ...e, hasVat: e.hasVat ? 'დიახ' : 'არა' }))
+        },
+        {
+          name: 'ჟურნალი',
+          columns: [
+            { key: 'date', label: 'თარიღი' },
+            { key: 'reference', label: 'მითითება' },
+            { key: 'description', label: 'აღწერა' },
+            { key: 'debitAccount', label: 'დებეტი' },
+            { key: 'creditAccount', label: 'კრედიტი' },
+            { key: 'amount', label: 'თანხა' },
+            { key: 'source', label: 'წყარო' }
+          ],
+          rows: getAllJournalEntries()
+        },
+        {
+          name: 'ფინანსური აუდიტი',
+          columns: [
+            { key: 'createdAt', label: 'დრო' },
+            { key: 'role', label: 'როლი' },
+            { key: 'action', label: 'ქმედება' },
+            { key: 'entity', label: 'ობიექტი' },
+            { key: 'details', label: 'დეტალი' }
+          ],
+          rows: getFinanceAuditData()
+        }
+      ]);
+      appendFinanceAudit('finance_excel_export', 'finance', 'სრული ფინანსური Excel ექსპორტი');
     }
 
     function renderHousekeeping() {
@@ -2426,6 +2845,549 @@
       `;
     }
 
+    function operationalStatusBadge(status) {
+      const labels = {
+        new: 'ახალი',
+        assigned: 'მინიჭებული',
+        in_progress: 'მიმდინარეობს',
+        waiting: 'მოლოდინში',
+        completed: 'დასრულებული',
+        cancelled: 'გაუქმებული',
+        critical: 'კრიტიკული',
+        overdue: 'დაგვიანებული',
+        approved: 'დამტკიცებული',
+        rejected: 'უარყოფილი'
+      };
+      const cls = ['completed', 'approved'].includes(status) ? 'bg-green-100 text-green-700'
+        : ['critical', 'overdue', 'rejected'].includes(status) ? 'bg-red-100 text-red-700'
+          : status === 'in_progress' ? 'bg-sky-100 text-sky-700'
+            : 'bg-amber-100 text-amber-700';
+      return `<span class="px-2 py-1 rounded-full text-xs ${cls}">${labels[status] || status || '-'}</span>`;
+    }
+
+    function priorityLabel(priority) {
+      return ({ low: 'დაბალი', normal: 'ჩვეულებრივი', high: 'მაღალი', critical: 'კრიტიკული' })[priority] || priority || '-';
+    }
+
+    function renderHousekeeping() {
+      if (!can('housekeepingManage')) {
+        document.getElementById('page-housekeeping').innerHTML = '<div class="bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-100 dark:border-gray-700 text-sm text-gray-500">დალაგების მოდულზე წვდომა შეზღუდულია.</div>';
+        return;
+      }
+      const tasks = getHousekeepingData();
+      const rooms = getRoomsData();
+      const dirty = rooms.filter(r => ['cleaning', 'dirty', 'occupied_dirty'].includes(String(r.status || ''))).length + tasks.filter(t => t.status !== 'completed').length;
+      const inspected = rooms.filter(r => r.status === 'available').length;
+      const maintenance = rooms.filter(r => r.status === 'maintenance').length;
+      document.getElementById('page-housekeeping').innerHTML = `
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold">დალაგება და ოთახების მოვლა</h2>
+          ${can('tasksManage') ? '<button onclick="addHousekeepingTask()" class="px-4 py-2 bg-sky-600 text-white rounded-xl">დავალების დამატება</button>' : ''}
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          ${card('დასალაგებელი', dirty, 'checkout')}
+          ${card('შემოწმებული', inspected, 'checkin')}
+          ${card('ტექნიკური პრობლემა', maintenance, 'hotel')}
+          ${card('დავალებები', tasks.length, 'dashboard')}
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 dark:bg-gray-700/50"><tr><th class="px-4 py-3 text-left">ნომერი</th><th class="px-4 py-3 text-left">ტიპი</th><th class="px-4 py-3 text-left">პრიორიტეტი</th><th class="px-4 py-3 text-left">შემსრულებელი</th><th class="px-4 py-3 text-left">ვადა</th><th class="px-4 py-3 text-left">კომენტარი</th><th class="px-4 py-3 text-left">სტატუსი</th><th class="px-4 py-3 text-left">დამლაგებლის კომენტარი</th><th class="px-4 py-3 text-left">მოქმედება</th></tr></thead>
+            <tbody>
+              ${tasks.map(t => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="px-4 py-3">${escapeHtml(findRoomById(t.roomId)?.roomNumber || '-')}</td><td class="px-4 py-3">${escapeHtml(({ vacant_dirty: 'თავისუფალი დასალაგებელი', occupied_dirty: 'დაკავებული დასალაგებელი', stayover: 'მცხოვრები სტუმარი', due_out: 'გასვლის დღე', inspection: 'შემოწმება' })[t.type] || t.type)}</td><td class="px-4 py-3">${priorityLabel(t.priority)}</td><td class="px-4 py-3">${escapeHtml(t.attendant || '-')}</td><td class="px-4 py-3">${escapeHtml(t.dueAt || '-')}</td><td class="px-4 py-3 max-w-[220px]"><div class="text-gray-700 dark:text-gray-200">${escapeHtml(t.notes || t.sourceComment || '-')}</div>${t.reservationId ? `<div class="text-xs text-gray-500 mt-1">ჯავშანი #${t.reservationId}</div>` : ''}</td><td class="px-4 py-3"><select id="hkStatus_${t.id}" class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs"><option value="new" ${t.status === 'new' ? 'selected' : ''}>ახალი</option><option value="assigned" ${t.status === 'assigned' ? 'selected' : ''}>მინიჭებული</option><option value="in_progress" ${t.status === 'in_progress' ? 'selected' : ''}>მიმდინარეობს</option><option value="inspection" ${t.status === 'inspection' ? 'selected' : ''}>შემოწმება</option><option value="completed" ${t.status === 'completed' ? 'selected' : ''}>დალაგდა / აქტიურია</option></select></td><td class="px-4 py-3"><input id="hkComment_${t.id}" class="w-44 px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" value="${escapeHtml(t.attendantComment || '')}" placeholder="კომენტარი"></td><td class="px-4 py-3"><button onclick="updateHousekeepingTask(${t.id})" class="px-2 py-1 rounded bg-sky-100 text-sky-700 text-xs">შენახვა</button></td></tr>`).join('') || '<tr><td colspan="9" class="px-4 py-6 text-center text-gray-500">დავალებები არ არის</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function addHousekeepingTask() {
+      return openHousekeepingTaskForm();
+    }
+
+    function openHousekeepingTaskForm() {
+      if (!can('housekeepingManage')) return showToast('წვდომა შეზღუდულია', 'error');
+      const rooms = getRoomsData();
+      openModal('custom');
+      document.getElementById('modal-title').textContent = 'დალაგების დავალების დამატება';
+      document.getElementById('modal-content').innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label class="text-xs text-gray-500">ნომერი<select id="hkRoomId" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${rooms.map(r => `<option value="${r.id}">${escapeHtml(r.roomNumber || r.roomName)} • ${roomTypeLabel(r.roomType)}</option>`).join('')}</select></label>
+          <label class="text-xs text-gray-500">დავალების ტიპი<select id="hkType" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="vacant_dirty">თავისუფალი დასალაგებელი</option><option value="occupied_dirty">დაკავებული დასალაგებელი</option><option value="stayover">მცხოვრები სტუმარი</option><option value="due_out">გასვლის დღე</option><option value="inspection">შემოწმება</option></select></label>
+          <label class="text-xs text-gray-500">პრიორიტეტი<select id="hkPriority" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="normal">ჩვეულებრივი</option><option value="high">მაღალი</option><option value="critical">კრიტიკული</option><option value="low">დაბალი</option></select></label>
+          <label class="text-xs text-gray-500">შემსრულებელი<input id="hkAttendant" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="დამლაგებელი"></label>
+          <label class="text-xs text-gray-500">ვადა<input id="hkDueAt" type="time" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="16:00"></label>
+          <label class="text-xs text-gray-500">სტატუსი<select id="hkStatus" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="new">ახალი</option><option value="assigned">მინიჭებული</option><option value="in_progress">მიმდინარეობს</option></select></label>
+          <label class="md:col-span-2 text-xs text-gray-500">ჩეკლისტი<textarea id="hkChecklist" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" rows="2" placeholder="თეთრეული, აბაზანა, მინიბარი"></textarea></label>
+          <label class="md:col-span-2 text-xs text-gray-500">შენიშვნა<textarea id="hkNotes" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" rows="3" placeholder="VIP, ადრეული შესახლება, განსაკუთრებული მოთხოვნა"></textarea></label>
+        </div>
+        <div class="mt-4 flex gap-2"><button class="px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="saveHousekeepingTaskFromForm()">შენახვა</button><button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg" onclick="closeModal()">გაუქმება</button></div>
+      `;
+    }
+
+    function saveHousekeepingTaskFromForm() {
+      if (!can('housekeepingManage')) return showToast('წვდომა შეზღუდულია', 'error');
+      const roomId = Number(document.getElementById('hkRoomId')?.value || 0);
+      const room = findRoomById(roomId);
+      if (!room) return showToast('ნომერი ვერ მოიძებნა', 'error');
+      const tasks = getHousekeepingData();
+      const nextId = Number(getState('nextHousekeepingTaskId', 1));
+      tasks.push({
+        id: nextId,
+        roomId,
+        type: document.getElementById('hkType')?.value || 'vacant_dirty',
+        priority: document.getElementById('hkPriority')?.value || 'normal',
+        attendant: document.getElementById('hkAttendant')?.value.trim() || '',
+        status: document.getElementById('hkStatus')?.value || 'new',
+        dueAt: document.getElementById('hkDueAt')?.value || '16:00',
+        checklist: String(document.getElementById('hkChecklist')?.value || '').split(',').map(x => x.trim()).filter(Boolean),
+        notes: document.getElementById('hkNotes')?.value.trim() || ''
+      });
+      setHousekeepingData(tasks);
+      setState('nextHousekeepingTaskId', nextId + 1);
+      appendAudit('housekeeping_task_create', 'housekeeping', `ოთახი ${room.roomNumber}`);
+      showToast('დალაგების დავალება დაემატა');
+      closeModal();
+      renderHousekeeping();
+    }
+
+    function updateHousekeepingTask(id) {
+      const tasks = getHousekeepingData();
+      const idx = tasks.findIndex(t => Number(t.id) === Number(id));
+      if (idx === -1) return;
+      const nextStatus = document.getElementById(`hkStatus_${id}`)?.value || tasks[idx].status || 'new';
+      tasks[idx].status = nextStatus;
+      tasks[idx].attendantComment = document.getElementById(`hkComment_${id}`)?.value.trim() || '';
+      tasks[idx].updatedAt = new Date().toISOString();
+      if (nextStatus === 'completed') {
+        tasks[idx].completedAt = new Date().toISOString();
+        const rooms = getRoomsData();
+        const rIdx = rooms.findIndex(r => Number(r.id) === Number(tasks[idx].roomId));
+        if (rIdx !== -1) {
+          rooms[rIdx].status = 'available';
+          setRoomsData(rooms);
+        }
+      }
+      setHousekeepingData(tasks);
+      appendAudit('housekeeping_task_update', 'housekeeping', `#${id} -> ${nextStatus}`);
+      renderHousekeeping();
+    }
+
+    function completeHousekeepingTask(id) {
+      const statusEl = document.getElementById(`hkStatus_${id}`);
+      if (statusEl) statusEl.value = 'completed';
+      updateHousekeepingTask(id);
+    }
+
+    function renderMaintenance() {
+      if (!can('maintenanceManage')) {
+        document.getElementById('page-maintenance').innerHTML = '<div class="bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-100 dark:border-gray-700 text-sm text-gray-500">ტექნიკურ მოდულზე წვდომა შეზღუდულია.</div>';
+        return;
+      }
+      const tickets = getMaintenanceData();
+      const open = tickets.filter(t => !['completed', 'cancelled'].includes(t.status)).length;
+      const critical = tickets.filter(t => t.priority === 'critical').length;
+      document.getElementById('page-maintenance').innerHTML = `
+        <div class="flex items-center justify-between mb-6"><h2 class="text-xl font-bold">ტექნიკური მომსახურება</h2><button onclick="addMaintenanceTicket()" class="px-4 py-2 bg-sky-600 text-white rounded-xl">ტექნიკური დავალების დამატება</button></div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">${card('ღია დავალებები', open, 'dashboard')}${card('კრიტიკული', critical, 'checkout')}${card('გაყიდვიდან ამოღებული', tickets.filter(t => t.outOfOrder).length, 'hotel')}</div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto">
+          <table class="w-full text-sm"><thead class="bg-gray-50 dark:bg-gray-700/50"><tr><th class="px-4 py-3 text-left">სათაური</th><th class="px-4 py-3 text-left">ნომერი</th><th class="px-4 py-3 text-left">კატეგორია</th><th class="px-4 py-3 text-left">პრიორიტეტი</th><th class="px-4 py-3 text-left">პასუხისმგებელი</th><th class="px-4 py-3 text-left">აღწერა</th><th class="px-4 py-3 text-left">სტატუსი</th><th class="px-4 py-3 text-left">ტექნიკოსის კომენტარი</th><th class="px-4 py-3 text-left">მოქმედება</th></tr></thead>
+          <tbody>${tickets.map(t => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="px-4 py-3">${escapeHtml(t.title || '-')}</td><td class="px-4 py-3">${escapeHtml(findRoomById(t.roomId)?.roomNumber || '-')}</td><td class="px-4 py-3">${escapeHtml(t.category || '-')}</td><td class="px-4 py-3">${priorityLabel(t.priority)}</td><td class="px-4 py-3">${escapeHtml(t.assignee || '-')}</td><td class="px-4 py-3 max-w-[220px]">${escapeHtml(t.description || '-')}</td><td class="px-4 py-3"><select id="mtStatus_${t.id}" class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs"><option value="new" ${t.status === 'new' ? 'selected' : ''}>ახალი</option><option value="assigned" ${t.status === 'assigned' ? 'selected' : ''}>მინიჭებული</option><option value="in_progress" ${t.status === 'in_progress' ? 'selected' : ''}>მიმდინარეობს</option><option value="waiting_parts" ${t.status === 'waiting_parts' ? 'selected' : ''}>ელოდება ნაწილს</option><option value="completed" ${t.status === 'completed' ? 'selected' : ''}>დასრულებული</option><option value="cancelled" ${t.status === 'cancelled' ? 'selected' : ''}>გაუქმებული</option></select></td><td class="px-4 py-3"><input id="mtComment_${t.id}" class="w-44 px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" value="${escapeHtml(t.technicianComment || '')}" placeholder="კომენტარი"></td><td class="px-4 py-3"><button onclick="updateMaintenanceTicket(${t.id})" class="px-2 py-1 rounded bg-sky-100 text-sky-700 text-xs">შენახვა</button></td></tr>`).join('') || '<tr><td colspan="9" class="px-4 py-6 text-center text-gray-500">ტექნიკური დავალებები არ არის</td></tr>'}</tbody></table>
+        </div>
+      `;
+    }
+
+    function addMaintenanceTicket() {
+      return openMaintenanceTicketForm();
+    }
+
+    function openMaintenanceTicketForm() {
+      if (!can('maintenanceManage')) return showToast('წვდომა შეზღუდულია', 'error');
+      const rooms = getRoomsData();
+      openModal('custom');
+      document.getElementById('modal-title').textContent = 'ტექნიკური დავალების დამატება';
+      document.getElementById('modal-content').innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label class="text-xs text-gray-500">სათაური *<input id="mtTitle" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="პრობლემის მოკლე აღწერა"></label>
+          <label class="text-xs text-gray-500">ნომერი / ლოკაცია<select id="mtRoomId" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="">საერთო სივრცე</option>${rooms.map(r => `<option value="${r.id}">${escapeHtml(r.roomNumber || r.roomName)}</option>`).join('')}</select></label>
+          <label class="text-xs text-gray-500">კატეგორია<select id="mtCategory" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>სანტექნიკა</option><option>ელექტროობა</option><option>კონდიცირება</option><option>გათბობა</option><option>Wi-Fi</option><option>ტელევიზორი</option><option>საკეტი</option><option>ავეჯი</option><option>სხვა</option></select></label>
+          <label class="text-xs text-gray-500">პრიორიტეტი<select id="mtPriority" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="normal">ჩვეულებრივი</option><option value="high">მაღალი</option><option value="critical">კრიტიკული</option><option value="low">დაბალი</option></select></label>
+          <label class="text-xs text-gray-500">პასუხისმგებელი<input id="mtAssignee" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="ტექნიკოსი"></label>
+          <label class="text-xs text-gray-500">ვადა<input id="mtDeadline" type="date" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${todayISO()}"></label>
+          <label class="text-xs text-gray-500">ხარჯი<input id="mtCost" type="number" min="0" step="0.01" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="0"></label>
+          <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="mtOutOfOrder" type="checkbox" class="rounded"> ნომერი გაყიდვიდან ამოღებულია</label>
+          <label class="md:col-span-2 text-xs text-gray-500">აღწერა<textarea id="mtDescription" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" rows="3" placeholder="დეტალური აღწერა, guest impact, საჭირო ნაწილები"></textarea></label>
+        </div>
+        <div class="mt-4 flex gap-2"><button class="px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="saveMaintenanceTicketFromForm()">შენახვა</button><button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg" onclick="closeModal()">გაუქმება</button></div>
+      `;
+    }
+
+    function saveMaintenanceTicketFromForm() {
+      if (!can('maintenanceManage')) return showToast('წვდომა შეზღუდულია', 'error');
+      const title = document.getElementById('mtTitle')?.value.trim() || '';
+      if (!title) return showToast('სათაური აუცილებელია', 'error');
+      const tickets = getMaintenanceData();
+      const nextId = Number(getState('nextMaintenanceTicketId', 1));
+      tickets.push({
+        id: nextId,
+        roomId: Number(document.getElementById('mtRoomId')?.value || 0) || null,
+        category: document.getElementById('mtCategory')?.value || 'სხვა',
+        priority: document.getElementById('mtPriority')?.value || 'normal',
+        status: 'new',
+        assignee: document.getElementById('mtAssignee')?.value.trim() || '',
+        title,
+        description: document.getElementById('mtDescription')?.value.trim() || '',
+        deadline: document.getElementById('mtDeadline')?.value || todayISO(),
+        outOfOrder: !!document.getElementById('mtOutOfOrder')?.checked,
+        cost: Math.max(0, Number(document.getElementById('mtCost')?.value || 0))
+      });
+      setMaintenanceData(tickets);
+      setState('nextMaintenanceTicketId', nextId + 1);
+      const createdTicket = tickets[tickets.length - 1];
+      if (createdTicket.roomId && createdTicket.outOfOrder) {
+        const rooms = getRoomsData();
+        const rIdx = rooms.findIndex(r => Number(r.id) === Number(createdTicket.roomId));
+        if (rIdx !== -1) {
+          rooms[rIdx].status = 'maintenance';
+          setRoomsData(rooms);
+        }
+      }
+      appendAudit('maintenance_ticket_create', 'maintenance', title);
+      closeModal();
+      renderMaintenance();
+    }
+
+    function updateMaintenanceTicket(id) {
+      const tickets = getMaintenanceData();
+      const idx = tickets.findIndex(t => Number(t.id) === Number(id));
+      if (idx === -1) return;
+      const nextStatus = document.getElementById(`mtStatus_${id}`)?.value || tickets[idx].status || 'new';
+      tickets[idx].status = nextStatus;
+      tickets[idx].technicianComment = document.getElementById(`mtComment_${id}`)?.value.trim() || '';
+      tickets[idx].updatedAt = new Date().toISOString();
+      if (nextStatus === 'completed') {
+        tickets[idx].completedAt = new Date().toISOString();
+        if (tickets[idx].roomId && tickets[idx].outOfOrder) {
+          const rooms = getRoomsData();
+          const rIdx = rooms.findIndex(r => Number(r.id) === Number(tickets[idx].roomId));
+          if (rIdx !== -1) {
+            rooms[rIdx].status = 'available';
+            setRoomsData(rooms);
+          }
+        }
+      }
+      setMaintenanceData(tickets);
+      appendAudit('maintenance_ticket_update', 'maintenance', `#${id} -> ${nextStatus}`);
+      renderMaintenance();
+    }
+
+    function completeMaintenanceTicket(id) {
+      const statusEl = document.getElementById(`mtStatus_${id}`);
+      if (statusEl) statusEl.value = 'completed';
+      updateMaintenanceTicket(id);
+    }
+
+    function renderTasks() {
+      const tasks = getTasksData();
+      document.getElementById('page-tasks').innerHTML = `
+        <div class="flex items-center justify-between mb-6"><h2 class="text-xl font-bold">ერთიანი დავალებები</h2><button onclick="addGenericTask()" class="px-4 py-2 bg-sky-600 text-white rounded-xl">დავალების დამატება</button></div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50 dark:bg-gray-700/50"><tr><th class="px-4 py-3 text-left">სათაური</th><th class="px-4 py-3 text-left">დეპარტამენტი</th><th class="px-4 py-3 text-left">შემსრულებელი</th><th class="px-4 py-3 text-left">ვადა</th><th class="px-4 py-3 text-left">სტატუსი</th></tr></thead><tbody>${tasks.map(t => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="px-4 py-3">${escapeHtml(t.title)}</td><td class="px-4 py-3">${escapeHtml(t.department || '-')}</td><td class="px-4 py-3">${escapeHtml(t.assignee || '-')}</td><td class="px-4 py-3">${escapeHtml(t.deadline || '-')}</td><td class="px-4 py-3">${operationalStatusBadge(t.status)}</td></tr>`).join('') || '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-500">დავალებები არ არის</td></tr>'}</tbody></table></div>
+      `;
+    }
+
+    function addGenericTask() {
+      return openGenericTaskForm();
+    }
+
+    function openGenericTaskForm() {
+      if (!can('tasksManage')) return showToast('დავალებების დამატების უფლება არ გაქვთ', 'error');
+      openModal('custom');
+      document.getElementById('modal-title').textContent = 'დავალების დამატება';
+      document.getElementById('modal-content').innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label class="text-xs text-gray-500">სათაური *<input id="taskTitle" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="დავალების სათაური"></label>
+          <label class="text-xs text-gray-500">დეპარტამენტი<select id="taskDepartment" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>რეცეფცია</option><option>დალაგება</option><option>ტექნიკური</option><option>ბუღალტერია</option><option>მენეჯმენტი</option><option>HR</option></select></label>
+          <label class="text-xs text-gray-500">შემსრულებელი<input id="taskAssignee" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="პასუხისმგებელი"></label>
+          <label class="text-xs text-gray-500">პრიორიტეტი<select id="taskPriority" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="normal">ჩვეულებრივი</option><option value="high">მაღალი</option><option value="critical">კრიტიკული</option><option value="low">დაბალი</option></select></label>
+          <label class="text-xs text-gray-500">ვადა<input id="taskDeadline" type="date" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${todayISO()}"></label>
+          <label class="text-xs text-gray-500">სტატუსი<select id="taskStatus" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="new">ახალი</option><option value="assigned">მინიჭებული</option><option value="in_progress">მიმდინარეობს</option><option value="pending">მოლოდინში</option></select></label>
+          <label class="text-xs text-gray-500">დაკავშირებული ნომერი<input id="taskRoom" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: 204"></label>
+          <label class="text-xs text-gray-500">დაკავშირებული ჯავშანი<input id="taskReservation" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="ჯავშნის ID"></label>
+          <label class="md:col-span-2 text-xs text-gray-500">აღწერა<textarea id="taskDescription" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" rows="3" placeholder="აღწერა, checklist, escalation"></textarea></label>
+        </div>
+        <div class="mt-4 flex gap-2"><button class="px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="saveGenericTaskFromForm()">შენახვა</button><button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg" onclick="closeModal()">გაუქმება</button></div>
+      `;
+    }
+
+    function saveGenericTaskFromForm() {
+      if (!can('tasksManage')) return showToast('დავალებების დამატების უფლება არ გაქვთ', 'error');
+      const title = document.getElementById('taskTitle')?.value.trim() || '';
+      if (!title) return showToast('დავალების სათაური აუცილებელია', 'error');
+      const tasks = getTasksData();
+      const nextId = Number(getState('nextTaskId', 1));
+      tasks.push({
+        id: nextId,
+        title,
+        department: document.getElementById('taskDepartment')?.value || ROLE_ACCOUNTS[currentRole]?.name || currentRole,
+        assignee: document.getElementById('taskAssignee')?.value.trim() || '',
+        priority: document.getElementById('taskPriority')?.value || 'normal',
+        deadline: document.getElementById('taskDeadline')?.value || todayISO(),
+        status: document.getElementById('taskStatus')?.value || 'new',
+        linkedRoom: document.getElementById('taskRoom')?.value.trim() || '',
+        linkedReservation: document.getElementById('taskReservation')?.value.trim() || '',
+        description: document.getElementById('taskDescription')?.value.trim() || ''
+      });
+      setTasksData(tasks);
+      setState('nextTaskId', nextId + 1);
+      appendAudit('task_create', 'task', title);
+      closeModal();
+      renderTasks();
+    }
+
+    function renderApprovals() {
+      const approvals = getApprovalsData();
+      document.getElementById('page-approvals').innerHTML = `
+        <div class="flex items-center justify-between mb-6"><h2 class="text-xl font-bold">დამტკიცების პროცესები</h2><button onclick="addApprovalRequest()" class="px-4 py-2 bg-sky-600 text-white rounded-xl">მოთხოვნის დამატება</button></div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">${card('მოლოდინში', approvals.filter(a => a.status === 'new').length, 'dashboard')}${card('დამტკიცებული', approvals.filter(a => a.status === 'approved').length, 'checkin')}${card('უარყოფილი', approvals.filter(a => a.status === 'rejected').length, 'checkout')}</div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50 dark:bg-gray-700/50"><tr><th class="px-4 py-3 text-left">ტიპი</th><th class="px-4 py-3 text-left">თანხა</th><th class="px-4 py-3 text-left">მიზეზი</th><th class="px-4 py-3 text-left">მომთხოვნი</th><th class="px-4 py-3 text-left">სტატუსი</th><th class="px-4 py-3 text-left">მოქმედება</th></tr></thead><tbody>${approvals.map(a => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="px-4 py-3">${escapeHtml(a.actionType)}</td><td class="px-4 py-3">${config.currency_symbol}${Number(a.amount || 0).toLocaleString('en-US')}</td><td class="px-4 py-3">${escapeHtml(a.reason || '-')}</td><td class="px-4 py-3">${escapeHtml(a.requester || '-')}</td><td class="px-4 py-3">${operationalStatusBadge(a.status)}</td><td class="px-4 py-3"><button onclick="resolveApproval(${a.id}, 'approved')" class="px-2 py-1 rounded bg-green-100 text-green-700 text-xs">დამტკიცება</button></td></tr>`).join('') || '<tr><td colspan="6" class="px-4 py-6 text-center text-gray-500">მოთხოვნები არ არის</td></tr>'}</tbody></table></div>
+      `;
+    }
+
+    function addApprovalRequest() {
+      return openApprovalRequestForm();
+    }
+
+    function openApprovalRequestForm() {
+      if (!can('tasksManage') && !can('approvalsManage')) return showToast('მოთხოვნის დამატების უფლება არ გაქვთ', 'error');
+      openModal('custom');
+      document.getElementById('modal-title').textContent = 'დამტკიცების მოთხოვნა';
+      document.getElementById('modal-content').innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label class="text-xs text-gray-500">ქმედების ტიპი<select id="approvalActionType" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="refund">თანხის დაბრუნება</option><option value="discount">ფასდაკლება</option><option value="void">ჩანაწერის გაუქმება</option><option value="invoice_cancel">ინვოისის გაუქმება</option><option value="complimentary_room">უფასო ნომერი</option><option value="out_of_order">გაყიდვიდან ამოღება</option><option value="permission_change">უფლების ცვლილება</option></select></label>
+          <label class="text-xs text-gray-500">თანხა<input id="approvalAmount" type="number" min="0" step="0.01" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="0"></label>
+          <label class="text-xs text-gray-500">დაკავშირებული ჩანაწერი<input id="approvalLinkedRecord" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="ჯავშანი / ინვოისი / ოთახი"></label>
+          <label class="text-xs text-gray-500">მომთხოვნი<input id="approvalRequester" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(ROLE_ACCOUNTS[currentRole]?.name || currentRole)}"></label>
+          <label class="md:col-span-2 text-xs text-gray-500">მიზეზი *<textarea id="approvalReason" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" rows="3" placeholder="რატომ არის საჭირო დამტკიცება"></textarea></label>
+        </div>
+        <div class="mt-4 flex gap-2"><button class="px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="saveApprovalRequestFromForm()">შენახვა</button><button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg" onclick="closeModal()">გაუქმება</button></div>
+      `;
+    }
+
+    function saveApprovalRequestFromForm() {
+      const reason = document.getElementById('approvalReason')?.value.trim() || '';
+      if (!reason) return showToast('მიზეზი აუცილებელია', 'error');
+      const approvals = getApprovalsData();
+      const nextId = Number(getState('nextApprovalId', 1));
+      approvals.push({
+        id: nextId,
+        actionType: document.getElementById('approvalActionType')?.value || 'discount',
+        amount: Math.max(0, Number(document.getElementById('approvalAmount')?.value || 0)),
+        reason,
+        linkedRecord: document.getElementById('approvalLinkedRecord')?.value.trim() || '',
+        requester: document.getElementById('approvalRequester')?.value.trim() || ROLE_ACCOUNTS[currentRole]?.name || currentRole,
+        status: 'new',
+        createdAt: new Date().toISOString()
+      });
+      setApprovalsData(approvals);
+      setState('nextApprovalId', nextId + 1);
+      appendAudit('approval_request_create', 'approval', reason);
+      closeModal();
+      renderApprovals();
+    }
+
+    function resolveApproval(id, status) {
+      if (!can('approvalsManage')) return showToast('დამტკიცების უფლება არ გაქვთ', 'error');
+      const approvals = getApprovalsData();
+      const idx = approvals.findIndex(a => Number(a.id) === Number(id));
+      if (idx === -1) return;
+      approvals[idx].status = status;
+      approvals[idx].approver = ROLE_ACCOUNTS[currentRole]?.name || currentRole;
+      approvals[idx].resolvedAt = new Date().toISOString();
+      setApprovalsData(approvals);
+      appendAudit('approval_resolve', 'approval', `#${id} -> ${status}`);
+      renderApprovals();
+    }
+
+    function renderDocuments() {
+      const docs = getDocumentsData();
+      document.getElementById('page-documents').innerHTML = `
+        <div class="flex items-center justify-between mb-6"><h2 class="text-xl font-bold">დოკუმენტების მართვა</h2><button onclick="addDocumentRecord()" class="px-4 py-2 bg-sky-600 text-white rounded-xl">დოკუმენტის დამატება</button></div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          ${card('დოკუმენტები', docs.length, 'reports')}
+          ${card('ფინანსური', docs.filter(d => String(d.category || '').includes('ფინანს')).length, 'finance')}
+          ${card('ვადიანი', docs.filter(d => d.expiresAt).length, 'checkout')}
+          ${card('შაბლონები', docs.filter(d => String(d.category || '').includes('SOP') || String(d.title || '').includes('შაბლონი')).length, 'dashboard')}
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50 dark:bg-gray-700/50"><tr><th class="px-4 py-3 text-left">დასახელება</th><th class="px-4 py-3 text-left">კატეგორია</th><th class="px-4 py-3 text-left">მფლობელი</th><th class="px-4 py-3 text-left">ვერსია</th><th class="px-4 py-3 text-left">ვადა</th><th class="px-4 py-3 text-left">წვდომა</th><th class="px-4 py-3 text-left">მოქმედება</th></tr></thead><tbody>${docs.map(d => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="px-4 py-3"><div class="font-medium">${escapeHtml(d.title)}</div><div class="text-xs text-gray-500">${escapeHtml(d.notes || '')}</div></td><td class="px-4 py-3">${escapeHtml(d.category || '-')}</td><td class="px-4 py-3">${escapeHtml(d.owner || '-')}</td><td class="px-4 py-3">${escapeHtml(d.version || '1.0')}</td><td class="px-4 py-3">${escapeHtml(d.expiresAt || '-')}</td><td class="px-4 py-3">${escapeHtml(d.accessRole || 'როლზე მიბმული')}</td><td class="px-4 py-3">${d.url ? `<a class="px-2 py-1 rounded bg-sky-100 text-sky-700 text-xs" target="_blank" href="${escapeHtml(d.url)}">გახსნა</a>` : '<span class="text-xs text-gray-400">ფაილი არ არის მიბმული</span>'}</td></tr>`).join('')}</tbody></table></div>
+      `;
+    }
+
+    function addDocumentRecord() {
+      return openDocumentForm();
+    }
+
+    function openDocumentForm() {
+      if (!can('documentsManage')) return showToast('დოკუმენტების მართვის უფლება არ გაქვთ', 'error');
+      openModal('custom');
+      document.getElementById('modal-title').textContent = 'დოკუმენტის დამატება';
+      document.getElementById('modal-content').innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label class="text-xs text-gray-500">დასახელება *<input id="docTitle" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="დოკუმენტის დასახელება"></label>
+          <label class="text-xs text-gray-500">კატეგორია<select id="docCategory" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>სტუმრის დოკუმენტი</option><option>ფინანსები</option><option>SOP</option><option>თანამშრომლები</option><option>ხელშეკრულება</option><option>ინვოისი</option></select></label>
+          <label class="text-xs text-gray-500">მფლობელი<input id="docOwner" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="დეპარტამენტი / პირი"></label>
+          <label class="text-xs text-gray-500">წვდომა<select id="docAccessRole" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${Object.values(ROLE_ACCOUNTS).map(r => `<option>${escapeHtml(r.name)}</option>`).join('')}<option>ყველა უფლებამოსილი როლი</option></select></label>
+          <label class="text-xs text-gray-500">ვერსია<input id="docVersion" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="1.0"></label>
+          <label class="text-xs text-gray-500">ვადა<input id="docExpiresAt" type="date" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"></label>
+          <label class="md:col-span-2 text-xs text-gray-500">ფაილის ბმული / საცავი<input id="docUrl" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="URL ან შიდა ბილიკი"></label>
+          <label class="md:col-span-2 text-xs text-gray-500">შენიშვნა<textarea id="docNotes" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" rows="3" placeholder="აღწერა, retention policy, შეზღუდვები"></textarea></label>
+        </div>
+        <div class="mt-4 flex gap-2"><button class="px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="saveDocumentRecordFromForm()">შენახვა</button><button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg" onclick="closeModal()">გაუქმება</button></div>
+      `;
+    }
+
+    function saveDocumentRecordFromForm() {
+      if (!can('documentsManage')) return showToast('დოკუმენტების მართვის უფლება არ გაქვთ', 'error');
+      const title = document.getElementById('docTitle')?.value.trim() || '';
+      if (!title) return showToast('დოკუმენტის დასახელება აუცილებელია', 'error');
+      const docs = getDocumentsData();
+      const nextId = Number(getState('nextDocumentId', 1));
+      docs.push({
+        id: nextId,
+        title,
+        category: document.getElementById('docCategory')?.value || 'SOP',
+        owner: document.getElementById('docOwner')?.value.trim() || ROLE_ACCOUNTS[currentRole]?.name || currentRole,
+        accessRole: document.getElementById('docAccessRole')?.value || ROLE_ACCOUNTS[currentRole]?.name || currentRole,
+        version: document.getElementById('docVersion')?.value.trim() || '1.0',
+        expiresAt: document.getElementById('docExpiresAt')?.value || '',
+        url: document.getElementById('docUrl')?.value.trim() || '',
+        notes: document.getElementById('docNotes')?.value.trim() || '',
+        createdAt: new Date().toISOString()
+      });
+      setDocumentsData(docs);
+      setState('nextDocumentId', nextId + 1);
+      appendAudit('document_record_create', 'document', title);
+      closeModal();
+      renderDocuments();
+    }
+
+    function renderHR() {
+      if (!can('hrManage')) {
+        document.getElementById('page-hr').innerHTML = '<div class="bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-100 dark:border-gray-700 text-sm text-gray-500">თანამშრომლების მოდულზე წვდომა შეზღუდულია.</div>';
+        return;
+      }
+      const employees = getEmployeesData();
+      const users = getUsersData();
+      document.getElementById('page-hr').innerHTML = `
+        <div class="flex items-center justify-between mb-6"><h2 class="text-xl font-bold">თანამშრომლები და მომხმარებლები</h2><button onclick="addEmployeeRecord()" class="px-4 py-2 bg-sky-600 text-white rounded-xl">თანამშრომლის/მომხმარებლის დამატება</button></div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">${card('თანამშრომლები', employees.length, 'guests')}${card('აქტიური მომხმარებლები', users.filter(u => u.status === 'active').length, 'dashboard')}${card('დეპარტამენტები', new Set(employees.map(e => e.department).filter(Boolean)).size, 'reports')}${card('როლები', new Set(users.map(u => u.roleKey).filter(Boolean)).size, 'checkin')}</div>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50 dark:bg-gray-700/50"><tr><th class="px-4 py-3 text-left">სახელი</th><th class="px-4 py-3 text-left">დეპარტამენტი</th><th class="px-4 py-3 text-left">პოზიცია</th><th class="px-4 py-3 text-left">ტელეფონი</th><th class="px-4 py-3 text-left">ცვლა</th></tr></thead><tbody>${employees.map(e => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="px-4 py-3">${escapeHtml(e.name)}</td><td class="px-4 py-3">${escapeHtml(e.department || '-')}</td><td class="px-4 py-3">${escapeHtml(e.position || e.role || '-')}</td><td class="px-4 py-3">${escapeHtml(e.phone || '-')}</td><td class="px-4 py-3">${escapeHtml(e.shift || '-')}</td></tr>`).join('') || '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-500">თანამშრომლები არ არის</td></tr>'}</tbody></table></div>
+          <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50 dark:bg-gray-700/50"><tr><th class="px-4 py-3 text-left">მომხმარებელი</th><th class="px-4 py-3 text-left">როლი</th><th class="px-4 py-3 text-left">ელფოსტა</th><th class="px-4 py-3 text-left">სტატუსი</th></tr></thead><tbody>${users.map(u => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="px-4 py-3">${escapeHtml(u.username)}</td><td class="px-4 py-3">${escapeHtml(ROLE_ACCOUNTS[u.roleKey]?.name || u.roleName || '-')}</td><td class="px-4 py-3">${escapeHtml(u.email || '-')}</td><td class="px-4 py-3">${u.status === 'active' ? 'აქტიური' : 'შეჩერებული'}</td></tr>`).join('') || '<tr><td colspan="4" class="px-4 py-6 text-center text-gray-500">მომხმარებლები არ არის</td></tr>'}</tbody></table></div>
+        </div>
+      `;
+    }
+
+    function addEmployeeRecord() {
+      return openEmployeeForm();
+    }
+
+    function openEmployeeForm() {
+      if (!can('hrManage')) return showToast('თანამშრომლების მართვის უფლება არ გაქვთ', 'error');
+      openModal('custom');
+      document.getElementById('modal-title').textContent = 'თანამშრომლის და მომხმარებლის დამატება';
+      document.getElementById('modal-content').innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label class="text-xs text-gray-500">სახელი და გვარი *<input id="empName" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: ნინო მაისურაძე"></label>
+          <label class="text-xs text-gray-500">დეპარტამენტი<select id="empDepartment" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>რეცეფცია</option><option>ჯავშნები</option><option>დალაგება</option><option>ტექნიკური</option><option>ბუღალტერია</option><option>მენეჯმენტი</option><option>HR</option><option>რესტორანი</option></select></label>
+          <label class="text-xs text-gray-500">პოზიცია<input id="empPosition" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="პოზიცია"></label>
+          <label class="text-xs text-gray-500">სისტემური როლი<select id="empRoleKey" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${Object.entries(ROLE_ACCOUNTS).map(([key, role]) => `<option value="${key}">${escapeHtml(role.name)}</option>`).join('')}</select></label>
+          <label class="text-xs text-gray-500">ტელეფონი<input id="empPhone" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="+995"></label>
+          <label class="text-xs text-gray-500">ელფოსტა<input id="empEmail" type="email" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="email@hotel.ge"></label>
+          <label class="text-xs text-gray-500">მომხმარებლის სახელი *<input id="empUsername" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="username"></label>
+          <label class="text-xs text-gray-500">საწყისი პაროლი *<input id="empPassword" type="password" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მინ. 6 სიმბოლო"></label>
+          <label class="text-xs text-gray-500">კონტრაქტის ტიპი<select id="empContractType" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>სრული განაკვეთი</option><option>ნახევარი განაკვეთი</option><option>დროებითი</option><option>კონტრაქტორი</option></select></label>
+          <label class="text-xs text-gray-500">დაწყების თარიღი<input id="empStartDate" type="date" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${todayISO()}"></label>
+          <label class="text-xs text-gray-500">ცვლა<select id="empShift" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>დღის ცვლა</option><option>ღამის ცვლა</option><option>ცვლადი გრაფიკი</option></select></label>
+          <label class="text-xs text-gray-500">საგანგებო კონტაქტი<input id="empEmergencyContact" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="სახელი / ტელეფონი"></label>
+          <label class="md:col-span-2 text-xs text-gray-500">შენიშვნა<textarea id="empNotes" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" rows="3" placeholder="დოკუმენტები, სერტიფიკატები, შეზღუდვები"></textarea></label>
+        </div>
+        <div class="mt-4 flex gap-2"><button class="px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="saveEmployeeFromForm()">შენახვა</button><button class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg" onclick="closeModal()">გაუქმება</button></div>
+      `;
+    }
+
+    function saveEmployeeFromForm() {
+      if (!can('hrManage')) return showToast('თანამშრომლების მართვის უფლება არ გაქვთ', 'error');
+      const name = document.getElementById('empName')?.value.trim() || '';
+      const username = document.getElementById('empUsername')?.value.trim() || '';
+      const password = document.getElementById('empPassword')?.value || '';
+      const roleKey = document.getElementById('empRoleKey')?.value || 'front_office';
+      if (!name || !username || password.length < 6) return showToast('შეავსეთ სახელი, მომხმარებელი და მინ. 6 სიმბოლოანი პაროლი', 'error');
+      const users = getUsersData();
+      if (users.some(u => String(u.username || '').toLowerCase() === username.toLowerCase())) return showToast('ასეთი მომხმარებელი უკვე არსებობს', 'error');
+      const employees = getEmployeesData();
+      const nextId = Number(getState('nextEmployeeId', 1));
+      const nextUserId = Number(getState('nextUserId', 1));
+      const email = document.getElementById('empEmail')?.value.trim() || '';
+      employees.push({
+        id: nextId,
+        userId: nextUserId,
+        name,
+        department: document.getElementById('empDepartment')?.value || '',
+        position: document.getElementById('empPosition')?.value.trim() || ROLE_ACCOUNTS[roleKey]?.name || 'თანამშრომელი',
+        role: ROLE_ACCOUNTS[roleKey]?.name || roleKey,
+        phone: document.getElementById('empPhone')?.value.trim() || '',
+        email,
+        contractType: document.getElementById('empContractType')?.value || '',
+        startDate: document.getElementById('empStartDate')?.value || todayISO(),
+        shift: document.getElementById('empShift')?.value || 'დღის ცვლა',
+        emergencyContact: document.getElementById('empEmergencyContact')?.value.trim() || '',
+        notes: document.getElementById('empNotes')?.value.trim() || ''
+      });
+      users.push({
+        id: nextUserId,
+        employeeId: nextId,
+        username,
+        email,
+        roleKey,
+        roleName: ROLE_ACCOUNTS[roleKey]?.name || roleKey,
+        status: 'active',
+        passwordHint: `${password.length} სიმბოლო`,
+        mustChangePassword: true,
+        createdAt: new Date().toISOString()
+      });
+      setEmployeesData(employees);
+      setUsersData(users);
+      setState('nextEmployeeId', nextId + 1);
+      setState('nextUserId', nextUserId + 1);
+      appendAudit('employee_create', 'employee', name);
+      appendAudit('user_create', 'user', `${username} • ${ROLE_ACCOUNTS[roleKey]?.name || roleKey}`);
+      closeModal();
+      renderHR();
+    }
+
+    function renderAudit() {
+      if (!can('auditView')) {
+        document.getElementById('page-audit').innerHTML = '<div class="bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-100 dark:border-gray-700 text-sm text-gray-500">აუდიტის ჟურნალზე წვდომა შეზღუდულია.</div>';
+        return;
+      }
+      const logs = getAuditData();
+      document.getElementById('page-audit').innerHTML = `
+        <div class="flex items-center justify-between mb-6"><h2 class="text-xl font-bold">აუდიტის ჟურნალი</h2><button onclick="exportAuditCSV()" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-xl">CSV ექსპორტი</button></div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto"><table class="w-full text-sm"><thead class="bg-gray-50 dark:bg-gray-700/50"><tr><th class="px-4 py-3 text-left">დრო</th><th class="px-4 py-3 text-left">როლი</th><th class="px-4 py-3 text-left">ქმედება</th><th class="px-4 py-3 text-left">ობიექტი</th><th class="px-4 py-3 text-left">დეტალი</th></tr></thead><tbody>${logs.map(l => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="px-4 py-3">${formatDate(l.createdAt)}</td><td class="px-4 py-3">${escapeHtml(l.roleName || l.role || '-')}</td><td class="px-4 py-3">${escapeHtml(l.action || '-')}</td><td class="px-4 py-3">${escapeHtml(l.entity || '-')}</td><td class="px-4 py-3">${escapeHtml(l.details || '-')}</td></tr>`).join('') || '<tr><td colspan="5" class="px-4 py-6 text-center text-gray-500">აუდიტი ცარიელია</td></tr>'}</tbody></table></div>
+      `;
+    }
+
+    function exportAuditCSV() {
+      const rows = getAuditData().map(l => ({ created_at: l.createdAt || '', role: l.roleName || l.role || '', action: l.action || '', entity: l.entity || '', details: l.details || '' }));
+      downloadCSV('audit_log.csv', [
+        { key: 'created_at', label: 'დრო' },
+        { key: 'role', label: 'როლი' },
+        { key: 'action', label: 'ქმედება' },
+        { key: 'entity', label: 'ობიექტი' },
+        { key: 'details', label: 'დეტალი' }
+      ], rows);
+    }
+
     function renderSettings() {
       if (!can('settingsView')) {
         document.getElementById('page-settings').innerHTML = '<div class="bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-100 dark:border-gray-700 text-sm text-gray-500">პარამეტრებზე წვდომა შეზღუდულია.</div>';
@@ -2447,7 +3409,7 @@
               <div class="mt-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600">
                 <p class="text-sm font-medium mb-2">სასტუმროს ლოგო</p>
                 <div class="flex items-center gap-3 mb-3">
-                  <img id="settingsLogoPreview" src="${escapeHtml(getHotelLogoUrl())}" alt="Logo Preview" class="w-12 h-12 rounded-lg object-cover bg-white border border-gray-200">
+                  <img id="settingsLogoPreview" src="${escapeHtml(getHotelLogoUrl())}" alt="ლოგოს წინასწარი ნახვა" class="w-12 h-12 rounded-lg object-cover bg-white border border-gray-200">
                   <span class="text-xs text-gray-500">ფაილის სახელი: <code>Green Tower Hotel.png</code></span>
                 </div>
                 <p class="text-xs text-gray-500">ლოგო იტვირთება მხოლოდ რეპოზიტორიაში არსებული ფაილიდან: <code>Green Tower Hotel.png</code></p>
@@ -2458,15 +3420,15 @@
               <h3 class="font-semibold mb-4">პოლიტიკა</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <label class="block mb-1 text-gray-500">სტანდარტული Check-out დრო</label>
+                  <label class="block mb-1 text-gray-500">სტანდარტული გასვლის დრო</label>
                   <input id="policyCheckoutTime" type="time" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(policy.checkoutTime)}">
                 </div>
                 <div>
-                  <label class="block mb-1 text-gray-500">გვიანი Check-out ტარიფი (₾ / საათი)</label>
+                  <label class="block mb-1 text-gray-500">გვიანი გასვლა ტარიფი (₾ / საათი)</label>
                   <input id="policyLateHourlyRate" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(policy.lateCheckoutHourlyRate || 0)}">
                 </div>
                 <div>
-                  <label class="block mb-1 text-gray-500">Extra Bed ტარიფი (₾ / ღამე)</label>
+                  <label class="block mb-1 text-gray-500">დამატებითი საწოლი ტარიფი (₾ / ღამე)</label>
                   <input id="policyExtraBedRate" type="number" min="0" step="0.01" class="w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(policy.extraBedRate || 0)}">
                 </div>
               </div>
@@ -2608,6 +3570,8 @@
       document.getElementById('newGuestEmail').value = guest.guestEmail || '';
       document.getElementById('newGuestCitizenship').value = guest.guestCitizenship || '';
       document.getElementById('newGuestBirthDate').value = guest.guestBirthDate || '';
+      const vipEl = document.getElementById('newReservationVip');
+      if (vipEl) vipEl.checked = !!guest.vip;
     }
 
     function autoFillGuestModalById() {
@@ -2626,6 +3590,8 @@
       if (emailEl) emailEl.value = guest.guestEmail || '';
       if (citEl) citEl.value = guest.guestCitizenship || '';
       if (birthEl) birthEl.value = guest.guestBirthDate || '';
+      const vipEl = document.getElementById('newGuestModalVip');
+      if (vipEl) vipEl.checked = !!guest.vip;
     }
 
     function findKnownGuestById(guestIdNumber) {
@@ -2644,6 +3610,7 @@
         guestIdNumber: id,
         guestCitizenship: latestReservation.guestCitizenship || '',
         guestBirthDate: latestReservation.guestBirthDate || '',
+        vip: !!(latestReservation.vip || latestReservation.vipFlag),
         blacklisted: false
       };
     }
@@ -2662,10 +3629,12 @@
       const checkoutTime = document.getElementById('newCheckoutTime')?.value || getPolicySettings().checkoutTime;
       const additionalFeeName = document.getElementById('newAdditionalFeeName')?.value.trim() || '';
       const additionalFeeAmount = Math.max(0, Number(document.getElementById('newAdditionalFeeAmount')?.value || 0));
+      const comment = document.getElementById('newReservationComment')?.value.trim() || '';
+      const vip = !!document.getElementById('newReservationVip')?.checked;
       const paymentStatus = document.getElementById('newPaymentStatus').value;
       let paidAmount = Number(document.getElementById('newPaidAmount')?.value || 0);
       if (!guestName || !checkinDate || !checkoutDate) return showToast('შეავსეთ აუცილებელი ველები', 'error');
-      if (checkoutDate <= checkinDate) return showToast('Check-out თარიღი უნდა იყოს Check-in თარიღის შემდეგ', 'error');
+      if (checkoutDate <= checkinDate) return showToast('გასვლის თარიღი უნდა იყოს შესახლების თარიღის შემდეგ', 'error');
       if (!canMutateForDate(checkinDate, 'დახურულ პერიოდზე ჯავშნის დამატება შეუძლებელია')) return;
       if (guestIdNumber) {
         const knownGuest = findKnownGuestById(guestIdNumber);
@@ -2706,6 +3675,10 @@
         extraBedFee: charges.extraBedFee,
         minibarItems: normalizeMinibarItems(minibarItems),
         minibarTotal: charges.minibarAmount,
+        comment,
+        internalNotes: comment,
+        vip,
+        vipFlag: vip,
         totalPrice
       };
       reservations.push(createdReservation);
@@ -2715,7 +3688,7 @@
       if (guestIdNumber) {
         const guests = getGuestsData();
         const idx = guests.findIndex(g => g.guestIdNumber === guestIdNumber);
-        const guestPayload = { guestName, guestPhone, guestEmail, guestIdNumber, guestCitizenship, guestBirthDate };
+        const guestPayload = { guestName, guestPhone, guestEmail, guestIdNumber, guestCitizenship, guestBirthDate, vip };
         if (idx === -1) guests.push({ ...guestPayload, blacklisted: false });
         else guests[idx] = { ...guests[idx], ...guestPayload };
         setGuestsData(guests);
@@ -2765,7 +3738,7 @@
       qtyEl.disabled = !checkEl.checked || !enabled;
       const feeLabel = document.getElementById(feeLabelId);
       if (feeLabel) {
-        feeLabel.textContent = enabled ? `Extra Bed ტარიფი: ${config.currency_symbol}${Number(getPolicySettings().extraBedRate || 0)} / ღამე` : 'Extra Bed ამ ნომერზე მიუწვდომელია';
+        feeLabel.textContent = enabled ? `დამატებითი საწოლი ტარიფი: ${config.currency_symbol}${Number(getPolicySettings().extraBedRate || 0)} / ღამე` : 'დამატებითი საწოლი ამ ნომერზე მიუწვდომელია';
       }
     }
 
@@ -2945,14 +3918,139 @@
       return Math.max(0, total - paidAmount);
     }
 
+    function getReservationFolioRows(res) {
+      const rows = [];
+      const nights = calculateNights(res.checkinDate, res.checkoutDate);
+      const room = findRoomById(res.roomId);
+      const roomCharge = Math.max(0, Number(res.nightlyRate || room?.basePrice || 0) * Math.max(1, nights || 1));
+      rows.push({
+        date: `${res.checkinDate || todayISO()} 15:00`,
+        category: roomTypeLabel(room?.roomType || 'ოთახი'),
+        name: `${room?.roomName || room?.roomNumber || 'ნომრის საფასური'} - ${Math.max(1, nights || 1)} ღამე`,
+        price: Number(res.nightlyRate || room?.basePrice || 0),
+        qty: Math.max(1, nights || 1),
+        total: roomCharge
+      });
+      if (Number(res.additionalFeeAmount || 0) > 0) rows.push({ date: res.checkinDate || todayISO(), category: 'დამატებითი გადასახადი', name: res.additionalFeeName || 'დამატებითი სერვისი', price: Number(res.additionalFeeAmount || 0), qty: 1, total: Number(res.additionalFeeAmount || 0) });
+      if (Number(res.lateCheckoutFee || 0) > 0) rows.push({ date: res.checkoutDate || todayISO(), category: 'გვიანი გასვლა', name: 'გვიანი გასვლის გადასახადი', price: Number(res.lateCheckoutFee || 0), qty: 1, total: Number(res.lateCheckoutFee || 0) });
+      if (Number(res.extraBedFee || 0) > 0) rows.push({ date: res.checkinDate || todayISO(), category: 'დამატებითი საწოლი', name: `დამატებითი საწოლი x${Number(res.extraBedQty || 1)}`, price: Number(res.extraBedFee || 0), qty: 1, total: Number(res.extraBedFee || 0) });
+      normalizeMinibarItems(res.minibarItems || []).forEach((item) => rows.push({ date: res.checkoutDate || todayISO(), category: 'მინიბარი', name: item.name, price: item.unitPrice, qty: item.quantity, total: item.unitPrice * item.quantity }));
+      (Array.isArray(res.folioServices) ? res.folioServices : []).forEach((item) => rows.push({
+        date: item.createdAt ? item.createdAt.slice(0, 16).replace('T', ' ') : todayISO(),
+        category: item.category || 'სერვისი',
+        name: item.name || 'დამატებითი სერვისი',
+        price: Number(item.price || 0),
+        qty: Number(item.quantity || 1),
+        total: Number(item.total || 0)
+      }));
+      return rows.filter((row) => Number(row.total || 0) >= 0);
+    }
+
+    function addFolioServiceFromDetails(resId) {
+      if (!can('paymentsManage') && !can('reservationsManage')) return showToast('სერვისის დარიცხვის უფლება არ გაქვთ', 'error');
+      const reservations = getReservationsData();
+      const idx = reservations.findIndex(r => Number(r.id) === Number(resId));
+      if (idx === -1) return;
+      if (!canMutateForDate(todayISO(), 'დახურულ პერიოდზე სერვისის დარიცხვა შეუძლებელია')) return;
+      const category = document.getElementById('folioServiceCategory')?.value || 'სხვა';
+      const minibarProductId = Number(document.getElementById('folioMinibarProduct')?.value || 0);
+      const product = getMinibarProductsData().find((p) => Number(p.id) === minibarProductId);
+      const name = category === 'მინიბარი' ? String(product?.name || '').trim() : (document.getElementById('folioServiceName')?.value.trim() || '');
+      const price = category === 'მინიბარი' ? Math.max(0, Number(product?.price || 0)) : Math.max(0, Number(document.getElementById('folioServicePrice')?.value || 0));
+      const quantity = Math.max(1, Number(document.getElementById('folioServiceQty')?.value || 1));
+      if (!name || !price) return showFolioMessage('აირჩიეთ მინიბარის პროდუქტი ან შეავსეთ სერვისის დასახელება და ფასი', 'error');
+      const total = price * quantity;
+      const services = Array.isArray(reservations[idx].folioServices) ? reservations[idx].folioServices : [];
+      services.push({ id: Date.now(), category, name, productId: product?.id || null, price, quantity, total, createdAt: new Date().toISOString(), createdBy: ROLE_ACCOUNTS[currentRole]?.name || currentRole });
+      reservations[idx].folioServices = services;
+      reservations[idx].totalPrice = Number(reservations[idx].totalPrice || 0) + total;
+      const paid = normalizeReservationPayment(reservations[idx]);
+      reservations[idx].paymentStatus = paid <= 0 ? 'unpaid' : paid >= Number(reservations[idx].totalPrice || 0) ? 'paid' : 'partial';
+      setReservationsData(reservations);
+      appendFinanceAudit('folio_service_add', 'reservation', `#${resId} • ${name} • ${total}`);
+      showToast('სერვისი ანგარიშზე დაერიცხა');
+      openReservationDetails(resId);
+    }
+
+    function showFolioMessage(message, type = 'error') {
+      const el = document.getElementById('folioInlineMessage');
+      if (!el) return showToast(message, type === 'error' ? 'error' : 'success');
+      el.textContent = message;
+      el.className = `folio-inline-message ${type === 'success' ? 'success' : 'error'}`;
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function updateFolioServiceCategoryUI() {
+      const category = document.getElementById('folioServiceCategory')?.value || 'მინიბარი';
+      const minibarWrap = document.getElementById('folioMinibarWrap');
+      const manualWrap = document.getElementById('folioManualServiceWrap');
+      if (minibarWrap) minibarWrap.style.display = category === 'მინიბარი' ? '' : 'none';
+      if (manualWrap) manualWrap.style.display = category === 'მინიბარი' ? 'none' : '';
+      updateFolioMinibarProduct();
+    }
+
+    function updateFolioMinibarProduct() {
+      const productId = Number(document.getElementById('folioMinibarProduct')?.value || 0);
+      const product = getMinibarProductsData().find((p) => Number(p.id) === productId);
+      const priceEl = document.getElementById('folioServicePrice');
+      const nameEl = document.getElementById('folioServiceName');
+      if (product) {
+        if (priceEl) priceEl.value = String(Number(product.price || 0));
+        if (nameEl) nameEl.value = product.name || '';
+      }
+      updateFolioServicePreview();
+    }
+
+    function updateFolioServicePreview() {
+      const price = Math.max(0, Number(document.getElementById('folioServicePrice')?.value || 0));
+      const quantity = Math.max(1, Number(document.getElementById('folioServiceQty')?.value || 1));
+      const el = document.getElementById('folioServicePreview');
+      if (el) el.textContent = `${(price * quantity).toLocaleString('en-US')} ${config.currency_symbol}`;
+    }
+
+    function addPaymentFromReservationDetails(resId) {
+      if (!can('paymentsManage')) return showToast('გადახდის დამატების უფლება არ გაქვთ', 'error');
+      const reservations = getReservationsData();
+      const idx = reservations.findIndex(r => Number(r.id) === Number(resId));
+      if (idx === -1) return;
+      if (!canMutateForDate(todayISO(), 'დახურულ პერიოდზე გადახდის დამატება შეუძლებელია')) return;
+      const amount = Math.max(0, Number(document.getElementById('folioPaymentAmount')?.value || 0));
+      if (!amount) return showFolioMessage('გადახდის თანხა აუცილებელია', 'error');
+      const method = document.getElementById('folioPaymentMethod')?.value || 'card';
+      const comment = document.getElementById('folioPaymentComment')?.value.trim() || '';
+      const payments = getPaymentsData();
+      const nextId = Number(getState('nextPaymentId', 1));
+      payments.push({
+        id: nextId,
+        reservationId: Number(resId),
+        guestName: reservations[idx].guestName || 'სტუმარი',
+        amount,
+        method,
+        status: 'paid',
+        comment,
+        createdAt: new Date().toISOString()
+      });
+      setPaymentsData(payments);
+      setState('nextPaymentId', nextId + 1);
+      const paidTotal = payments.filter(p => Number(p.reservationId) === Number(resId)).reduce((sum, p) => sum + Number(p.amount || 0), 0);
+      const total = Number(reservations[idx].totalPrice || 0);
+      reservations[idx].paidAmount = Math.min(total, paidTotal);
+      reservations[idx].paymentStatus = paidTotal <= 0 ? 'unpaid' : paidTotal >= total ? 'paid' : 'partial';
+      setReservationsData(reservations);
+      appendFinanceAudit('payment_create', 'payment', `reservation #${resId} • ${amount} • ${paymentMethodLabel(method)}`);
+      showToast('გადახდა დაემატა');
+      openReservationDetails(resId);
+    }
+
     function upsertPaymentFromReservation(reservation) {
       const payments = getPaymentsData();
-      const idx = payments.findIndex(p => Number(p.reservationId) === Number(reservation.id));
+      const matchingIndexes = payments.map((p, idx) => Number(p.reservationId) === Number(reservation.id) ? idx : -1).filter(idx => idx >= 0);
+      const idx = matchingIndexes[0] ?? -1;
       const paidAmount = normalizeReservationPayment(reservation);
       const shouldExist = paidAmount > 0 && ['paid', 'partial', 'advance'].includes(reservation.paymentStatus);
       if (!shouldExist) {
-        if (idx !== -1) {
-          payments.splice(idx, 1);
+        if (matchingIndexes.length) {
+          matchingIndexes.slice().reverse().forEach((paymentIdx) => payments.splice(paymentIdx, 1));
           setPaymentsData(payments);
         }
         return;
@@ -2961,13 +4059,13 @@
         reservationId: reservation.id,
         guestName: reservation.guestName || 'სტუმარი',
         amount: paidAmount,
-        method: idx !== -1 ? (payments[idx].method || 'card') : 'card',
+        method: idx !== -1 ? (payments[idx].method || 'transfer') : 'transfer',
         status: reservation.paymentStatus,
         createdAt: idx !== -1 ? (payments[idx].createdAt || new Date().toISOString()) : new Date().toISOString()
       };
-      if (idx !== -1) {
+      if (idx !== -1 && matchingIndexes.length === 1) {
         payments[idx] = { ...payments[idx], ...base };
-      } else {
+      } else if (idx === -1) {
         const nextId = Number(getState('nextPaymentId', 1));
         payments.push({ id: nextId, ...base });
         setState('nextPaymentId', nextId + 1);
@@ -3069,60 +4167,139 @@
       const res = getReservationsData().find(r => Number(r.id) === Number(resId));
       if (!res) return;
       const canManageReservations = can('reservationsManage');
+      const canManagePayments = can('paymentsManage');
       const room = findRoomById(res.roomId);
       const policy = getPolicySettings();
       const roomSupportsExtraBed = !!room?.supportsExtraBed;
+      const paidAmount = normalizeReservationPayment(res);
+      const dueAmount = reservationDueAmount(res);
+      const folioRows = getReservationFolioRows(res);
+      const reservationPayments = getPaymentsData().filter(p => Number(p.reservationId) === Number(res.id));
       openModal('custom');
-      document.getElementById('modal-title').textContent = 'ჯავშნის დეტალები';
+      document.getElementById('modal-container')?.classList.add('folio-context');
+      document.getElementById('modal-title').textContent = 'ანგარიშსწორება, ინვოისები და გადახდები / Folio';
       const headerAmount = document.getElementById('modal-header-amount');
       if (headerAmount) {
         headerAmount.classList.remove('hidden');
-        updateReservationModalHeaderAmount(Number(res.totalPrice || 0));
+        updateReservationModalHeaderAmount(dueAmount);
       }
       updateModalHeaderSourceLogo(res);
       document.getElementById('modal-content').innerHTML = `
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-          <label class="text-xs text-gray-500">სტუმრის სახელი<input id="editGuestName" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.guestName || '')}"></label>
-          <label class="text-xs text-gray-500">ტელეფონი<input id="editGuestPhone" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.guestPhone || '')}"></label>
-          <label class="text-xs text-gray-500">ელფოსტა<input id="editGuestEmail" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.guestEmail || '')}"></label>
-          <label class="text-xs text-gray-500">პირადი ნომერი / პასპორტი<input id="editGuestIdNumber" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.guestIdNumber || '')}"></label>
-          <label class="text-xs text-gray-500">მოქალაქეობა<input id="editGuestCitizenship" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.guestCitizenship || '')}"></label>
-          <label class="text-xs text-gray-500">დაბადების თარიღი<input id="editGuestBirthDate" type="date" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.guestBirthDate || '')}"></label>
-          <label class="text-xs text-gray-500">ოთახი<select id="editRoomId" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full">${getRoomsData().map(r => `<option value="${r.id}" ${Number(r.id)===Number(res.roomId)?'selected':''}>${r.roomName} (${roomTypeLabel(r.roomType)})</option>`).join('')}</select></label>
-          <label class="text-xs text-gray-500">სტატუსი<select id="editStatus" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full"><option ${res.status==='Reserved'?'selected':''} value="Reserved">დაჯავშნილი</option><option ${res.status==='Checked-in'?'selected':''} value="Checked-in">Check-in</option><option ${res.status==='Checked-out'?'selected':''} value="Checked-out">Check-out</option><option ${res.status==='Cancelled'?'selected':''} value="Cancelled">გაუქმებული</option></select></label>
-          <label class="text-xs text-gray-500">Check-in თარიღი<input id="editCheckinDate" type="date" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.checkinDate || '')}"></label>
-          <label class="text-xs text-gray-500">Check-out თარიღი<input id="editCheckoutDate" type="date" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.checkoutDate || '')}"></label>
-          <label class="text-xs text-gray-500">Check-out დრო<input id="editCheckoutTime" type="time" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.checkoutTime || policy.checkoutTime)}"></label>
-          <label class="text-xs text-gray-500">გადახდის სტატუსი<select id="editPaymentStatus" onchange="togglePaidAmountField('editPaymentStatus','editPaidAmountWrap')" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full"><option value="unpaid" ${res.paymentStatus==='unpaid'?'selected':''}>გადაუხდელი</option><option value="partial" ${res.paymentStatus==='partial'?'selected':''}>ნაწილობრივ</option><option value="advance" ${res.paymentStatus==='advance'?'selected':''}>ავანსი</option><option value="paid" ${res.paymentStatus==='paid'?'selected':''}>გადახდილი</option></select></label>
-          <div id="editPaidAmountWrap" class="${(res.paymentStatus === 'partial' || res.paymentStatus === 'advance') ? '' : 'hidden'}">
-            <label class="text-xs text-gray-500 block">ავანსი / ნაწილობრივი თანხა (₾)</label>
-            <input id="editPaidAmount" type="number" min="0" step="0.01" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(res.paidAmount || 0)}">
+        <div class="folio-page">
+          <div class="folio-topbar">
+            <button class="folio-back" onclick="closeModal()">‹</button>
+            <div>
+              <div class="folio-title">ანგარიშსწორება, ინვოისები და გადახდები / Folio</div>
+              <div class="folio-subtitle">მართეთ სასტუმროს ნომრისა და დამატებითი სერვისების ფინანსური ბალანსები</div>
+            </div>
+            <div class="folio-reservation-select">აქტიური ჯავშანი: ${escapeHtml(res.guestName || 'სტუმარი')} (${escapeHtml(room?.roomNumber || room?.roomName || '-')}) - ${escapeHtml(res.invoiceNo || `RES-${res.id}`)}</div>
           </div>
-          <label class="text-xs text-gray-500">დამატებითი გადასახადი (სახელი)<input id="editAdditionalFeeName" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.additionalFeeName || '')}"></label>
-          <label class="text-xs text-gray-500">დამატებითი გადასახადი (₾)<input id="editAdditionalFeeAmount" type="number" min="0" step="0.01" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(res.additionalFeeAmount || 0)}"></label>
-          ${renderMinibarSelector('edit', res.minibarItems || [])}
-          <div id="editExtraBedWrap" class="${roomSupportsExtraBed ? '' : 'hidden'} md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3">
-            <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="editExtraBedEnabled" type="checkbox" class="rounded" ${res.extraBedEnabled ? 'checked' : ''}> Extra Bed</label>
-            <label class="text-xs text-gray-500">Extra Bed რაოდენობა<select id="editExtraBedQty" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full"></select></label>
-            <div class="text-xs text-gray-500 mt-6" id="editExtraBedRateInfo"></div>
+
+          <div class="folio-layout">
+            <div class="folio-main">
+              <section class="folio-card">
+                <div class="folio-card-header">
+                  <div>
+                    <h4>სტუმარი: ${escapeHtml(res.guestName || 'სტუმარი')}</h4>
+                    <p>ტელ: ${escapeHtml(res.guestPhone || '-')} <span>|</span> იმეილი: ${escapeHtml(res.guestEmail || '-')}</p>
+                  </div>
+                  <span class="folio-status ${dueAmount > 0 ? 'danger' : 'success'}">${dueAmount > 0 ? 'გადასახდელია ნაშთი' : 'გადახდილია'}</span>
+                </div>
+                <div class="folio-metrics">
+                  <div class="metric neutral"><span>ჯამური სერვისები</span><strong>${Number(res.totalPrice || 0).toLocaleString('en-US')} ${config.currency_symbol}</strong></div>
+                  <div class="metric success"><span>გადახდილია</span><strong>${paidAmount.toLocaleString('en-US')} ${config.currency_symbol}</strong></div>
+                  <div class="metric danger"><span>საბოლოო ნაშთი</span><strong>${dueAmount.toLocaleString('en-US')} ${config.currency_symbol}</strong></div>
+                </div>
+              </section>
+
+              <section class="folio-card">
+                <div class="folio-section-title"><span>▤</span><h4>ანგარიშის დეტალური ხაზები (Folio)</h4><button onclick="printInvoice(${res.id})">მიმდინარე ინვოისი</button></div>
+                <div class="folio-table-wrap">
+                  <table class="folio-table">
+                    <thead><tr><th>დარიცხვის თარიღი</th><th>სერვისი / კატეგორია</th><th>ფასი</th><th>რაოდენობა</th><th>ჯამი</th><th>ქმედება</th></tr></thead>
+                    <tbody>${folioRows.map(row => `<tr><td>${escapeHtml(row.date)}</td><td><strong>${escapeHtml(row.name)}</strong><small>${escapeHtml(row.category)}</small></td><td>${Number(row.price || 0).toLocaleString('en-US')}${config.currency_symbol}</td><td>x${Number(row.qty || 1)}</td><td><strong>${Number(row.total || 0).toLocaleString('en-US')}${config.currency_symbol}</strong></td><td><button onclick="printInvoice(${res.id})">ბეჭდვა</button></td></tr>`).join('')}</tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section class="folio-card">
+                <div class="folio-section-title success"><span>✓</span><h4>გადახდების ისტორია (${reservationPayments.length})</h4></div>
+                <div class="folio-payment-history">
+                  ${reservationPayments.map(p => `<div><span>${formatDate(p.createdAt)}</span><strong>${Number(p.amount || 0).toLocaleString('en-US')} ${config.currency_symbol}</strong><em>${paymentMethodLabel(p.method)} • ${paymentStatusLabel(p.status)}</em></div>`).join('') || '<p class="folio-empty">გადახდა ჯერ არ დამატებულა</p>'}
+                </div>
+              </section>
+
+              <section class="folio-card">
+                <div class="folio-section-title"><span>✎</span><h4>ჯავშნის მონაცემები</h4></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <label class="text-xs text-gray-500">სტუმრის სახელი<input id="editGuestName" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.guestName || '')}"></label>
+                  <label class="text-xs text-gray-500">ტელეფონი<input id="editGuestPhone" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.guestPhone || '')}"></label>
+                  <label class="text-xs text-gray-500">ელფოსტა<input id="editGuestEmail" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.guestEmail || '')}"></label>
+                  <label class="text-xs text-gray-500">პირადი ნომერი / პასპორტი<input id="editGuestIdNumber" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.guestIdNumber || '')}"></label>
+                  <label class="text-xs text-gray-500">მოქალაქეობა<input id="editGuestCitizenship" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.guestCitizenship || '')}"></label>
+                  <label class="text-xs text-gray-500">დაბადების თარიღი<input id="editGuestBirthDate" type="date" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.guestBirthDate || '')}"></label>
+                  <label class="text-xs text-gray-500">ოთახი<select id="editRoomId" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full">${getRoomsData().map(r => `<option value="${r.id}" ${Number(r.id)===Number(res.roomId)?'selected':''}>${escapeHtml(r.roomName)} (${roomTypeLabel(r.roomType)})</option>`).join('')}</select></label>
+                  <label class="text-xs text-gray-500">სტატუსი<select id="editStatus" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full"><option ${res.status==='Reserved'?'selected':''} value="Reserved">დაჯავშნილი</option><option ${res.status==='Checked-in'?'selected':''} value="Checked-in">შესახლება</option><option ${res.status==='Checked-out'?'selected':''} value="Checked-out">გასვლა</option><option ${res.status==='Cancelled'?'selected':''} value="Cancelled">გაუქმებული</option></select></label>
+                  <label class="text-xs text-gray-500">შესახლების თარიღი<input id="editCheckinDate" type="date" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.checkinDate || '')}"></label>
+                  <label class="text-xs text-gray-500">გასვლის თარიღი<input id="editCheckoutDate" type="date" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.checkoutDate || '')}"></label>
+                  <label class="text-xs text-gray-500">გასვლის დრო<input id="editCheckoutTime" type="time" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.checkoutTime || policy.checkoutTime)}"></label>
+                  <label class="text-xs text-gray-500">გადახდის სტატუსი<select id="editPaymentStatus" onchange="togglePaidAmountField('editPaymentStatus','editPaidAmountWrap')" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full"><option value="unpaid" ${res.paymentStatus==='unpaid'?'selected':''}>გადაუხდელი</option><option value="partial" ${res.paymentStatus==='partial'?'selected':''}>ნაწილობრივ</option><option value="advance" ${res.paymentStatus==='advance'?'selected':''}>ავანსი</option><option value="paid" ${res.paymentStatus==='paid'?'selected':''}>გადახდილი</option></select></label>
+                  <div id="editPaidAmountWrap" class="${(res.paymentStatus === 'partial' || res.paymentStatus === 'advance') ? '' : 'hidden'}"><label class="text-xs text-gray-500 block">ავანსი / ნაწილობრივი თანხა (₾)</label><input id="editPaidAmount" type="number" min="0" step="0.01" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(res.paidAmount || 0)}"></div>
+                  <label class="text-xs text-gray-500">დამატებითი გადასახადი (სახელი)<input id="editAdditionalFeeName" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.additionalFeeName || '')}"></label>
+                  <label class="text-xs text-gray-500">დამატებითი გადასახადი (₾)<input id="editAdditionalFeeAmount" type="number" min="0" step="0.01" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(res.additionalFeeAmount || 0)}"></label>
+                  ${renderMinibarSelector('edit', res.minibarItems || [])}
+                  <div id="editExtraBedWrap" class="${roomSupportsExtraBed ? '' : 'hidden'} md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="editExtraBedEnabled" type="checkbox" class="rounded" ${res.extraBedEnabled ? 'checked' : ''}> დამატებითი საწოლი</label>
+                    <label class="text-xs text-gray-500">დამატებითი საწოლი რაოდენობა<select id="editExtraBedQty" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full"></select></label>
+                    <div class="text-xs text-gray-500 mt-6" id="editExtraBedRateInfo"></div>
+                  </div>
+                  <label class="text-xs text-gray-500">სრული თანხა<input id="editTotalPrice" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(res.totalPrice||0)}" readonly></label>
+                  <label class="text-xs text-gray-500">დასარჩენი გადასახდელი თანხა<input id="editDueAmount" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${dueAmount}" readonly></label>
+                  <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="editReservationVip" type="checkbox" class="rounded" ${res.vip || res.vipFlag ? 'checked' : ''}> VIP სტუმარი</label>
+                  <label class="md:col-span-2 text-xs text-gray-500">კომენტარი<textarea id="editReservationComment" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" rows="3">${escapeHtml(res.comment || res.comments || res.internalNotes || '')}</textarea></label>
+                </div>
+                <div class="mt-2 text-xs text-gray-500">გვიანი გასვლა გადასახადი: <strong id="editLateCheckoutFee">${config.currency_symbol}${Number(res.lateCheckoutFee || 0).toLocaleString('en-US')}</strong></div>
+                <div class="mt-1 text-xs text-gray-500">დამატებითი საწოლი გადასახადი: <strong id="editExtraBedFee">${config.currency_symbol}${Number(res.extraBedFee || 0).toLocaleString('en-US')}</strong></div>
+                <div class="mt-1 text-xs text-gray-500">მინიბარის გადასახადი: <strong id="editMinibarFee">${config.currency_symbol}${Number(res.minibarTotal || 0).toLocaleString('en-US')}</strong></div>
+                <div class="mt-1 text-xs text-gray-500" id="editRoomPriceHint"></div>
+                <div class="mt-2 text-sm font-semibold text-red-600" id="editDueSummary"></div>
+                <div class="flex gap-2 mt-4 flex-wrap">
+                  ${canManageReservations ? `<button class="px-3 py-2 rounded bg-sky-600 text-white" onclick="saveReservationEdits(${res.id})">შენახვა</button>` : ''}
+                  ${canManageReservations ? `<button class="px-3 py-2 rounded bg-emerald-600 text-white" onclick="checkInReservation(${res.id})">შესახლება</button>` : ''}
+                  ${canManageReservations ? `<button class="px-3 py-2 rounded bg-amber-500 text-white" onclick="checkOutReservation(${res.id})">გასვლა</button>` : ''}
+                  ${canManageReservations ? `<button class="px-3 py-2 rounded bg-red-600 text-white" onclick="deleteReservation(${res.id})">წაშლა</button>` : ''}
+                  <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printConsent(${res.id}, 'ka')">თანხმობა KA</button>
+                  <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printConsent(${res.id}, 'en')">თანხმობა (EN)</button>
+                </div>
+              </section>
+            </div>
+
+            <aside class="folio-side">
+              <section class="folio-card">
+                <div id="folioInlineMessage" class="folio-inline-message"></div>
+                <div class="folio-section-title"><span>＋</span><h4>სერვისის დარიცხვა ანგარიშზე</h4></div>
+                <label>სერვისის კატეგორია<select id="folioServiceCategory" onchange="updateFolioServiceCategoryUI()"><option>მინიბარი</option><option>რესტორანი</option><option>ტრანსფერი</option><option>დაზიანების გადასახადი</option><option>გვიანი გასვლა</option><option>სხვა</option></select></label>
+                <div id="folioMinibarWrap">
+                  <label>მინიბარის პროდუქტი<select id="folioMinibarProduct" onchange="updateFolioMinibarProduct()">${getMinibarProductsData().map(p => `<option value="${p.id}">${escapeHtml(p.name)} — ${Number(p.price || 0).toLocaleString('en-US')} ${config.currency_symbol}</option>`).join('') || '<option value="">მინიბარის პროდუქტი არ არის დამატებული</option>'}</select></label>
+                </div>
+                <div id="folioManualServiceWrap" style="display:none">
+                  <label>სერვისის აღწერა ქართულად<input id="folioServiceName" placeholder="მაგ: ტრანსფერი აეროპორტიდან"></label>
+                </div>
+                <div class="folio-two"><label>ერთეულის ფასი (${config.currency_symbol})<input id="folioServicePrice" type="number" min="0" step="0.01" value="0" oninput="updateFolioServicePreview()"></label><label>რაოდენობა<input id="folioServiceQty" type="number" min="1" step="1" value="1" oninput="updateFolioServicePreview()"></label></div>
+                <p class="folio-small">დარიცხვის ჯამი: <strong id="folioServicePreview">0 ${config.currency_symbol}</strong></p>
+                <button class="folio-primary" onclick="addFolioServiceFromDetails(${res.id})">დარიცხვა ანგარიშზე</button>
+              </section>
+              <section class="folio-card">
+                <div class="folio-section-title success"><span>▭</span><h4>გადახდის მიღება / Settlement</h4></div>
+                <label>გადახდის მეთოდი<select id="folioPaymentMethod"><option value="transfer">გადარიცხვა</option><option value="cash">ქეში</option><option value="tbc">TBC</option><option value="bog">BOG</option><option value="other_bank_card">სხვა ბანკის ბარათი</option></select></label>
+                <label>გადასახდელი თანხა (${config.currency_symbol})<input id="folioPaymentAmount" type="number" min="0" step="0.01" value="${dueAmount}"></label>
+                <p class="folio-small">დარჩენილი ნაშთი დასაფარად: <strong>${dueAmount.toLocaleString('en-US')} ${config.currency_symbol}</strong></p>
+                <label>შენიშვნა / კომენტარი<input id="folioPaymentComment" placeholder="მაგ: ნაწილობრივი დეპოზიტი, ტერმინალით"></label>
+                ${canManagePayments ? `<button class="folio-pay" onclick="addPaymentFromReservationDetails(${res.id})">გადახდის დამატება</button>` : '<p class="folio-empty">ამ როლს გადახდის დამატების უფლება არ აქვს</p>'}
+              </section>
+            </aside>
           </div>
-          <label class="text-xs text-gray-500">სრული თანხა<input id="editTotalPrice" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(res.totalPrice||0)}" readonly></label>
-          <label class="text-xs text-gray-500">დასარჩენი გადასახდელი თანხა<input id="editDueAmount" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Math.max(0, Number(res.totalPrice || 0) - Number(res.paidAmount || 0))}" readonly></label>
         </div>
-        <div class="mt-2 text-xs text-gray-500">გვიანი Check-out გადასახადი: <strong id="editLateCheckoutFee">${config.currency_symbol}${Number(res.lateCheckoutFee || 0).toLocaleString('en-US')}</strong></div>
-        <div class="mt-1 text-xs text-gray-500">Extra Bed გადასახადი: <strong id="editExtraBedFee">${config.currency_symbol}${Number(res.extraBedFee || 0).toLocaleString('en-US')}</strong></div>
-        <div class="mt-1 text-xs text-gray-500">მინიბარის გადასახადი: <strong id="editMinibarFee">${config.currency_symbol}${Number(res.minibarTotal || 0).toLocaleString('en-US')}</strong></div>
-        <div class="mt-1 text-xs text-gray-500" id="editRoomPriceHint"></div>
-        <div class="mt-2 text-sm font-semibold text-red-600" id="editDueSummary"></div>
-        <div class="flex gap-2 mt-4 flex-wrap">
-          ${canManageReservations ? `<button class="px-3 py-2 rounded bg-sky-600 text-white" onclick="saveReservationEdits(${res.id})">შენახვა</button>` : ''}
-          ${canManageReservations ? `<button class="px-3 py-2 rounded bg-emerald-600 text-white" onclick="checkInReservation(${res.id})">Check-in</button>` : ''}
-          ${canManageReservations ? `<button class="px-3 py-2 rounded bg-amber-500 text-white" onclick="checkOutReservation(${res.id})">Check-out</button>` : ''}
-          ${canManageReservations ? `<button class="px-3 py-2 rounded bg-red-600 text-white" onclick="deleteReservation(${res.id})">წაშლა</button>` : ''}
-          <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printConsent(${res.id}, 'ka')">თანხმობა KA</button>
-          <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printConsent(${res.id}, 'en')">თანხმობა (EN)</button>
-        </div>
-        <div class="mt-3 text-xs text-gray-500">ოთახი: ${escapeHtml(room?.roomName || room?.roomNumber || '-')} (${escapeHtml(room?.roomType || '-')})</div>
       `;
       document.getElementById('editRoomId')?.addEventListener('change', recalcEditReservationTotal);
       document.getElementById('editCheckinDate')?.addEventListener('change', recalcEditReservationTotal);
@@ -3155,6 +4332,7 @@
       recalcEditReservationTotal();
       togglePaidAmountField('editPaymentStatus', 'editPaidAmountWrap');
       recalcEditDueAmount();
+      updateFolioServiceCategoryUI();
     }
 
     function saveReservationEdits(resId) {
@@ -3175,7 +4353,7 @@
       const minibarItems = collectMinibarSelection('edit');
       const minibarTotal = getMinibarTotalFromItems(minibarItems);
       if (nextCheckoutDate <= nextCheckinDate) {
-        showToast('Check-out თარიღი უნდა იყოს Check-in თარიღის შემდეგ', 'error');
+        showToast('გასვლის თარიღი უნდა იყოს შესახლების თარიღის შემდეგ', 'error');
         return;
       }
       const charges = computeReservationCharges({ roomId: nextRoomId, checkinDate: nextCheckinDate, checkoutDate: nextCheckoutDate, checkoutTime: nextCheckoutTime, additionalFeeAmount: nextAdditionalFeeAmount, extraBedEnabled: nextExtraBedEnabled, extraBedQty: nextExtraBedQty, minibarAmount: minibarTotal });
@@ -3208,6 +4386,10 @@
         extraBedFee: charges.extraBedFee,
         minibarItems: normalizeMinibarItems(minibarItems),
         minibarTotal: charges.minibarAmount,
+        comment: document.getElementById('editReservationComment')?.value.trim() || '',
+        internalNotes: document.getElementById('editReservationComment')?.value.trim() || '',
+        vip: !!document.getElementById('editReservationVip')?.checked,
+        vipFlag: !!document.getElementById('editReservationVip')?.checked,
         totalPrice: recalculatedTotal
       };
       setReservationsData(reservations);
@@ -3223,11 +4405,19 @@
       const reservation = getReservationsData().find(r => Number(r.id) === Number(resId));
       if (!reservation) return;
       if (!canMutateForDate(reservation.checkinDate, 'დახურულ პერიოდზე ჯავშნის წაშლა შეუძლებელია')) return;
-      if (!confirm('ნამდვილად გსურთ ჯავშნის წაშლა?')) return;
-      const reservations = getReservationsData().filter(r => Number(r.id) !== Number(resId));
+      if (!confirm('ჯავშანი გაუქმდეს? ჩანაწერი ისტორიაში დარჩება.')) return;
+      const reservations = getReservationsData();
+      const idx = reservations.findIndex(r => Number(r.id) === Number(resId));
+      if (idx === -1) return;
+      reservations[idx] = {
+        ...reservations[idx],
+        status: 'Cancelled',
+        cancelledAt: new Date().toISOString(),
+        cancellationReason: 'მომხმარებლის მოთხოვნით'
+      };
       setReservationsData(reservations);
-      appendFinanceAudit('reservation_delete', 'reservation', `#${resId}`);
-      showToast('ჯავშანი წაიშალა', 'warning');
+      appendFinanceAudit('reservation_cancel', 'reservation', `#${resId}`);
+      showToast('ჯავშანი გაუქმდა და ისტორია შენარჩუნდა', 'warning');
       closeModal();
       renderCurrentPage();
     }
@@ -3238,9 +4428,12 @@
       const idx = reservations.findIndex(r => Number(r.id) === Number(resId));
       if (idx === -1) return;
       if (!canMutateForDate(reservations[idx].checkinDate, 'დახურულ პერიოდზე სტატუსის შეცვლა შეუძლებელია')) return;
+      const room = findRoomById(reservations[idx].roomId);
+      if (room && ['cleaning', 'dirty', 'maintenance'].includes(String(room.status || ''))) {
+        if (!window.confirm('არჩეული ნომერი არ არის მზად. მაინც გსურთ შესახლება?')) return;
+      }
       reservations[idx].status = 'Checked-in';
       setReservationsData(reservations);
-      const room = findRoomById(reservations[idx].roomId);
       if (room) {
         const rooms = getRoomsData();
         const rIdx = rooms.findIndex(r => Number(r.id) === Number(room.id));
@@ -3268,14 +4461,40 @@
         const rooms = getRoomsData();
         const rIdx = rooms.findIndex(r => Number(r.id) === Number(room.id));
         if (rIdx !== -1) {
-          rooms[rIdx].status = 'available';
+          rooms[rIdx].status = 'cleaning';
           setRoomsData(rooms);
         }
       }
+      createHousekeepingTaskForCheckout(reservations[idx]);
       showToast('Check-out დასრულდა');
       appendFinanceAudit('reservation_checkout', 'reservation', `#${resId}`);
       closeModal();
       renderCurrentPage();
+    }
+
+    function createHousekeepingTaskForCheckout(reservation) {
+      if (!reservation?.roomId) return;
+      const tasks = getHousekeepingData();
+      const hasOpen = tasks.some((t) => Number(t.roomId) === Number(reservation.roomId) && t.type === 'due_out' && !['completed', 'cancelled'].includes(t.status));
+      if (hasOpen) return;
+      const nextId = Number(getState('nextHousekeepingTaskId', 1));
+      tasks.push({
+        id: nextId,
+        roomId: reservation.roomId,
+        reservationId: reservation.id,
+        type: 'due_out',
+        priority: reservation.vip || reservation.vipFlag ? 'high' : 'normal',
+        attendant: '',
+        status: 'new',
+        dueAt: '16:00',
+        checklist: ['თეთრეული', 'აბაზანა', 'მინიბარი', 'შემოწმება'],
+        notes: reservation.comment || reservation.internalNotes || 'Check-out-ის შემდეგ დასალაგებელია',
+        sourceComment: reservation.comment || reservation.internalNotes || '',
+        createdAt: new Date().toISOString()
+      });
+      setHousekeepingData(tasks);
+      setState('nextHousekeepingTaskId', nextId + 1);
+      appendAudit('housekeeping_task_auto_checkout', 'housekeeping', `ოთახი ${findRoomById(reservation.roomId)?.roomNumber || reservation.roomId}`);
     }
 
     function getReservationFinancials(resId) {
@@ -3343,15 +4562,15 @@
             <div><strong>ტელეფონი:</strong> ${escapeHtml(res.guestPhone || '-')}</div>
             <div><strong>ოთახი:</strong> ${escapeHtml(room ? (room.roomName || room.roomNumber) : '-')} (${escapeHtml(room?.roomType || '-')})</div>
             <div><strong>თარიღები:</strong> ${formatDate(res.checkinDate)} — ${formatDate(res.checkoutDate)}</div>
-            <div><strong>Check-out დრო:</strong> ${escapeHtml(res.checkoutTime || getPolicySettings().checkoutTime)}</div>
+            <div><strong>გასვლის დრო:</strong> ${escapeHtml(res.checkoutTime || getPolicySettings().checkoutTime)}</div>
           </div>
           <div class="box">
             <table>
               <thead><tr><th>აღწერა</th><th class="right">რაოდენობა</th><th class="right">ფასი</th><th class="right">ჯამი</th></tr></thead>
               <tbody>
                 <tr><td>სასტუმრო — ღამეები</td><td class="right">${financials.nights}</td><td class="right">${financials.nightlyRate}₾</td><td class="right">${financials.baseTotal}₾</td></tr>
-                <tr><td>გვიანი Check-out</td><td class="right">1</td><td class="right">${financials.lateCheckoutFee}₾</td><td class="right">${financials.lateCheckoutFee}₾</td></tr>
-                ${financials.extraBedFee > 0 ? `<tr><td>Extra Bed</td><td class="right">${financials.extraBedQty}</td><td class="right">${getPolicySettings().extraBedRate}₾ x ${financials.nights} ღამე</td><td class="right">${financials.extraBedFee}₾</td></tr>` : ''}
+                <tr><td>გვიანი გასვლა</td><td class="right">1</td><td class="right">${financials.lateCheckoutFee}₾</td><td class="right">${financials.lateCheckoutFee}₾</td></tr>
+                ${financials.extraBedFee > 0 ? `<tr><td>დამატებითი საწოლი</td><td class="right">${financials.extraBedQty}</td><td class="right">${getPolicySettings().extraBedRate}₾ x ${financials.nights} ღამე</td><td class="right">${financials.extraBedFee}₾</td></tr>` : ''}
                 ${financials.minibarItems.map((item) => `<tr><td>მინიბარი — ${escapeHtml(item.name)}</td><td class="right">${item.quantity}</td><td class="right">${Number(item.unitPrice || 0)}₾</td><td class="right">${(Number(item.unitPrice || 0) * Number(item.quantity || 0)).toFixed(2)}₾</td></tr>`).join('')}
                 ${financials.minibarTotal > 0 ? `<tr><td>მინიბარი ჯამურად</td><td class="right">-</td><td class="right">-</td><td class="right">${financials.minibarTotal.toFixed(2)}₾</td></tr>` : ''}
                 ${financials.additionalFeeAmount > 0 ? `<tr><td>${escapeHtml(financials.additionalFeeName || 'დამატებითი გადასახადი')}</td><td class="right">1</td><td class="right">${financials.additionalFeeAmount}₾</td><td class="right">${financials.additionalFeeAmount}₾</td></tr>` : ''}
@@ -3405,11 +4624,11 @@
         <p><strong>თარიღი:</strong> _____________________</p>
         <p><strong>სასტუმროს წარმომადგენლის ხელმოწერა:</strong> __________________.</p>
       ` : `
-        <p><strong>Hotel Name:</strong> ${escapeHtml(hotel.name)}</p>
+        <p><strong>სასტუმროს დასახელება:</strong> ${escapeHtml(hotel.name)}</p>
         <p><strong>Address:</strong> ${escapeHtml(hotel.address)}</p>
         <p><strong>Phone / Email:</strong> ${escapeHtml(hotel.phone)} / ${escapeHtml(hotel.email)}</p>
-        <h4>Guest Information</h4>
-        <p><strong>Full Name:</strong> ${escapeHtml(res.guestName || '')}</p>
+        <h4>სტუმრის ინფორმაცია</h4>
+        <p><strong>სახელი და გვარი:</strong> ${escapeHtml(res.guestName || '')}</p>
         <p><strong>ID / Passport No.:</strong> ${escapeHtml(res.guestIdNumber || '')}</p>
         <p><strong>Citizenship:</strong> ${escapeHtml(res.guestCitizenship || '')}</p>
         <p><strong>Date of Birth:</strong> ${escapeHtml(res.guestBirthDate || '')}</p>
@@ -3419,17 +4638,17 @@
         <p><strong>Check-in Date:</strong> ${formatDate(res.checkinDate)}</p>
         <p><strong>Check-out Date:</strong> ${formatDate(res.checkoutDate)}</p>
         <p><strong>Check-out Time:</strong> ${escapeHtml(res.checkoutTime || getPolicySettings().checkoutTime)}</p>
-        <p><strong>Room No. / Type:</strong> ${escapeHtml(room ? (room.roomName || room.roomNumber) : '-')} / ${escapeHtml(room?.roomType || '-')}</p>
+        <p><strong>ოთახის ნომერი / ტიპი:</strong> ${escapeHtml(room ? (room.roomName || room.roomNumber) : '-')} / ${escapeHtml(room?.roomType || '-')}</p>
         <h4>Consent and Rules</h4>
         <p>I have received and read the hotel rules and agree to comply with them;</p>
         <p>I accept responsibility for any damage or loss of room inventory;</p>
         <p>I agree that the hotel may process my personal data solely for service purposes;</p>
         <p>I acknowledge that late checkout or rule violations may result in additional charges.</p>
         <p>☐ I agree to the terms listed above</p>
-        <h4>Signature</h4>
-        <p><strong>Guest Signature:</strong> _________________________________</p>
+        <h4>ხელმოწერა</h4>
+        <p><strong>Guest ხელმოწერა:</strong> _________________________________</p>
         <p><strong>Date:</strong> _____________________</p>
-        <p><strong>Hotel Representative Signature:</strong> __________________.</p>
+        <p><strong>Hotel Representative ხელმოწერა:</strong> __________________.</p>
       `;
       w.document.write(`
         <!DOCTYPE html>
@@ -3452,7 +4671,7 @@
             <h3>${title}</h3>
             ${consentText}
           </div>
-          <div class="no-print" style="margin-top: 16px;"><button onclick="window.print()">${isKa ? 'ბეჭდვა' : 'Print'}</button></div>
+          <div class="no-print" style="margin-top: 16px;"><button onclick="window.print()">${isKa ? 'ბეჭდვა' : 'ბეჭდვა'}</button></div>
         </body>
         </html>
       `);
@@ -3476,8 +4695,8 @@
           <label class="text-xs text-gray-500">სართული<input id="editRoomFloor" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.floor || 1)}"></label>
           <label class="text-xs text-gray-500">საწოლები<input id="editRoomBeds" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.beds || 1)}"></label>
           <label class="text-xs text-gray-500">მაქს სტუმრები<input id="editRoomMaxGuests" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.maxGuests || 1)}"></label>
-          <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="editRoomSupportsExtraBed" type="checkbox" class="rounded" ${room.supportsExtraBed ? 'checked' : ''}> Extra Bed მხარდაჭერა</label>
-          <label class="text-xs text-gray-500">Extra Bed მაქს რაოდენობა<input id="editRoomMaxExtraBeds" type="number" min="0" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.maxExtraBeds || 0)}"></label>
+          <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="editRoomSupportsExtraBed" type="checkbox" class="rounded" ${room.supportsExtraBed ? 'checked' : ''}> დამატებითი საწოლი მხარდაჭერა</label>
+          <label class="text-xs text-gray-500">დამატებითი საწოლი მაქს რაოდენობა<input id="editRoomMaxExtraBeds" type="number" min="0" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.maxExtraBeds || 0)}"></label>
           <label class="text-xs text-gray-500">სტატუსი<select id="editRoomStatus" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="available" ${room.status==='available'?'selected':''}>ხელმისაწვდომი</option><option value="booked" ${room.status==='booked'?'selected':''}>დაჯავშნილი</option><option value="occupied" ${room.status==='occupied'?'selected':''}>დაკავებული</option><option value="cleaning" ${room.status==='cleaning'?'selected':''}>დასუფთავება</option><option value="maintenance" ${room.status==='maintenance'?'selected':''}>რემონტი</option></select></label>
         </div>
         <div class="mt-4 flex gap-2">
@@ -3543,7 +4762,7 @@
       if (!roomNumber) return showToast('ნომრის ნომერი აუცილებელია', 'error');
       const rooms = getRoomsData();
       const nextId = rooms.length ? Math.max(...rooms.map(r => Number(r.id))) + 1 : 1;
-      rooms.push({ id: nextId, roomNumber, roomName: roomName || `Room ${roomNumber}`, roomType, basePrice, floor, beds, maxGuests, supportsExtraBed, maxExtraBeds, status });
+      rooms.push({ id: nextId, roomNumber, roomName: roomName || `ნომერი ${roomNumber}`, roomType, basePrice, floor, beds, maxGuests, supportsExtraBed, maxExtraBeds, status });
       setRoomsData(rooms);
       syncCurrentMonthRatesFromRooms();
       closeModal();
@@ -3559,12 +4778,13 @@
       const guestIdNumber = document.getElementById('newGuestModalId').value.trim();
       const guestCitizenship = document.getElementById('newGuestModalCitizenship').value.trim();
       const guestBirthDate = document.getElementById('newGuestModalBirthDate').value;
+      const vip = !!document.getElementById('newGuestModalVip')?.checked;
       const blacklisted = !!document.getElementById('newGuestModalBlacklisted')?.checked;
       if (!guestName) return showToast('სახელი აუცილებელია', 'error');
       const guests = getGuestsData();
       const idx = guestIdNumber ? guests.findIndex(g => String(g.guestIdNumber || '') === guestIdNumber) : -1;
-      if (idx === -1) guests.push({ guestName, guestPhone, guestEmail, guestIdNumber, guestCitizenship, guestBirthDate, flagged: false, blacklisted });
-      else guests[idx] = { ...guests[idx], guestName, guestPhone, guestEmail, guestIdNumber, guestCitizenship, guestBirthDate, blacklisted };
+      if (idx === -1) guests.push({ guestName, guestPhone, guestEmail, guestIdNumber, guestCitizenship, guestBirthDate, flagged: false, blacklisted, vip });
+      else guests[idx] = { ...guests[idx], guestName, guestPhone, guestEmail, guestIdNumber, guestCitizenship, guestBirthDate, blacklisted, vip };
       setGuestsData(guests);
       closeModal();
       showToast(idx === -1 ? 'სტუმარი დაემატა' : 'სტუმარი განახლდა');
@@ -3587,6 +4807,7 @@
           <label class="text-xs text-gray-500">პირადი ნომერი / პასპორტი<input id="editGuestModalId" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(g.guestIdNumber || '')}"></label>
           <label class="text-xs text-gray-500">მოქალაქეობა<input id="editGuestModalCitizenship" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(g.guestCitizenship || '')}"></label>
           <label class="text-xs text-gray-500">დაბადების თარიღი<input id="editGuestModalBirthDate" type="date" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${escapeHtml(g.guestBirthDate || '')}"></label>
+          <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="editGuestModalVip" type="checkbox" class="rounded" ${g.vip ? 'checked' : ''}> VIP სტუმარი</label>
           <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="editGuestModalBlacklisted" type="checkbox" class="rounded" ${g.blacklisted ? 'checked' : ''}> შავი სია</label>
         </div>
         <div class="mt-4 flex gap-2">
@@ -3609,7 +4830,8 @@
         guestIdNumber: document.getElementById('editGuestModalId').value.trim(),
         guestCitizenship: document.getElementById('editGuestModalCitizenship').value.trim(),
         guestBirthDate: document.getElementById('editGuestModalBirthDate').value,
-        blacklisted: !!document.getElementById('editGuestModalBlacklisted')?.checked
+        blacklisted: !!document.getElementById('editGuestModalBlacklisted')?.checked,
+        vip: !!document.getElementById('editGuestModalVip')?.checked
       };
       setGuestsData(guests);
       closeModal();
@@ -3675,7 +4897,7 @@
           <label class="text-xs text-gray-500">გადახდის თანხა (₾)
             <input id="editPaymentAmount" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(payment.amount || 0)}">
           </label>
-          <select id="editPaymentMethod" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option ${payment.method==='cash'?'selected':''} value="cash">ნაღდი</option><option ${payment.method==='card'?'selected':''} value="card">ბარათი</option><option ${payment.method==='bank'?'selected':''} value="bank">ბანკი</option></select>
+          <select id="editPaymentMethod" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${paymentMethodOptions(payment.method || 'transfer')}</select>
           <select id="editPaymentStatusField" onchange="togglePaymentModalAmountField('editPaymentStatusField','editPaymentAdvanceWrap','editPaymentAmount','editPaymentAdvanceAmount')" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid" ${payment.status==='unpaid'?'selected':''}>გადაუხდელი</option><option value="partial" ${payment.status==='partial'?'selected':''}>ნაწილობრივ</option><option value="advance" ${payment.status==='advance'?'selected':''}>ავანსი</option><option value="paid" ${payment.status==='paid'?'selected':''}>გადახდილი</option></select>
           <div id="editPaymentAdvanceWrap" class="hidden md:col-span-2">
             <label class="text-xs text-gray-500 block">ავანსი / ნაწილობრივი თანხა (₾)</label>
@@ -3730,9 +4952,21 @@
       const payment = payments.find((p) => Number(p.id) === id);
       if (!payment) return showToast('გადახდა ვერ მოიძებნა', 'error');
       if (!canMutateForDate((payment.createdAt || '').slice(0, 10) || todayISO(), 'დახურულ პერიოდზე გადახდის წაშლა შეუძლებელია')) return;
-      if (!window.confirm('გსურთ გადახდის/ინვოისის წაშლა?')) return;
-      const nextPayments = payments.filter((p) => Number(p.id) !== id);
+      if (!window.confirm('გადახდა გაუქმდეს კორექტირებით? ორიგინალი ჩანაწერი შენარჩუნდება.')) return;
+      const nextId = Number(getState('nextPaymentId', 1));
+      const reversal = {
+        id: nextId,
+        reservationId: payment.reservationId,
+        guestName: payment.guestName,
+        amount: -Math.abs(Number(payment.amount || 0)),
+        method: payment.method,
+        status: 'correction',
+        reversalOf: payment.id,
+        createdAt: new Date().toISOString()
+      };
+      const nextPayments = [...payments, reversal];
       setPaymentsData(nextPayments);
+      setState('nextPaymentId', nextId + 1);
       const reservations = getReservationsData();
       const reservation = reservations.find((r) => Number(r.id) === Number(payment.reservationId));
       if (reservation) {
@@ -3745,8 +4979,8 @@
         setReservationsData(reservations);
       }
       closeModal();
-      appendFinanceAudit('payment_delete', 'payment', `#${paymentId}`);
-      showToast('გადახდა წაიშალა');
+      appendFinanceAudit('payment_reversal', 'payment', `#${paymentId}`);
+      showToast('გადახდის კორექტირება დაემატა');
       renderPayments();
     }
 
@@ -3769,7 +5003,7 @@
     }
 
     function saveChannelRoomMapping() {
-      if (!can('channelsView')) return showToast('Channel Manager-ზე წვდომა შეზღუდულია', 'error');
+      if (!can('channelsView')) return showToast('არხების მენეჯერი-ზე წვდომა შეზღუდულია', 'error');
       const rooms = getRoomsData();
       const next = {};
       rooms.forEach((room) => {
@@ -3792,7 +5026,7 @@
 
     function renderChannels() {
       if (!can('channelsView')) {
-        document.getElementById('page-channels').innerHTML = '<div class="bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-100 dark:border-gray-700 text-sm text-gray-500">Channel Manager-ზე წვდომა შეზღუდულია.</div>';
+        document.getElementById('page-channels').innerHTML = '<div class="bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-100 dark:border-gray-700 text-sm text-gray-500">არხების მენეჯერი-ზე წვდომა შეზღუდულია.</div>';
         return;
       }
       const c = getChannelConfig();
@@ -3854,8 +5088,8 @@
         </div>
         <div class="mt-4 bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="font-semibold">Room Mapping (Local → Channex room_type_id)</h3>
-            <button onclick="saveChannelRoomMapping()" class="px-3 py-2 bg-sky-600 text-white rounded-lg text-sm">Mapping შენახვა</button>
+            <h3 class="font-semibold">ოთახების მიბმა (Local → Channex room_type_id)</h3>
+            <button onclick="saveChannelRoomMapping()" class="px-3 py-2 bg-sky-600 text-white rounded-lg text-sm">მიბმის შენახვა</button>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
@@ -3891,7 +5125,7 @@
     }
 
     function saveChannelSettings() {
-      if (!can('channelsView')) return showToast('Channel Manager-ზე წვდომა შეზღუდულია', 'error');
+      if (!can('channelsView')) return showToast('არხების მენეჯერი-ზე წვდომა შეზღუდულია', 'error');
       const f = readChannelForm();
       setChannelConfig(f);
       configureAutoSyncScheduler();
@@ -3929,7 +5163,7 @@
     }
 
     async function testChannexConnection() {
-      if (!can('channelsView')) return showToast('Channel Manager-ზე წვდომა შეზღუდულია', 'error');
+      if (!can('channelsView')) return showToast('არხების მენეჯერი-ზე წვდომა შეზღუდულია', 'error');
       try {
         const c = getChannelConfig();
         if (c.connectionMode === 'oauth') {
@@ -3955,7 +5189,7 @@
     }
 
     function startChannexOAuth() {
-      if (!can('channelsView')) return showToast('Channel Manager-ზე წვდომა შეზღუდულია', 'error');
+      if (!can('channelsView')) return showToast('არხების მენეჯერი-ზე წვდომა შეზღუდულია', 'error');
       const f = readChannelForm();
       setChannelConfig(f);
       if (!f.authStartUrl) return showToast('OAuth დაწყების მისამართი სავალდებულოა', 'error');
@@ -3988,7 +5222,7 @@
     async function syncChannexData(kind, options = {}) {
       const { silent = false, noRender = false } = options || {};
       if (!can('channelsView')) {
-        if (!silent) showToast('Channel Manager-ზე წვდომა შეზღუდულია', 'error');
+        if (!silent) showToast('არხების მენეჯერი-ზე წვდომა შეზღუდულია', 'error');
         return;
       }
       const c = getChannelConfig();
@@ -4147,7 +5381,7 @@
     }
 
     function disconnectChannex() {
-      if (!can('channelsView')) return showToast('Channel Manager-ზე წვდომა შეზღუდულია', 'error');
+      if (!can('channelsView')) return showToast('არხების მენეჯერი-ზე წვდომა შეზღუდულია', 'error');
       setChannelConfig({ isConnected: false, connectedAt: '', lastSyncAt: '', lastSyncStatus: 'idle', lastSyncMessage: '', apiKey: '' });
       configureAutoSyncScheduler();
       showToast('Channex კავშირი გათიშულია', 'warning');
@@ -4219,22 +5453,24 @@
               <label class="text-xs text-gray-500 block">ავანსი / ნაწილობრივი თანხა (₾)</label>
               <input id="newPaidAmount" type="number" min="0" step="0.01" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: 150">
             </div>
-            <label class="text-xs text-gray-500">Check-in თარიღი<input id="newCheckinDate" type="date" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${today}"></label>
-            <label class="text-xs text-gray-500">Check-out თარიღი<input id="newCheckoutDate" type="date" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${formatDateISO(addDays(new Date(), 1))}"></label>
-            <label class="text-xs text-gray-500">Check-out დრო<input id="newCheckoutTime" type="time" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(policy.checkoutTime)}"></label>
+            <label class="text-xs text-gray-500">შესახლების თარიღი<input id="newCheckinDate" type="date" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${today}"></label>
+            <label class="text-xs text-gray-500">გასვლის თარიღი<input id="newCheckoutDate" type="date" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${formatDateISO(addDays(new Date(), 1))}"></label>
+            <label class="text-xs text-gray-500">გასვლის დრო<input id="newCheckoutTime" type="time" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(policy.checkoutTime)}"></label>
             <label class="text-xs text-gray-500">დამატებითი გადასახადი (სახელი)<input id="newAdditionalFeeName" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(policy.defaultAdditionalFeeName)}" placeholder="მაგ: City Fee"></label>
             <label class="text-xs text-gray-500">დამატებითი გადასახადი (₾)<input id="newAdditionalFeeAmount" type="number" min="0" step="0.01" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(policy.defaultAdditionalFeeAmount || 0)}"></label>
+            <label class="md:col-span-2 text-xs text-gray-500 flex items-center gap-2"><input id="newReservationVip" type="checkbox" class="rounded"> VIP სტუმარი</label>
+            <label class="md:col-span-2 text-xs text-gray-500">კომენტარი / შიდა შენიშვნა<textarea id="newReservationComment" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" rows="3" placeholder="სტუმრის მოთხოვნა, რეცეფციის შენიშვნა, გადახდის პირობა"></textarea></label>
             ${renderMinibarSelector('new', [])}
             <div id="newExtraBedWrap" class="md:col-span-2 hidden grid grid-cols-1 md:grid-cols-3 gap-3">
-              <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="newExtraBedEnabled" type="checkbox" class="rounded"> Extra Bed</label>
-              <label class="text-xs text-gray-500">Extra Bed რაოდენობა<select id="newExtraBedQty" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full"><option value="1">1</option></select></label>
+              <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="newExtraBedEnabled" type="checkbox" class="rounded"> დამატებითი საწოლი</label>
+              <label class="text-xs text-gray-500">დამატებითი საწოლი რაოდენობა<select id="newExtraBedQty" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full"><option value="1">1</option></select></label>
               <div class="text-xs text-gray-500 mt-6" id="newExtraBedRateInfo"></div>
             </div>
             <label class="text-xs text-gray-500">სრული თანხა<input id="newReservationTotal" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="0" readonly></label>
           </div>
           <div class="mt-2 text-xs text-gray-500" id="newRoomPriceHint"></div>
-          <div class="mt-1 text-xs text-gray-500">გვიანი Check-out გადასახადი: <strong id="newLateCheckoutFee">${config.currency_symbol}0</strong></div>
-          <div class="mt-1 text-xs text-gray-500">Extra Bed გადასახადი: <strong id="newExtraBedFee">${config.currency_symbol}0</strong></div>
+          <div class="mt-1 text-xs text-gray-500">გვიანი გასვლა გადასახადი: <strong id="newLateCheckoutFee">${config.currency_symbol}0</strong></div>
+          <div class="mt-1 text-xs text-gray-500">დამატებითი საწოლი გადასახადი: <strong id="newExtraBedFee">${config.currency_symbol}0</strong></div>
           <div class="mt-1 text-xs text-gray-500">მინიბარის გადასახადი: <strong id="newMinibarFee">${config.currency_symbol}0</strong></div>
           <div class="mt-4 flex gap-2">
             <button class="px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="addNewReservation()">შენახვა</button>
@@ -4267,14 +5503,14 @@
         content.innerHTML = `
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <label class="text-xs text-gray-500">ნომერი<input id="newRoomNumber" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: 101"></label>
-            <label class="text-xs text-gray-500">სახელი<input id="newRoomName" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: Room 101"></label>
+            <label class="text-xs text-gray-500">სახელი<input id="newRoomName" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მაგ: ნომერი 101"></label>
           <label class="text-xs text-gray-500">ტიპი<select id="newRoomType" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="Single">Single</option><option value="Double">Double</option><option value="Triple">Triple</option><option value="Family">Family</option><option value="Suite">Suite</option></select></label>
             <label class="text-xs text-gray-500">ღამის ფასი<input id="newRoomPrice" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="₾"></label>
             <label class="text-xs text-gray-500">სართული<input id="newRoomFloor" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="1"></label>
             <label class="text-xs text-gray-500">საწოლების რაოდენობა<input id="newRoomBeds" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="1"></label>
             <label class="text-xs text-gray-500">მაქსიმალური სტუმრები<input id="newRoomMaxGuests" type="number" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="2"></label>
-            <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="newRoomSupportsExtraBed" type="checkbox" class="rounded"> Extra Bed მხარდაჭერა</label>
-            <label class="text-xs text-gray-500">Extra Bed მაქს რაოდენობა<input id="newRoomMaxExtraBeds" type="number" min="0" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="0"></label>
+            <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="newRoomSupportsExtraBed" type="checkbox" class="rounded"> დამატებითი საწოლი მხარდაჭერა</label>
+            <label class="text-xs text-gray-500">დამატებითი საწოლი მაქს რაოდენობა<input id="newRoomMaxExtraBeds" type="number" min="0" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="0"></label>
             <label class="text-xs text-gray-500">სტატუსი<select id="newRoomStatus" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="available">ხელმისაწვდომი</option><option value="booked">დაჯავშნილი</option><option value="occupied">დაკავებული</option><option value="cleaning">დასუფთავება</option><option value="maintenance">რემონტი</option></select></label>
           </div>
           <button class='mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg' onclick='addRoomFromModal()'>შენახვა</button>
@@ -4289,6 +5525,7 @@
             <input id="newGuestModalId" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="პირადი ნომერი / პასპორტი" onblur="autoFillGuestModalById()">
             <input id="newGuestModalCitizenship" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="მოქალაქეობა">
             <input id="newGuestModalBirthDate" type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
+            <label class="text-xs text-gray-500 flex items-center gap-2"><input id="newGuestModalVip" type="checkbox" class="rounded"> VIP სტუმარი</label>
             <label class="md:col-span-2 text-xs text-gray-500 flex items-center gap-2"><input id="newGuestModalBlacklisted" type="checkbox" class="rounded"> შავი სია</label>
           </div>
           <button class='mt-4 px-4 py-2 bg-sky-600 text-white rounded-lg' onclick='addGuestFromModal()'>შენახვა</button>
@@ -4300,7 +5537,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <select id="newPaymentReservationId" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${reservations.map(r => `<option value="${r.id}">#${r.id} • ${escapeHtml(r.guestName)} • ოთახი ${escapeHtml(findRoomById(r.roomId)?.roomNumber || '-')}</option>`).join('')}</select>
             <input id="newPaymentAmount" type="number" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" placeholder="თანხა">
-            <select id="newPaymentMethod" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="cash">ნაღდი</option><option value="card">ბარათი</option><option value="bank">ბანკი</option></select>
+            <select id="newPaymentMethod" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">${paymentMethodOptions('transfer')}</select>
             <select id="newPaymentStatusField" onchange="togglePaymentModalAmountField('newPaymentStatusField','newPaymentAdvanceWrap','newPaymentAmount','newPaymentAdvanceAmount')" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="unpaid">გადაუხდელი</option><option value="partial">ნაწილობრივ</option><option value="advance">ავანსი</option><option value="paid">გადახდილი</option></select>
             <div id="newPaymentAdvanceWrap" class="hidden md:col-span-2">
               <label class="text-xs text-gray-500 block">ავანსი / ნაწილობრივი თანხა (₾)</label>
@@ -4322,6 +5559,7 @@
       const container = document.getElementById('modal-container');
       container.classList.add('hidden');
       container.classList.remove('calendar-context');
+      container.classList.remove('folio-context');
     }
     function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
     function toggleDarkMode() {
@@ -4357,5 +5595,81 @@
     function escapeHtml(v) {
       return String(v || '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
     }
+
+    const ACTIONS = {
+      navigateTo, toggleSidebar, toggleSidebarCollapse, toggleDarkMode, openModal, closeModal,
+      changeCalendarView, navigateCalendar, goToToday, toggleCalendarFullscreen, applyCalendarFilters, resetCalendarFilters,
+      openNewReservation, openReservationDetails, handleReservationDragStart, handleReservationDragEnd, handleCalendarCellDragOver, handleCalendarCellDrop,
+      runDashboardAvailabilityCheck, openAvailableRoomsFromDashboard, applyRoomFilters, resetRoomFilters,
+      addNewReservation, saveReservationEdits, deleteReservation, checkInReservation, checkOutReservation,
+      printInvoice, printConsent, openRoomEdit, saveRoomEdits, deleteRoom, addRoomFromModal,
+      openGuestEdit, saveGuestEdits, deleteGuest, addGuestFromModal, autoFillGuestById, autoFillGuestModalById,
+      addPaymentFromModal, openPaymentEdit, savePaymentEdits, deletePayment, printPaymentInvoice,
+      setFinanceTab, setInvoiceStatusFromFinance, openCreditNotePrompt, addExpenseFromFinance, deleteExpenseFromFinance,
+      addManualJournalEntryFromFinance, saveFinanceVatRate, addშეჯერებაFromFinance, closeFinancePeriodFromUI, reopenFinancePeriodFromUI,
+      exportFinanceDebtorsCSV, exportFinanceInvoicesCSV, exportFinanceExpensesCSV, exportFinanceJournalCSV, exportFinanceTaxCSV, exportFinanceვადაგადაცილებაCSV, exportFinanceშეჯერებაCSV, exportFinanceAuditCSV, exportFinanceWorkbookExcel,
+      saveMonthlyRates, addMinibarProductFromPricing, saveMinibarProductsFromPricing, deleteMinibarProductFromPricing,
+      addMinibarRow, removeMinibarRow, recalcMinibarUI, togglePaidAmountField, togglePaymentModalAmountField,
+      addFolioServiceFromDetails, addPaymentFromReservationDetails, updateFolioServiceCategoryUI, updateFolioMinibarProduct, updateFolioServicePreview,
+      addHousekeepingTask, saveHousekeepingTaskFromForm, updateHousekeepingTask, completeHousekeepingTask, addMaintenanceTicket, saveMaintenanceTicketFromForm, updateMaintenanceTicket, completeMaintenanceTicket, addGenericTask, saveGenericTaskFromForm,
+      addApprovalRequest, saveApprovalRequestFromForm, resolveApproval, addDocumentRecord, saveDocumentRecordFromForm, addEmployeeRecord, saveEmployeeFromForm, saveCreditNoteFromForm, exportAuditCSV,
+      saveHotelSettings, savePolicySettings, saveChannelSettings, saveChannelRoomMapping, startChannexOAuth,
+      testChannexConnection, syncChannexData, disconnectChannex
+    };
+
+    function parseInlineActionArgs(rawArgs) {
+      if (!rawArgs.trim()) return [];
+      const args = [];
+      let current = '';
+      let quote = '';
+      for (let i = 0; i < rawArgs.length; i++) {
+        const ch = rawArgs[i];
+        if (quote) {
+          if (ch === quote && rawArgs[i - 1] !== '\\') quote = '';
+          else current += ch;
+          continue;
+        }
+        if (ch === '"' || ch === "'") {
+          quote = ch;
+          continue;
+        }
+        if (ch === ',') {
+          args.push(current.trim());
+          current = '';
+          continue;
+        }
+        current += ch;
+      }
+      if (current.trim() || rawArgs.endsWith(',')) args.push(current.trim());
+      return args.map((arg) => {
+        if (arg === 'true') return true;
+        if (arg === 'false') return false;
+        if (arg === 'null') return null;
+        if (/^-?\d+(\.\d+)?$/.test(arg)) return Number(arg);
+        return arg;
+      });
+    }
+
+    function bindInlineActionBridge() {
+      document.addEventListener('click', (event) => {
+        const target = event.target.closest('[onclick]');
+        if (!target) return;
+        if (target.dataset?.page) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          navigateTo(target.dataset.page);
+          return;
+        }
+        const action = String(target.getAttribute('onclick') || '').trim();
+        const match = action.match(/^([A-Za-z_$][\w$]*)\((.*)\)$/);
+        if (!match || !ACTIONS[match[1]]) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        ACTIONS[match[1]](...parseInlineActionArgs(match[2]));
+      }, true);
+    }
+
+    Object.assign(window, ACTIONS);
+    bindInlineActionBridge();
 
     initialize();
