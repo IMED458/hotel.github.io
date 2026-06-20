@@ -3525,6 +3525,18 @@
       setState('hotelConfig', config);
       if (window.elementSdk?.setConfig) window.elementSdk.setConfig(config);
       showToast('ფასები შენახულია');
+      // Push current month rates to Channex → Booking.com
+      const pushMonth = new Date().getMonth() + 1;
+      const pushRates = rates[pushMonth] || {};
+      const dateFrom = new Date();
+      dateFrom.setDate(1);
+      const dateTo = new Date(dateFrom.getFullYear(), pushMonth, 1);
+      const dateFromStr = formatDateISO(dateFrom);
+      const dateToStr = formatDateISO(dateTo);
+      getRoomsData().forEach(room => {
+        const rate = Number(pushRates[room.roomType] || room.basePrice || 0);
+        if (rate > 0) pushRateToChannex(room.id, dateFromStr, dateToStr, rate);
+      });
     }
 
     function addMinibarProductFromPricing() {
