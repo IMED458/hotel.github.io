@@ -582,7 +582,6 @@
       const vip = reservation?.vip || reservation?.vipFlag;
       return `
         <div class="reservation-bar-content">
-          ${renderChannelLogoBadge(reservation, 'calendar')}
           ${vip ? '<span class="vip-badge">VIP</span>' : ''}
           <span class="reservation-guest-name">${escapeHtml(reservation?.guestName || '-')}</span>
         </div>
@@ -4372,6 +4371,7 @@
       const reservationPayments = getPaymentsData().filter(p => Number(p.reservationId) === Number(res.id));
       const externalChannel = isExternalChannelReservation(res);
       const externalBaseRoomCharge = getReservationBaseRoomCharge(res, room, calculateNights(res.checkinDate, res.checkoutDate));
+      const reservationSource = getReservationSourceInfo(res);
       openModal('custom');
       document.getElementById('modal-container')?.classList.add('folio-context');
       document.getElementById('modal-title').textContent = 'ანგარიშსწორება, ინვოისები და გადახდები / Folio';
@@ -4389,7 +4389,7 @@
               <div class="folio-title">ანგარიშსწორება, ინვოისები და გადახდები / Folio</div>
               <div class="folio-subtitle">მართეთ სასტუმროს ნომრისა და დამატებითი სერვისების ფინანსური ბალანსები</div>
             </div>
-            <div class="folio-reservation-select">აქტიური ჯავშანი: ${escapeHtml(res.guestName || 'სტუმარი')} (${escapeHtml(room?.roomNumber || room?.roomName || '-')}) - ${escapeHtml(res.invoiceNo || `RES-${res.id}`)}</div>
+            <div class="folio-reservation-select">აქტიური ჯავშანი: ${escapeHtml(res.guestName || 'სტუმარი')} (${escapeHtml(room?.roomNumber || room?.roomName || '-')}) - ${escapeHtml(res.invoiceNo || `RES-${res.id}`)} • წყარო: ${escapeHtml(reservationSource.title || 'Direct')}</div>
           </div>
 
           <div class="folio-layout">
@@ -4398,7 +4398,7 @@
                 <div class="folio-card-header">
                   <div>
                     <h4>სტუმარი: ${escapeHtml(res.guestName || 'სტუმარი')}</h4>
-                    <p>ტელ: ${escapeHtml(res.guestPhone || '-')} <span>|</span> იმეილი: ${escapeHtml(res.guestEmail || '-')}</p>
+                    <p>ტელ: ${escapeHtml(res.guestPhone || '-')} <span>|</span> იმეილი: ${escapeHtml(res.guestEmail || '-')} <span>|</span> ჯავშნის წყარო: ${escapeHtml(reservationSource.title || 'Direct')}</p>
                   </div>
                   <span class="folio-status ${dueAmount > 0 ? 'danger' : 'success'}">${dueAmount > 0 ? 'გადასახდელია ნაშთი' : 'გადახდილია'}</span>
                 </div>
