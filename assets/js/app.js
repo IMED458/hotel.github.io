@@ -610,23 +610,31 @@
       const paidColor = b.paymentStatus === 'paid' ? '#059669' : b.paymentStatus === 'partial' ? '#d97706' : '#dc2626';
       const price = b.totalPrice ? `${Number(b.totalPrice).toLocaleString('en-US')} ₾` : '';
       const vip = b.vip || b.vipFlag;
+      const source = getReservationSourceInfo(b);
+      const isDirect = !source.title || source.title === 'Direct';
       return `
         <div style="min-width:260px;max-width:300px;font-family:Arial,sans-serif;font-size:13px;color:#1c1917;">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px;">
-            <div>
+            <div style="flex:1;min-width:0;">
               <div style="font-size:16px;font-weight:800;color:#0f172a;line-height:1.2;">${escapeHtml(b.guestName || 'სტუმარი')}${vip ? ' <span style="background:#f59e0b;color:#fff;font-size:10px;padding:1px 6px;border-radius:20px;font-weight:700;vertical-align:middle;">VIP</span>' : ''}</div>
               ${b.guestPhone ? `<div style="font-size:12px;color:#475569;margin-top:2px;">ტელ: <strong>${escapeHtml(b.guestPhone)}</strong></div>` : ''}
               ${b.invoiceNo ? `<div style="display:inline-block;margin-top:4px;background:#e0f2fe;color:#0369a1;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;">${escapeHtml(b.invoiceNo)}</div>` : ''}
             </div>
-            <span style="background:${sc}22;color:${sc};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;border:1px solid ${sc}44;">${sl}</span>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;">
+              <span style="background:${sc}22;color:${sc};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;border:1px solid ${sc}44;">${sl}</span>
+              ${!isDirect ? `<div style="display:flex;align-items:center;gap:5px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:3px 8px;">
+                <img src="${escapeHtml(source.icon)}" alt="${escapeHtml(source.title)}" style="width:16px;height:16px;object-fit:contain;">
+                <span style="font-size:11px;font-weight:600;color:#334155;">${escapeHtml(source.title)}</span>
+              </div>` : `<span style="font-size:11px;color:#94a3b8;">Direct</span>`}
+            </div>
           </div>
           <div style="display:grid;gap:6px;border-top:1px solid #f1f5f9;padding-top:8px;">
-            ${room ? `<div style="display:flex;justify-content:space-between;"><span style="color:#64748b;">ოთახი & ორდერი:</span><strong>No. ${escapeHtml(room.roomNumber || room.roomName || '-')}${room.basePrice ? ` (${room.basePrice} ₾ / ღამე)` : ''}</strong></div>` : ''}
-            <div style="display:flex;justify-content:space-between;">
+            ${room ? `<div style="display:flex;justify-content:space-between;gap:8px;"><span style="color:#64748b;">ოთახი:</span><strong>No. ${escapeHtml(room.roomNumber || room.roomName || '-')}${room.basePrice ? ` (${room.basePrice} ₾ / ღამე)` : ''}</strong></div>` : ''}
+            <div style="display:flex;justify-content:space-between;gap:8px;">
               <span style="color:#64748b;">პერიოდი:</span>
               <strong style="color:#3b82f6;">${escapeHtml(b.checkinDate || '')} → ${escapeHtml(b.checkoutDate || '')}${nights ? ` (${nights}ღ)` : ''}</strong>
             </div>
-            ${price ? `<div style="display:flex;justify-content:space-between;"><span style="color:#64748b;">ფინანსური სტატუსი:</span><strong style="color:${paidColor};">${paid} (${price})</strong></div>` : ''}
+            ${price ? `<div style="display:flex;justify-content:space-between;gap:8px;"><span style="color:#64748b;">ფინანსური სტატუსი:</span><strong style="color:${paidColor};">${paid} (${price})</strong></div>` : ''}
           </div>
           ${comment ? `
             <div style="margin-top:10px;background:#fffbeb;border-left:3px solid #f59e0b;border-radius:6px;padding:8px 10px;">
