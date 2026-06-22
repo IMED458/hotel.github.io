@@ -587,6 +587,74 @@
         </div>
       `;
     }
+
+    function buildCalTooltipHtml(b) {
+      const statusLabel = { Reserved: 'დადასტურებული', 'Checked-in': 'Check In', 'Checked-out': 'Check Out', Cancelled: 'გაუქმებული' };
+      const statusColor = { Reserved: '#059669', 'Checked-in': '#7c3aed', 'Checked-out': '#64748b', Cancelled: '#dc2626' };
+      const room = findRoomById(b.roomId);
+      const nights = b.checkinDate && b.checkoutDate ? Math.round((new Date(b.checkoutDate) - new Date(b.checkinDate)) / 86400000) : '';
+      const comment = b.comment || b.comments || b.internalNotes || '';
+      const sc = statusColor[b.status] || '#059669';
+      const sl = statusLabel[b.status] || b.status || '';
+      const paid = b.paymentStatus === 'paid' ? 'გადახდილია' : b.paymentStatus === 'partial' ? 'ნაწილობრივ' : 'გადაუხდელი';
+      const paidColor = b.paymentStatus === 'paid' ? '#059669' : b.paymentStatus === 'partial' ? '#d97706' : '#dc2626';
+      const price = b.totalPrice ? `${Number(b.totalPrice).toLocaleString('en-US')} ₾` : '';
+      const vip = b.vip || b.vipFlag;
+      return `
+        <div style="min-width:260px;max-width:300px;font-family:Arial,sans-serif;font-size:13px;color:#1c1917;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px;">
+            <div>
+              <div style="font-size:16px;font-weight:800;color:#0f172a;line-height:1.2;">${escapeHtml(b.guestName || 'სტუმარი')}${vip ? ' <span style="background:#f59e0b;color:#fff;font-size:10px;padding:1px 6px;border-radius:20px;font-weight:700;vertical-align:middle;">VIP</span>' : ''}</div>
+              ${b.guestPhone ? `<div style="font-size:12px;color:#475569;margin-top:2px;">ტელ: <strong>${escapeHtml(b.guestPhone)}</strong></div>` : ''}
+              ${b.invoiceNo ? `<div style="display:inline-block;margin-top:4px;background:#e0f2fe;color:#0369a1;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;">${escapeHtml(b.invoiceNo)}</div>` : ''}
+            </div>
+            <span style="background:${sc}22;color:${sc};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;border:1px solid ${sc}44;">${sl}</span>
+          </div>
+          <div style="display:grid;gap:6px;border-top:1px solid #f1f5f9;padding-top:8px;">
+            ${room ? `<div style="display:flex;justify-content:space-between;"><span style="color:#64748b;">ოთახი & ორდერი:</span><strong>No. ${escapeHtml(room.roomNumber || room.roomName || '-')}${room.basePrice ? ` (${room.basePrice} ₾ / ღამე)` : ''}</strong></div>` : ''}
+            <div style="display:flex;justify-content:space-between;">
+              <span style="color:#64748b;">პერიოდი:</span>
+              <strong style="color:#3b82f6;">${escapeHtml(b.checkinDate || '')} → ${escapeHtml(b.checkoutDate || '')}${nights ? ` (${nights}ღ)` : ''}</strong>
+            </div>
+            ${price ? `<div style="display:flex;justify-content:space-between;"><span style="color:#64748b;">ფინანსური სტატუსი:</span><strong style="color:${paidColor};">${paid} (${price})</strong></div>` : ''}
+          </div>
+          ${comment ? `
+            <div style="margin-top:10px;background:#fffbeb;border-left:3px solid #f59e0b;border-radius:6px;padding:8px 10px;">
+              <div style="font-size:10px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">📌 შენიშვნა / კომენტარი:</div>
+              <div style="font-size:12px;color:#44403c;font-style:italic;">"${escapeHtml(comment)}"</div>
+            </div>` : ''}
+        </div>
+      `;
+    }
+
+    function initCalendarTooltip() {
+      if (document.getElementById('cal-tooltip')) return;
+      const tip = document.createElement('div');
+      tip.id = 'cal-tooltip';
+      tip.style.cssText = 'position:fixed;z-index:9999;background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 8px 32px rgba(15,23,42,.18);padding:16px;pointer-events:none;opacity:0;transition:opacity .15s;max-width:320px;';
+      document.body.appendChild(tip);
+
+      document.addEventListener('mouseover', (e) => {
+        const bar = e.target.closest('.reservation-bar[data-res-id]');
+        if (!bar) return;
+        const id = Number(bar.dataset.resId);
+        const b = getReservationsData().find(r => Number(r.id) === id);
+        if (!b) return;
+        tip.innerHTML = buildCalTooltipHtml(b);
+        tip.style.opacity = '1';
+      });
+      document.addEventListener('mousemove', (e) => {
+        if (tip.style.opacity === '0') return;
+        const x = e.clientX + 16;
+        const y = e.clientY + 16;
+        tip.style.left = (x + 320 > window.innerWidth ? e.clientX - 330 : x) + 'px';
+        tip.style.top  = (y + 260 > window.innerHeight ? e.clientY - 270 : y) + 'px';
+      });
+      document.addEventListener('mouseout', (e) => {
+        const bar = e.target.closest('.reservation-bar[data-res-id]');
+        if (bar) tip.style.opacity = '0';
+      });
+    }
     function updateModalHeaderSourceLogo(reservation) {
       const logoEl = document.getElementById('modal-header-source-logo');
       if (!logoEl) return;
@@ -1271,6 +1339,7 @@
       `;
 
       updateCalendarTitle();
+      initCalendarTooltip();
       const grid = document.getElementById('calendar-grid');
       grid.className = calendarView === 'month' ? '' : 'min-w-[900px]';
       if (calendarView === 'week') {
@@ -1389,14 +1458,7 @@
           const top = barTopBase + (lane * barStep);
           const booking = item.reservation;
           const cls = booking.status === 'Checked-in' ? 'checkedin' : booking.status === 'Checked-out' ? 'checkout' : 'reserved';
-          const tooltipLines = [
-            booking.guestName || '-',
-            `${booking.checkinDate} → ${booking.checkoutDate}`,
-            booking.guestPhone ? `📞 ${booking.guestPhone}` : '',
-            booking.totalPrice ? `💰 ${booking.totalPrice}` : '',
-            booking.comment || booking.comments || booking.internalNotes || ''
-          ].filter(Boolean).join('\n');
-          return `<div class="reservation-bar ${cls}" draggable="true" ondragstart="handleReservationDragStart(event, ${booking.id})" ondragend="handleReservationDragEnd()" title="${escapeHtml(tooltipLines)}" style="left:${left}px;top:${top}px;width:${width}px;height:20px;line-height:20px;" onclick="openReservationDetails(${booking.id})">${renderReservationBarContent(booking)}</div>`;
+          return `<div class="reservation-bar ${cls}" draggable="true" data-res-id="${booking.id}" ondragstart="handleReservationDragStart(event, ${booking.id})" ondragend="handleReservationDragEnd()" style="left:${left}px;top:${top}px;width:${width}px;height:20px;line-height:20px;" onclick="openReservationDetails(${booking.id})">${renderReservationBarContent(booking)}</div>`;
         }).join('');
 
         const rowMinHeight = Math.max(32, laneEnds.length * barStep + 8);
@@ -1503,14 +1565,7 @@
           const top = barTopBase + (lane * barStep);
           const booking = item.reservation;
           const cls = booking.status === 'Checked-in' ? 'checkedin' : booking.status === 'Checked-out' ? 'checkout' : 'reserved';
-          const tooltipLines = [
-            booking.guestName || '-',
-            `${booking.checkinDate} → ${booking.checkoutDate}`,
-            booking.guestPhone ? `📞 ${booking.guestPhone}` : '',
-            booking.totalPrice ? `💰 ${booking.totalPrice}` : '',
-            booking.comment || booking.comments || booking.internalNotes || ''
-          ].filter(Boolean).join('\n');
-          return `<div class="reservation-bar ${cls}" draggable="true" ondragstart="handleReservationDragStart(event, ${booking.id})" ondragend="handleReservationDragEnd()" title="${escapeHtml(tooltipLines)}" style="left:${left}px;top:${top}px;width:${width}px;height:18px;line-height:18px;" onclick="openReservationDetails(${booking.id})">${renderReservationBarContent(booking)}</div>`;
+          return `<div class="reservation-bar ${cls}" draggable="true" data-res-id="${booking.id}" ondragstart="handleReservationDragStart(event, ${booking.id})" ondragend="handleReservationDragEnd()" style="left:${left}px;top:${top}px;width:${width}px;height:18px;line-height:18px;" onclick="openReservationDetails(${booking.id})">${renderReservationBarContent(booking)}</div>`;
         }).join('');
 
         const rowMinHeight = Math.max(30, laneEnds.length * barStep + 8);
