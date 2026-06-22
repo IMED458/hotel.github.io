@@ -487,6 +487,16 @@
       return rates;
     }
     function getRoomTypes() { return ['Single', 'Double', 'Triple', 'Family', 'Suite']; }
+
+    function getEffectiveRoomPrice(room, month) {
+      if (!room) return 0;
+      const mo = Number(month) || (new Date().getMonth() + 1);
+      const override = room.monthlyRates && room.monthlyRates[mo];
+      if (override > 0) return Number(override);
+      const typeRate = (getMonthlyRates()[mo] || {})[room.roomType];
+      if (typeRate > 0) return Number(typeRate);
+      return Number(room.basePrice || 0);
+    }
     function roomTypeLabel(v) {
       const map = { Single: 'ერთადგილიანი', Double: 'ორადგილიანი', Triple: 'სამადგილიანი', Family: 'საოჯახო', Suite: 'ლუქსი' };
       return map[v] || v || '-';
@@ -1404,22 +1414,24 @@
         </div>
       `;
 
+      const calMonth = calendarDate.getMonth() + 1;
       const grouped = getGroupedRooms(rooms);
       const rows = grouped.map((group) => {
-        const prices = group.rooms.map(r => Number(r.basePrice || 0)).filter(p => p > 0);
-        const minP = prices.length ? Math.min(...prices) : 0;
-        const maxP = prices.length ? Math.max(...prices) : 0;
-        const priceStr = prices.length ? (minP === maxP ? `$${minP}` : `$${minP}–$${maxP}`) : '';
+        const typeMonthlyRate = (getMonthlyRates()[calMonth] || {})[group.type] || 0;
+        const priceStr = typeMonthlyRate > 0 ? `${typeMonthlyRate} ₾ / ღამე` : '';
         const groupHeader = `
           <div class="border-b border-gray-300 dark:border-gray-600 bg-slate-100 dark:bg-slate-700/40" style="display:grid;grid-template-columns:${roomWidth}px repeat(7, ${dayWidth}px);min-width:${totalWidth}px;">
-            <div class="px-3 py-2 sticky left-0 z-30 bg-slate-100 dark:bg-slate-700/40 border-r border-gray-300 dark:border-gray-600">
-              <div class="font-bold text-xs tracking-wide text-slate-800 dark:text-slate-100">${group.type}</div>
-              ${priceStr ? `<div class="text-[11px] text-sky-600 dark:text-sky-400 font-semibold">${priceStr} / night</div>` : ''}
+            <div class="px-3 py-1.5 sticky left-0 z-30 bg-slate-100 dark:bg-slate-700/40 border-r border-gray-300 dark:border-gray-600 flex items-center justify-between gap-2">
+              <span class="font-bold text-xs tracking-wide text-slate-800 dark:text-slate-100">${group.type}</span>
+              ${priceStr ? `<span class="text-[11px] text-sky-700 dark:text-sky-400 font-bold bg-sky-50 dark:bg-sky-900/30 px-1.5 py-0.5 rounded">${priceStr}</span>` : ''}
             </div>
             ${days.map(() => `<div class="border-l border-gray-300 dark:border-gray-600/50"></div>`).join('')}
           </div>
         `;
         const groupRows = group.rooms.map(room => {
+        const effectivePrice = getEffectiveRoomPrice(room, calMonth);
+        const typeRate = typeMonthlyRate;
+        const showRoomPrice = effectivePrice > 0 && effectivePrice !== typeRate;
         const roomReservations = reservations
           .filter(r => Number(r.roomId) === Number(room.id))
           .map(r => {
@@ -1447,8 +1459,9 @@
           .sort((a, b) => a.startPos - b.startPos || a.endPos - b.endPos);
 
         const laneEnds = [];
-        const barStep = 26;
-        const barTopBase = 4;
+        const BAR_H = 22;
+        const barStep = BAR_H + 2;
+        const barTopBase = 2;
         const bars = roomReservations.map(item => {
           let lane = 0;
           while (lane < laneEnds.length && item.startPos < laneEnds[lane]) lane++;
@@ -1458,19 +1471,20 @@
           const top = barTopBase + (lane * barStep);
           const booking = item.reservation;
           const cls = booking.status === 'Checked-in' ? 'checkedin' : booking.status === 'Checked-out' ? 'checkout' : 'reserved';
-          return `<div class="reservation-bar ${cls}" draggable="true" data-res-id="${booking.id}" ondragstart="handleReservationDragStart(event, ${booking.id})" ondragend="handleReservationDragEnd()" style="left:${left}px;top:${top}px;width:${width}px;height:20px;line-height:20px;" onclick="openReservationDetails(${booking.id})">${renderReservationBarContent(booking)}</div>`;
+          return `<div class="reservation-bar ${cls}" draggable="true" data-res-id="${booking.id}" ondragstart="handleReservationDragStart(event, ${booking.id})" ondragend="handleReservationDragEnd()" style="left:${left}px;top:${top}px;width:${width}px;height:${BAR_H}px;line-height:${BAR_H}px;" onclick="openReservationDetails(${booking.id})">${renderReservationBarContent(booking)}</div>`;
         }).join('');
 
-        const rowMinHeight = Math.max(32, laneEnds.length * barStep + 8);
+        const numLanes = laneEnds.length || 1;
+        const rowH = barTopBase + numLanes * barStep + barTopBase;
         return `
-          <div class="relative border-b border-gray-300 dark:border-gray-600/50 hover:bg-gray-50/40 dark:hover:bg-gray-700/20" style="display:grid;grid-template-columns:${roomWidth}px repeat(7, ${dayWidth}px);min-width:${totalWidth}px;min-height:${rowMinHeight}px;">
-            <div class="px-3 py-1 flex flex-col justify-center bg-white dark:bg-gray-800 sticky left-0 z-20 border-r border-gray-300 dark:border-gray-600">
-              <span class="font-medium text-sm text-gray-900 dark:text-white leading-tight">${escapeHtml(room.roomNumber || room.roomName || '')}</span>
-              ${room.basePrice ? `<span class="text-[10px] text-gray-400">$${room.basePrice}/night</span>` : ''}
+          <div class="relative border-b border-gray-200 dark:border-gray-700" style="display:grid;grid-template-columns:${roomWidth}px repeat(7, ${dayWidth}px);min-width:${totalWidth}px;height:${rowH}px;overflow:hidden;">
+            <div class="px-2 flex items-center gap-1 bg-white dark:bg-gray-800 sticky left-0 z-20 border-r border-gray-300 dark:border-gray-600 overflow-hidden" style="height:${rowH}px;">
+              <span class="font-medium text-xs text-gray-800 dark:text-white truncate">${escapeHtml(room.roomNumber || room.roomName || '')}</span>
+              ${showRoomPrice ? `<span class="text-[9px] text-amber-600 font-bold whitespace-nowrap">${effectivePrice}₾</span>` : ''}
             </div>
             ${days.map(d => {
               const dateStr = formatDateISO(d);
-              return `<div class="calendar-drop-target relative border-l border-gray-300 dark:border-gray-600/40 ${isToday(d) ? 'bg-amber-100/70 dark:bg-amber-900/20' : ''}" onclick="openNewReservation(${room.id}, '${dateStr}')" ondragover="handleCalendarCellDragOver(event)" ondrop="handleCalendarCellDrop(event, ${room.id}, '${dateStr}')"></div>`;
+              return `<div class="calendar-drop-target border-l border-gray-200 dark:border-gray-700 ${isToday(d) ? 'bg-amber-50 dark:bg-amber-900/20' : ''}" style="height:${rowH}px;" onclick="openNewReservation(${room.id}, '${dateStr}')" ondragover="handleCalendarCellDragOver(event)" ondrop="handleCalendarCellDrop(event, ${room.id}, '${dateStr}')"></div>`;
             }).join('')}
             ${bars}
           </div>
@@ -1514,22 +1528,23 @@
         </div>
       `;
 
+      const calMonthM = month + 1;
       const grouped = getGroupedRooms(rooms);
       const rows = grouped.map((group) => {
-        const prices = group.rooms.map(r => Number(r.basePrice || 0)).filter(p => p > 0);
-        const minP = prices.length ? Math.min(...prices) : 0;
-        const maxP = prices.length ? Math.max(...prices) : 0;
-        const priceStr = prices.length ? (minP === maxP ? `$${minP}` : `$${minP}–$${maxP}`) : '';
+        const typeMonthlyRateM = (getMonthlyRates()[calMonthM] || {})[group.type] || 0;
+        const priceStrM = typeMonthlyRateM > 0 ? `${typeMonthlyRateM} ₾ / ღამე` : '';
         const groupHeader = `
           <div class="border-b border-gray-300 dark:border-gray-600 bg-slate-100 dark:bg-slate-700/40" style="display:grid;grid-template-columns:${roomWidth}px repeat(${days.length}, ${dayWidth}px);min-width:${totalWidth}px;">
-            <div class="px-3 py-1 sticky left-0 z-30 bg-slate-100 dark:bg-slate-700/40 border-r border-gray-300 dark:border-gray-600">
-              <div class="font-bold text-xs tracking-wide text-slate-800 dark:text-slate-100">${group.type}</div>
-              ${priceStr ? `<div class="text-[11px] text-sky-600 dark:text-sky-400 font-semibold">${priceStr} / night</div>` : ''}
+            <div class="px-3 py-1.5 sticky left-0 z-30 bg-slate-100 dark:bg-slate-700/40 border-r border-gray-300 dark:border-gray-600 flex items-center justify-between gap-2">
+              <span class="font-bold text-xs tracking-wide text-slate-800 dark:text-slate-100">${group.type}</span>
+              ${priceStrM ? `<span class="text-[11px] text-sky-700 dark:text-sky-400 font-bold bg-sky-50 dark:bg-sky-900/30 px-1.5 py-0.5 rounded">${priceStrM}</span>` : ''}
             </div>
             ${days.map(() => `<div class="border-l border-gray-300 dark:border-gray-600/50"></div>`).join('')}
           </div>
         `;
         const groupRows = group.rooms.map(room => {
+        const effectivePriceM = getEffectiveRoomPrice(room, calMonthM);
+        const showRoomPriceM = effectivePriceM > 0 && effectivePriceM !== typeMonthlyRateM;
         const roomReservations = reservations
           .filter(r => Number(r.roomId) === Number(room.id))
           .map(r => {
@@ -1554,8 +1569,9 @@
           .sort((a, b) => a.startPos - b.startPos || a.endPos - b.endPos);
 
         const laneEnds = [];
-        const barStep = 22;
-        const barTopBase = 4;
+        const BAR_H = 22;
+        const barStep = BAR_H + 2;
+        const barTopBase = 2;
         const bars = roomReservations.map(item => {
           let lane = 0;
           while (lane < laneEnds.length && item.startPos < laneEnds[lane]) lane++;
@@ -1565,19 +1581,20 @@
           const top = barTopBase + (lane * barStep);
           const booking = item.reservation;
           const cls = booking.status === 'Checked-in' ? 'checkedin' : booking.status === 'Checked-out' ? 'checkout' : 'reserved';
-          return `<div class="reservation-bar ${cls}" draggable="true" data-res-id="${booking.id}" ondragstart="handleReservationDragStart(event, ${booking.id})" ondragend="handleReservationDragEnd()" style="left:${left}px;top:${top}px;width:${width}px;height:18px;line-height:18px;" onclick="openReservationDetails(${booking.id})">${renderReservationBarContent(booking)}</div>`;
+          return `<div class="reservation-bar ${cls}" draggable="true" data-res-id="${booking.id}" ondragstart="handleReservationDragStart(event, ${booking.id})" ondragend="handleReservationDragEnd()" style="left:${left}px;top:${top}px;width:${width}px;height:${BAR_H}px;line-height:${BAR_H}px;" onclick="openReservationDetails(${booking.id})">${renderReservationBarContent(booking)}</div>`;
         }).join('');
 
-        const rowMinHeight = Math.max(30, laneEnds.length * barStep + 8);
+        const numLanes = laneEnds.length || 1;
+        const rowH = barTopBase + numLanes * barStep + barTopBase;
         return `
-          <div class="relative border-b border-gray-300 dark:border-gray-600/50 hover:bg-gray-50/40 dark:hover:bg-gray-700/20" style="display:grid;grid-template-columns:${roomWidth}px repeat(${days.length}, ${dayWidth}px);min-width:${totalWidth}px;min-height:${rowMinHeight}px;">
-            <div class="px-3 py-1 flex flex-col justify-center bg-white dark:bg-gray-800 sticky left-0 z-20 border-r border-gray-300 dark:border-gray-600">
-              <span class="font-medium text-sm text-gray-900 dark:text-white leading-tight">${escapeHtml(room.roomNumber || room.roomName || '')}</span>
-              ${room.basePrice ? `<span class="text-[10px] text-gray-400">$${room.basePrice}/night</span>` : ''}
+          <div class="relative border-b border-gray-200 dark:border-gray-700" style="display:grid;grid-template-columns:${roomWidth}px repeat(${days.length}, ${dayWidth}px);min-width:${totalWidth}px;height:${rowH}px;overflow:hidden;">
+            <div class="px-2 flex items-center gap-1 bg-white dark:bg-gray-800 sticky left-0 z-20 border-r border-gray-300 dark:border-gray-600 overflow-hidden" style="height:${rowH}px;">
+              <span class="font-medium text-xs text-gray-800 dark:text-white truncate">${escapeHtml(room.roomNumber || room.roomName || '')}</span>
+              ${showRoomPriceM ? `<span class="text-[9px] text-amber-600 font-bold whitespace-nowrap">${effectivePriceM}₾</span>` : ''}
             </div>
             ${days.map(d => {
               const dateStr = formatDateISO(d);
-              return `<div class="calendar-drop-target relative border-l border-gray-300 dark:border-gray-600/40 ${isToday(d) ? 'bg-amber-100/70 dark:bg-amber-900/20' : ''}" onclick="openNewReservation(${room.id}, '${dateStr}')" ondragover="handleCalendarCellDragOver(event)" ondrop="handleCalendarCellDrop(event, ${room.id}, '${dateStr}')"></div>`;
+              return `<div class="calendar-drop-target border-l border-gray-200 dark:border-gray-700 ${isToday(d) ? 'bg-amber-50 dark:bg-amber-900/20' : ''}" style="height:${rowH}px;" onclick="openNewReservation(${room.id}, '${dateStr}')" ondragover="handleCalendarCellDragOver(event)" ondrop="handleCalendarCellDrop(event, ${room.id}, '${dateStr}')"></div>`;
             }).join('')}
             ${bars}
           </div>
@@ -5091,6 +5108,16 @@
           <label class="text-xs text-gray-500">დამატებითი საწოლი მაქს რაოდენობა<input id="editRoomMaxExtraBeds" type="number" min="0" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700" value="${Number(room.maxExtraBeds || 0)}"></label>
           <label class="text-xs text-gray-500">სტატუსი<select id="editRoomStatus" class="mt-1 w-full px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option value="available" ${room.status==='available'?'selected':''}>ხელმისაწვდომი</option><option value="booked" ${room.status==='booked'?'selected':''}>დაჯავშნილი</option><option value="occupied" ${room.status==='occupied'?'selected':''}>დაკავებული</option><option value="cleaning" ${room.status==='cleaning'?'selected':''}>დასუფთავება</option><option value="maintenance" ${room.status==='maintenance'?'selected':''}>რემონტი</option></select></label>
         </div>
+        <div class="mt-4 border border-gray-100 dark:border-gray-700 rounded-xl p-4">
+          <div class="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-3">ფასი თვის მიხედვით (override — ცარიელი = ტიპის ფასი)</div>
+          <div class="grid grid-cols-3 md:grid-cols-4 gap-2">
+            ${['იანვ','თებ','მარტ','აპრ','მაის','ივნ','ივლ','აგვ','სექ','ოქტ','ნოემ','დეკ'].map((name, idx) => {
+              const mo = idx + 1;
+              const val = (room.monthlyRates || {})[mo] || '';
+              return `<label class="text-[10px] text-gray-500">${name}<input type="number" min="0" id="editRoomMonthRate_${mo}" class="mt-0.5 w-full px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" value="${val}" placeholder="—"></label>`;
+            }).join('')}
+          </div>
+        </div>
         <div class="mt-4 flex gap-2">
           <button class="px-4 py-2 bg-sky-600 text-white rounded-lg" onclick="saveRoomEdits(${room.id})">შენახვა</button>
           <button class="px-4 py-2 bg-red-100 text-red-700 rounded-lg" onclick="deleteRoom(${room.id})">წაშლა</button>
@@ -5103,6 +5130,11 @@
       const rooms = getRoomsData();
       const idx = rooms.findIndex(r => Number(r.id) === Number(roomId));
       if (idx === -1) return;
+      const editedMonthlyRates = {};
+      for (let mo = 1; mo <= 12; mo++) {
+        const v = Number(document.getElementById(`editRoomMonthRate_${mo}`)?.value || 0);
+        if (v > 0) editedMonthlyRates[mo] = v;
+      }
       rooms[idx] = {
         ...rooms[idx],
         roomNumber: document.getElementById('editRoomNumber').value.trim(),
@@ -5114,7 +5146,8 @@
         maxGuests: Number(document.getElementById('editRoomMaxGuests').value || 1),
         supportsExtraBed: !!document.getElementById('editRoomSupportsExtraBed').checked,
         maxExtraBeds: Math.max(0, Number(document.getElementById('editRoomMaxExtraBeds').value || 0)),
-        status: document.getElementById('editRoomStatus').value
+        status: document.getElementById('editRoomStatus').value,
+        monthlyRates: editedMonthlyRates
       };
       setRoomsData(rooms);
       syncCurrentMonthRatesFromRooms();
