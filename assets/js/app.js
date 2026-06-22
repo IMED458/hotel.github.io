@@ -2,7 +2,7 @@
       ['dashboard', 'მთავარი პანელი', 'dashboard'], ['calendar', 'კალენდარი', 'calendar'], ['housekeeping', 'დალაგება', 'rooms'],
       ['maintenance', 'ტექნიკური მომსახურება', 'settings'], ['tasks', 'დავალებები', 'reservations'], ['approvals', 'დამტკიცებები', 'checkin'],
       ['rooms', 'ნომრები', 'rooms'], ['reservations', 'ჯავშნები', 'reservations'], ['guests', 'სტუმრები', 'guests'],
-      ['checkin', 'შესახლება / გასვლა', 'checkin'], ['payments', 'გადახდები / ინვოისები', 'payments'], ['finance', 'ფინანსები', 'finance'],
+      ['checkin', 'Check In / Check Out', 'checkin'], ['payments', 'გადახდები / ინვოისები', 'payments'], ['finance', 'ფინანსები', 'finance'],
       ['pricing', 'ფასები / ტარიფები', 'pricing'], ['documents', 'დოკუმენტები', 'reports'], ['hr', 'თანამშრომლები', 'guests'],
       ['audit', 'აუდიტის ჟურნალი', 'reports'], ['channels', 'არხების მენეჯერი', 'channels'], ['reports', 'ანგარიშები', 'reports'], ['settings', 'პარამეტრები', 'settings']
     ];
@@ -1143,7 +1143,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           ${card('დაკავებულობა', `${occupancy}%`, 'hotel')}
           ${card('სულ შემოსავალი', `${config.currency_symbol}${revenue.toLocaleString('en-US')}`, 'revenue')}
-          ${card('დღეს შესახლება', String(checkinsToday), 'checkin')}
+          ${card('Today Check-in', String(checkinsToday), 'checkin')}
           ${card('დღეს გასვლა', String(checkoutsToday), 'checkout')}
         </div>
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
@@ -1195,7 +1195,7 @@
         <div class="mt-6 bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 overflow-x-auto">
           <h3 class="font-semibold mb-4">უახლესი ჯავშნები</h3>
           <table class="w-full text-sm">
-            <thead class="text-left text-gray-500"><tr><th class="pb-3">სტუმარი</th><th class="pb-3">ნომერი</th><th class="pb-3">შესახლება</th><th class="pb-3">გასვლა</th><th class="pb-3">სტატუსი</th><th class="pb-3">თანხა</th></tr></thead>
+            <thead class="text-left text-gray-500"><tr><th class="pb-3">სტუმარი</th><th class="pb-3">ნომერი</th><th class="pb-3">Check In</th><th class="pb-3">Check Out</th><th class="pb-3">სტატუსი</th><th class="pb-3">თანხა</th></tr></thead>
             <tbody>
               ${reservations.slice(0, 5).map(r => `
                 <tr class="border-t border-gray-100 dark:border-gray-700">
@@ -1240,17 +1240,19 @@
                 <button onclick="toggleCalendarFullscreen()" class="px-4 py-2 text-sm font-medium rounded-lg bg-gray-100 dark:bg-gray-700">${calendarFullscreen ? 'სრული ეკრანიდან გამოსვლა' : 'სრული ეკრანი'}</button>
               </div>
             </div>
-            <div class="flex items-center gap-4">
-              <button onclick="navigateCalendar(-1)" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">←</button>
-              <h3 id="calendar-title" class="text-lg font-semibold text-gray-900 dark:text-white"></h3>
-              <button onclick="navigateCalendar(1)" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">→</button>
-              <button onclick="goToToday()" class="ml-2 px-3 py-1.5 text-sm font-medium text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-900/20 rounded-lg transition-colors">დღეს</button>
+            <div class="flex items-center gap-3 flex-wrap">
+              <button onclick="navigateCalendar(-1)" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-lg">←</button>
+              <h3 id="calendar-title" class="text-lg font-semibold text-gray-900 dark:text-white min-w-[160px]"></h3>
+              <button onclick="navigateCalendar(1)" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-lg">→</button>
+              <button onclick="goToToday()" class="px-3 py-1.5 text-sm font-medium text-sky-600 bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/20 dark:hover:bg-sky-900/40 rounded-lg transition-colors">Today</button>
+              <input id="calendarDateInput" type="date" class="px-2 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 border-0" onchange="goToCalendarDate()" value="${(function(){const d=calendarDate||new Date();const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;})()}">
             </div>
             <div class="flex flex-wrap items-center gap-2 mt-3">
-              <select id="calendarFilterType" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm">
-                <option value="">ყველა ტიპი</option>
-                ${getRoomTypes().map((t) => `<option value="${t}" ${calendarFilters.roomType === t ? 'selected' : ''}>${roomTypeLabel(t)}</option>`).join('')}
+              <select id="calendarFilterType" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm" onchange="document.getElementById('calendarFilterTypeCustom').value=''">
+                <option value="">All Types</option>
+                ${[...new Set([...getRoomTypes(), ...getRoomsData().map(r => r.roomType).filter(Boolean)])].map((t) => `<option value="${escapeHtml(t)}" ${calendarFilters.roomType === t ? 'selected' : ''}>${escapeHtml(t)}</option>`).join('')}
               </select>
+              <input id="calendarFilterTypeCustom" type="text" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm w-36" placeholder="ტიპი ხელით..." value="" onkeydown="if(event.key==='Enter'){document.getElementById('calendarFilterType').value='';applyCalendarFilters();}">
               <input id="calendarFilterMaxPrice" type="number" min="0" step="0.01" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm" placeholder="მაქს. ფასი" value="${calendarFilters.maxPrice || ''}">
               <button onclick="applyCalendarFilters()" class="px-3 py-2 rounded-lg bg-sky-600 text-white text-sm">ფილტრი</button>
               <button onclick="resetCalendarFilters()" class="px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-sm">გასუფთავება</button>
@@ -1287,8 +1289,9 @@
     }
 
     function applyCalendarFilters() {
+      const customType = document.getElementById('calendarFilterTypeCustom')?.value.trim() || '';
       calendarFilters = {
-        roomType: document.getElementById('calendarFilterType')?.value || '',
+        roomType: customType || document.getElementById('calendarFilterType')?.value || '',
         maxPrice: document.getElementById('calendarFilterMaxPrice')?.value || ''
       };
       renderCalendar();
@@ -1334,9 +1337,16 @@
 
       const grouped = getGroupedRooms(rooms);
       const rows = grouped.map((group) => {
+        const prices = group.rooms.map(r => Number(r.basePrice || 0)).filter(p => p > 0);
+        const minP = prices.length ? Math.min(...prices) : 0;
+        const maxP = prices.length ? Math.max(...prices) : 0;
+        const priceStr = prices.length ? (minP === maxP ? `$${minP}` : `$${minP}–$${maxP}`) : '';
         const groupHeader = `
           <div class="border-b border-gray-300 dark:border-gray-600 bg-slate-100 dark:bg-slate-700/40" style="display:grid;grid-template-columns:${roomWidth}px repeat(7, ${dayWidth}px);min-width:${totalWidth}px;">
-            <div class="px-3 py-2 font-semibold text-xs tracking-wide text-slate-700 dark:text-slate-200 sticky left-0 z-30 bg-slate-100 dark:bg-slate-700/40 border-r border-gray-300 dark:border-gray-600">${roomTypeLabel(group.type)}</div>
+            <div class="px-3 py-2 sticky left-0 z-30 bg-slate-100 dark:bg-slate-700/40 border-r border-gray-300 dark:border-gray-600">
+              <div class="font-bold text-xs tracking-wide text-slate-800 dark:text-slate-100">${group.type}</div>
+              ${priceStr ? `<div class="text-[11px] text-sky-600 dark:text-sky-400 font-semibold">${priceStr} / night</div>` : ''}
+            </div>
             ${days.map(() => `<div class="border-l border-gray-300 dark:border-gray-600/50"></div>`).join('')}
           </div>
         `;
@@ -1368,8 +1378,8 @@
           .sort((a, b) => a.startPos - b.startPos || a.endPos - b.endPos);
 
         const laneEnds = [];
-        const barStep = dayWidth <= 20 ? 28 : 34;
-        const barTopBase = 5;
+        const barStep = 26;
+        const barTopBase = 4;
         const bars = roomReservations.map(item => {
           let lane = 0;
           while (lane < laneEnds.length && item.startPos < laneEnds[lane]) lane++;
@@ -1379,14 +1389,22 @@
           const top = barTopBase + (lane * barStep);
           const booking = item.reservation;
           const cls = booking.status === 'Checked-in' ? 'checkedin' : booking.status === 'Checked-out' ? 'checkout' : 'reserved';
-          return `<div class="reservation-bar ${cls}" draggable="true" ondragstart="handleReservationDragStart(event, ${booking.id})" ondragend="handleReservationDragEnd()" style="left:${left}px;top:${top}px;width:${width}px;" onclick="openReservationDetails(${booking.id})">${renderReservationBarContent(booking)}</div>`;
+          const tooltipLines = [
+            booking.guestName || '-',
+            `${booking.checkinDate} → ${booking.checkoutDate}`,
+            booking.guestPhone ? `📞 ${booking.guestPhone}` : '',
+            booking.totalPrice ? `💰 ${booking.totalPrice}` : '',
+            booking.comment || booking.comments || booking.internalNotes || ''
+          ].filter(Boolean).join('\n');
+          return `<div class="reservation-bar ${cls}" draggable="true" ondragstart="handleReservationDragStart(event, ${booking.id})" ondragend="handleReservationDragEnd()" title="${escapeHtml(tooltipLines)}" style="left:${left}px;top:${top}px;width:${width}px;height:20px;line-height:20px;" onclick="openReservationDetails(${booking.id})">${renderReservationBarContent(booking)}</div>`;
         }).join('');
 
-        const rowMinHeight = Math.max(48, laneEnds.length * 34 + 10);
+        const rowMinHeight = Math.max(32, laneEnds.length * barStep + 8);
         return `
           <div class="relative border-b border-gray-300 dark:border-gray-600/50 hover:bg-gray-50/40 dark:hover:bg-gray-700/20" style="display:grid;grid-template-columns:${roomWidth}px repeat(7, ${dayWidth}px);min-width:${totalWidth}px;min-height:${rowMinHeight}px;">
-            <div class="p-3 flex items-center gap-2 bg-white dark:bg-gray-800 sticky left-0 z-20 border-r border-gray-300 dark:border-gray-600">
-              <span class="font-medium text-gray-900 dark:text-white">${escapeHtml(room.roomNumber || room.roomName || '')}</span>
+            <div class="px-3 py-1 flex flex-col justify-center bg-white dark:bg-gray-800 sticky left-0 z-20 border-r border-gray-300 dark:border-gray-600">
+              <span class="font-medium text-sm text-gray-900 dark:text-white leading-tight">${escapeHtml(room.roomNumber || room.roomName || '')}</span>
+              ${room.basePrice ? `<span class="text-[10px] text-gray-400">$${room.basePrice}/night</span>` : ''}
             </div>
             ${days.map(d => {
               const dateStr = formatDateISO(d);
@@ -1436,9 +1454,16 @@
 
       const grouped = getGroupedRooms(rooms);
       const rows = grouped.map((group) => {
+        const prices = group.rooms.map(r => Number(r.basePrice || 0)).filter(p => p > 0);
+        const minP = prices.length ? Math.min(...prices) : 0;
+        const maxP = prices.length ? Math.max(...prices) : 0;
+        const priceStr = prices.length ? (minP === maxP ? `$${minP}` : `$${minP}–$${maxP}`) : '';
         const groupHeader = `
           <div class="border-b border-gray-300 dark:border-gray-600 bg-slate-100 dark:bg-slate-700/40" style="display:grid;grid-template-columns:${roomWidth}px repeat(${days.length}, ${dayWidth}px);min-width:${totalWidth}px;">
-            <div class="px-3 py-2 font-semibold text-xs tracking-wide text-slate-700 dark:text-slate-200 sticky left-0 z-30 bg-slate-100 dark:bg-slate-700/40 border-r border-gray-300 dark:border-gray-600">${roomTypeLabel(group.type)}</div>
+            <div class="px-3 py-1 sticky left-0 z-30 bg-slate-100 dark:bg-slate-700/40 border-r border-gray-300 dark:border-gray-600">
+              <div class="font-bold text-xs tracking-wide text-slate-800 dark:text-slate-100">${group.type}</div>
+              ${priceStr ? `<div class="text-[11px] text-sky-600 dark:text-sky-400 font-semibold">${priceStr} / night</div>` : ''}
+            </div>
             ${days.map(() => `<div class="border-l border-gray-300 dark:border-gray-600/50"></div>`).join('')}
           </div>
         `;
@@ -1467,8 +1492,8 @@
           .sort((a, b) => a.startPos - b.startPos || a.endPos - b.endPos);
 
         const laneEnds = [];
-        const barStep = dayWidth <= 20 ? 28 : 34;
-        const barTopBase = 5;
+        const barStep = 22;
+        const barTopBase = 4;
         const bars = roomReservations.map(item => {
           let lane = 0;
           while (lane < laneEnds.length && item.startPos < laneEnds[lane]) lane++;
@@ -1478,14 +1503,22 @@
           const top = barTopBase + (lane * barStep);
           const booking = item.reservation;
           const cls = booking.status === 'Checked-in' ? 'checkedin' : booking.status === 'Checked-out' ? 'checkout' : 'reserved';
-          return `<div class="reservation-bar ${cls}" draggable="true" ondragstart="handleReservationDragStart(event, ${booking.id})" ondragend="handleReservationDragEnd()" style="left:${left}px;top:${top}px;width:${width}px;" onclick="openReservationDetails(${booking.id})">${renderReservationBarContent(booking)}</div>`;
+          const tooltipLines = [
+            booking.guestName || '-',
+            `${booking.checkinDate} → ${booking.checkoutDate}`,
+            booking.guestPhone ? `📞 ${booking.guestPhone}` : '',
+            booking.totalPrice ? `💰 ${booking.totalPrice}` : '',
+            booking.comment || booking.comments || booking.internalNotes || ''
+          ].filter(Boolean).join('\n');
+          return `<div class="reservation-bar ${cls}" draggable="true" ondragstart="handleReservationDragStart(event, ${booking.id})" ondragend="handleReservationDragEnd()" title="${escapeHtml(tooltipLines)}" style="left:${left}px;top:${top}px;width:${width}px;height:18px;line-height:18px;" onclick="openReservationDetails(${booking.id})">${renderReservationBarContent(booking)}</div>`;
         }).join('');
 
-        const rowMinHeight = Math.max(44, laneEnds.length * barStep + 10);
+        const rowMinHeight = Math.max(30, laneEnds.length * barStep + 8);
         return `
           <div class="relative border-b border-gray-300 dark:border-gray-600/50 hover:bg-gray-50/40 dark:hover:bg-gray-700/20" style="display:grid;grid-template-columns:${roomWidth}px repeat(${days.length}, ${dayWidth}px);min-width:${totalWidth}px;min-height:${rowMinHeight}px;">
-            <div class="p-3 flex items-center gap-2 bg-white dark:bg-gray-800 sticky left-0 z-20 border-r border-gray-300 dark:border-gray-600">
-              <span class="font-medium text-gray-900 dark:text-white">${escapeHtml(room.roomNumber || room.roomName || '')}</span>
+            <div class="px-3 py-1 flex flex-col justify-center bg-white dark:bg-gray-800 sticky left-0 z-20 border-r border-gray-300 dark:border-gray-600">
+              <span class="font-medium text-sm text-gray-900 dark:text-white leading-tight">${escapeHtml(room.roomNumber || room.roomName || '')}</span>
+              ${room.basePrice ? `<span class="text-[10px] text-gray-400">$${room.basePrice}/night</span>` : ''}
             </div>
             ${days.map(d => {
               const dateStr = formatDateISO(d);
@@ -1578,7 +1611,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           ${card('სულ დარიცხული', `${config.currency_symbol}${totalBilled.toLocaleString('en-US')}`, 'revenue')}
           ${card('მიღებული გადახდები', `${config.currency_symbol}${totalPaid.toLocaleString('en-US')}`, 'revenue')}
-          ${card('დასარჩენი', `${config.currency_symbol}${totalDue.toLocaleString('en-US')}`, 'checkout')}
+          ${card('დარჩენილი', `${config.currency_symbol}${totalDue.toLocaleString('en-US')}`, 'checkout')}
           ${card('ინვოისების რაოდენობა', `${invoicesCount}`, 'dashboard')}
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
@@ -1595,7 +1628,7 @@
             </div>
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
-                <thead class="text-left text-gray-500"><tr><th class="pb-3">სტუმარი</th><th class="pb-3">ჯავშანი</th><th class="pb-3">ნომერი</th><th class="pb-3">დასარჩენი</th></tr></thead>
+                <thead class="text-left text-gray-500"><tr><th class="pb-3">სტუმარი</th><th class="pb-3">ჯავშანი</th><th class="pb-3">ნომერი</th><th class="pb-3">დარჩენილი</th></tr></thead>
                 <tbody>
                   ${topDebtors.map((r) => `
                     <tr class="border-t border-gray-100 dark:border-gray-700">
@@ -1673,6 +1706,13 @@
     function goToToday() {
       calendarDate = new Date();
       renderCalendar();
+    }
+
+    function goToCalendarDate() {
+      const val = document.getElementById('calendarDateInput')?.value;
+      if (!val) return;
+      const d = new Date(val);
+      if (!isNaN(d)) { calendarDate = d; renderCalendar(); }
     }
 
     function getStartOfWeek(date) {
@@ -1923,7 +1963,7 @@
         <div class="bg-white dark:bg-gray-800 rounded-xl p-4 mb-6 border border-gray-100 dark:border-gray-700 flex flex-wrap gap-3">
           <input type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
           <input type="date" class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700">
-          <select class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>ყველა სტატუსი</option><option>მოლოდინში</option><option>დადასტურებული</option><option>შესახლება</option><option>გასვლა</option><option>გაუქმებული</option></select>
+          <select class="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700"><option>ყველა სტატუსი</option><option>მოლოდინში</option><option>დადასტურებული</option><option>Check In</option><option>Check Out</option><option>გაუქმებული</option></select>
           <button class="px-3 py-2 rounded-lg bg-sky-600 text-white">ფილტრი</button>
         </div>
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto">
@@ -1933,8 +1973,8 @@
                 <th class="px-4 py-3 text-left">სტუმარი</th>
                 <th class="px-4 py-3 text-left">OTA</th>
                 <th class="px-4 py-3 text-left">ნომერი</th>
-                <th class="px-4 py-3 text-left">შესახლება</th>
-                <th class="px-4 py-3 text-left">გასვლა</th>
+                <th class="px-4 py-3 text-left">Check In</th>
+                <th class="px-4 py-3 text-left">Check Out</th>
                 <th class="px-4 py-3 text-left">სტატუსი</th>
                 <th class="px-4 py-3 text-left">გადახდა</th>
                 <th class="px-4 py-3 text-left">თანხა</th>
@@ -2008,7 +2048,7 @@
       const pendingIn = reservations.filter(r => r.status === 'Reserved');
       const pendingOut = reservations.filter(r => r.status === 'Checked-in');
       document.getElementById('page-checkin').innerHTML = `
-        <h2 class="text-xl font-bold mb-6">შესახლება / გასვლა</h2>
+        <h2 class="text-xl font-bold mb-6">Check In / Check Out</h2>
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
             <h3 class="font-semibold mb-4">მოლოდინში Check-in</h3>
@@ -2341,7 +2381,7 @@
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
-              <thead class="text-left text-gray-500"><tr><th class="pb-2">სტუმარი</th><th class="pb-2">ინვოისი</th><th class="pb-2">ვადა</th><th class="pb-2">დღე</th><th class="pb-2">დასარჩენი</th></tr></thead>
+              <thead class="text-left text-gray-500"><tr><th class="pb-2">სტუმარი</th><th class="pb-2">ინვოისი</th><th class="pb-2">ვადა</th><th class="pb-2">დღე</th><th class="pb-2">დარჩენილი</th></tr></thead>
               <tbody>
                 ${rows.map((r) => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="py-2">${escapeHtml(r.guestName || 'სტუმარი')}</td><td class="py-2">${escapeHtml(r.invoiceNo || `INV-${r.id}`)}</td><td class="py-2">${formatDate(r.checkoutDate)}</td><td class="py-2">${r.days}</td><td class="py-2 text-red-600 font-semibold">${config.currency_symbol}${Number(r.due || 0).toLocaleString('en-US')}</td></tr>`).join('') || '<tr><td colspan="5" class="py-6 text-center text-gray-500">დებიტორი არ არის</td></tr>'}
               </tbody>
@@ -2616,7 +2656,7 @@
         { key: 'guest', label: 'სტუმარი' },
         { key: 'total_price', label: 'სრული თანხა' },
         { key: 'paid', label: 'გადახდილია' },
-        { key: 'due', label: 'დასარჩენი' },
+        { key: 'due', label: 'დარჩენილი' },
         { key: 'invoice_status', label: 'ინვოისის სტატუსი' }
       ], rows);
     }
@@ -2759,7 +2799,7 @@
             { key: 'guest', label: 'სტუმარი' },
             { key: 'total_price', label: 'სრული თანხა' },
             { key: 'paid', label: 'გადახდილია' },
-            { key: 'due', label: 'დასარჩენი' },
+            { key: 'due', label: 'დარჩენილი' },
             { key: 'invoice_status', label: 'სტატუსი' }
           ],
           rows: invoices
@@ -2955,27 +2995,103 @@
       }
       const tasks = getHousekeepingData();
       const rooms = getRoomsData();
-      const dirty = rooms.filter(r => ['cleaning', 'dirty', 'occupied_dirty'].includes(String(r.status || ''))).length + tasks.filter(t => t.status !== 'completed').length;
-      const inspected = rooms.filter(r => r.status === 'available').length;
-      const maintenance = rooms.filter(r => r.status === 'maintenance').length;
+
+      const pendingCount = tasks.filter(t => ['new','assigned'].includes(t.status)).length;
+      const inProgressCount = tasks.filter(t => t.status === 'in_progress').length;
+      const cleanCount = tasks.filter(t => t.status === 'completed').length;
+      const inspectionCount = tasks.filter(t => t.status === 'inspection').length;
+
+      const typeLabel = { vacant_dirty: 'Vacant Dirty', occupied_dirty: 'Occupied Dirty', stayover: 'Stayover', due_out: 'Due Out', inspection: 'Inspection' };
+      const statusConfig = {
+        new:        { label: 'Pending Clean',     bg: 'bg-amber-50 dark:bg-amber-900/20',  border: 'border-amber-300',  badge: 'bg-amber-100 text-amber-700' },
+        assigned:   { label: 'Assigned',          bg: 'bg-sky-50 dark:bg-sky-900/20',      border: 'border-sky-300',    badge: 'bg-sky-100 text-sky-700' },
+        in_progress:{ label: 'In Progress',       bg: 'bg-violet-50 dark:bg-violet-900/20',border: 'border-violet-300', badge: 'bg-violet-100 text-violet-700' },
+        inspection: { label: 'Inspection',        bg: 'bg-blue-50 dark:bg-blue-900/20',    border: 'border-blue-300',   badge: 'bg-blue-100 text-blue-700' },
+        completed:  { label: 'Clean',             bg: 'bg-emerald-50 dark:bg-emerald-900/20',border:'border-emerald-300',badge: 'bg-emerald-100 text-emerald-700' },
+      };
+
+      const statCard = (label, count, sub, colorClass) => `
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border ${colorClass} p-5 flex items-center gap-4 shadow-sm">
+          <div>
+            <div class="text-xs text-gray-500 dark:text-gray-400 font-medium">${label}</div>
+            <div class="text-3xl font-black text-gray-900 dark:text-white leading-tight">${count} <span class="text-base font-semibold text-gray-500">${sub}</span></div>
+          </div>
+        </div>`;
+
+      const attendants = [...new Set(tasks.map(t => t.attendant).filter(Boolean))];
+      const selectedAttendant = getState('hkFilterAttendant', '');
+
+      const filteredTasks = selectedAttendant ? tasks.filter(t => t.attendant === selectedAttendant) : tasks;
+
+      const taskCards = filteredTasks.length ? filteredTasks.map(t => {
+        const room = findRoomById(t.roomId);
+        const sc = statusConfig[t.status] || statusConfig.new;
+        const isCompleted = t.status === 'completed';
+        const isInspection = t.status === 'inspection';
+        return `
+          <div class="rounded-2xl border-2 ${sc.border} ${sc.bg} p-4 flex flex-col gap-3">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <div class="font-bold text-base text-gray-900 dark:text-white">ნომერი ${escapeHtml(room?.roomNumber || room?.roomName || '-')}</div>
+                <div class="text-xs text-gray-500">${escapeHtml(room?.roomType || '-')} • ${escapeHtml(t.attendant || 'Not assigned')}</div>
+              </div>
+              <span class="text-xs font-semibold px-2 py-1 rounded-full ${sc.badge} whitespace-nowrap">${escapeHtml(typeLabel[t.type] || t.type)}</span>
+            </div>
+            ${(t.notes || t.sourceComment) ? `
+              <div class="text-sm text-gray-700 dark:text-gray-200 bg-white/70 dark:bg-gray-800/50 rounded-lg px-3 py-2 border border-gray-100 dark:border-gray-700">
+                ${escapeHtml(t.notes || t.sourceComment)}
+              </div>` : ''}
+            <div class="flex items-center justify-between gap-2 text-xs text-gray-500">
+              <span>პასუხისმგებელი: <strong>${escapeHtml(t.attendant || '-')}</strong></span>
+              ${t.dueAt ? `<span>⏰ ${t.dueAt}</span>` : ''}
+            </div>
+            <input id="hkComment_${t.id}" class="w-full px-3 py-1.5 rounded-lg bg-white dark:bg-gray-700 text-xs border border-gray-200 dark:border-gray-600" value="${escapeHtml(t.attendantComment || '')}" placeholder="დამლაგებლის კომენტარი...">
+            <div class="flex gap-2 flex-wrap">
+              ${isCompleted ? `<span class="flex-1 text-center px-3 py-2 rounded-xl bg-emerald-100 text-emerald-700 text-sm font-bold">✓ Clean</span>` : ''}
+              ${isInspection && !isCompleted ? `<button onclick="completeHousekeepingTask(${t.id})" class="flex-1 px-3 py-2 rounded-xl bg-emerald-600 text-white text-sm font-bold">Inspect (Clean)</button>` : ''}
+              ${!isCompleted && !isInspection ? `
+                <select id="hkStatus_${t.id}" class="flex-1 px-2 py-2 rounded-xl bg-white dark:bg-gray-700 text-xs border border-gray-200 dark:border-gray-600">
+                  <option value="new" ${t.status==='new'?'selected':''}>Pending</option>
+                  <option value="assigned" ${t.status==='assigned'?'selected':''}>Assigned</option>
+                  <option value="in_progress" ${t.status==='in_progress'?'selected':''}>In Progress</option>
+                  <option value="inspection" ${t.status==='inspection'?'selected':''}>Inspection</option>
+                  <option value="completed" ${t.status==='completed'?'selected':''}>Clean ✓</option>
+                </select>
+                <button onclick="updateHousekeepingTask(${t.id})" class="px-4 py-2 rounded-xl bg-sky-600 text-white text-xs font-semibold">შენახვა</button>
+              ` : ''}
+              ${!isCompleted ? `<button onclick="updateHousekeepingTask(${t.id})" class="px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-xs">✓</button>` : ''}
+            </div>
+          </div>`;
+      }).join('') : `<div class="col-span-full py-12 text-center text-gray-400 text-sm">დავალებები არ არის</div>`;
+
       document.getElementById('page-housekeeping').innerHTML = `
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-bold">დალაგება და ოთახების მოვლა</h2>
-          ${can('tasksManage') ? '<button onclick="addHousekeepingTask()" class="px-4 py-2 bg-sky-600 text-white rounded-xl">დავალების დამატება</button>' : ''}
+        <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
+          <h2 class="text-xl font-bold">Housekeeping Dashboard</h2>
+          ${can('tasksManage') ? '<button onclick="addHousekeepingTask()" class="px-4 py-2 bg-sky-600 text-white rounded-xl text-sm font-semibold">+ დავალების დამატება</button>' : ''}
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          ${card('დასალაგებელი', dirty, 'checkout')}
-          ${card('შემოწმებული', inspected, 'checkin')}
-          ${card('ტექნიკური პრობლემა', maintenance, 'hotel')}
-          ${card('დავალებები', tasks.length, 'dashboard')}
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          ${statCard('დასალაგებელია', pendingCount, 'ნომერი', 'border-amber-200')}
+          ${statCard('დალაგების პროცესსში', inProgressCount, 'ნომერი', 'border-violet-200')}
+          ${statCard('დალაგებულია (CLEAN)', cleanCount, 'ნომერი', 'border-emerald-200')}
+          ${statCard('შემოწმებელი (INSPECTED)', inspectionCount, 'ნომერი', 'border-blue-200')}
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="bg-gray-50 dark:bg-gray-700/50"><tr><th class="px-4 py-3 text-left">ნომერი</th><th class="px-4 py-3 text-left">ტიპი</th><th class="px-4 py-3 text-left">პრიორიტეტი</th><th class="px-4 py-3 text-left">შემსრულებელი</th><th class="px-4 py-3 text-left">ვადა</th><th class="px-4 py-3 text-left">კომენტარი</th><th class="px-4 py-3 text-left">სტატუსი</th><th class="px-4 py-3 text-left">დამლაგებლის კომენტარი</th><th class="px-4 py-3 text-left">მოქმედება</th></tr></thead>
-            <tbody>
-              ${tasks.map(t => `<tr class="border-t border-gray-100 dark:border-gray-700"><td class="px-4 py-3">${escapeHtml(findRoomById(t.roomId)?.roomNumber || '-')}</td><td class="px-4 py-3">${escapeHtml(({ vacant_dirty: 'თავისუფალი დასალაგებელი', occupied_dirty: 'დაკავებული დასალაგებელი', stayover: 'მცხოვრები სტუმარი', due_out: 'გასვლის დღე', inspection: 'შემოწმება' })[t.type] || t.type)}</td><td class="px-4 py-3">${priorityLabel(t.priority)}</td><td class="px-4 py-3">${escapeHtml(t.attendant || '-')}</td><td class="px-4 py-3">${escapeHtml(t.dueAt || '-')}</td><td class="px-4 py-3 max-w-[220px]"><div class="text-gray-700 dark:text-gray-200">${escapeHtml(t.notes || t.sourceComment || '-')}</div>${t.reservationId ? `<div class="text-xs text-gray-500 mt-1">ჯავშანი #${t.reservationId}</div>` : ''}</td><td class="px-4 py-3"><select id="hkStatus_${t.id}" class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs"><option value="new" ${t.status === 'new' ? 'selected' : ''}>ახალი</option><option value="assigned" ${t.status === 'assigned' ? 'selected' : ''}>მინიჭებული</option><option value="in_progress" ${t.status === 'in_progress' ? 'selected' : ''}>მიმდინარეობს</option><option value="inspection" ${t.status === 'inspection' ? 'selected' : ''}>შემოწმება</option><option value="completed" ${t.status === 'completed' ? 'selected' : ''}>დალაგდა / აქტიურია</option></select></td><td class="px-4 py-3"><input id="hkComment_${t.id}" class="w-44 px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-xs" value="${escapeHtml(t.attendantComment || '')}" placeholder="კომენტარი"></td><td class="px-4 py-3"><button onclick="updateHousekeepingTask(${t.id})" class="px-2 py-1 rounded bg-sky-100 text-sky-700 text-xs">შენახვა</button></td></tr>`).join('') || '<tr><td colspan="9" class="px-4 py-6 text-center text-gray-500">დავალებები არ არის</td></tr>'}
-            </tbody>
-          </table>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 mb-4">
+          <div class="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h3 class="font-bold text-gray-900 dark:text-white">დამლაგებლის დავალებების დაფა & ოთახების კონტროლი</h3>
+              <p class="text-xs text-gray-500 mt-0.5">მიუთითეთ დამლაგებლის ასიგნირება და შეცვალეთ დასუფთავების სტატუსები</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-sm text-gray-500">სიმულირებული დამლაგებელი:</span>
+              <select class="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-sm" onchange="setState('hkFilterAttendant', this.value); renderHousekeeping();">
+                <option value="" ${!selectedAttendant?'selected':''}>ყველა</option>
+                ${attendants.map(a => `<option value="${escapeHtml(a)}" ${selectedAttendant===a?'selected':''}>${escapeHtml(a)}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          ${taskCards}
         </div>
       `;
     }
@@ -4391,6 +4507,11 @@
             </div>
             <div class="folio-reservation-select">აქტიური ჯავშანი: ${escapeHtml(res.guestName || 'სტუმარი')} (${escapeHtml(room?.roomNumber || room?.roomName || '-')}) - ${escapeHtml(res.invoiceNo || `RES-${res.id}`)} • წყარო: ${escapeHtml(reservationSource.title || 'Direct')}</div>
           </div>
+          <div style="display:flex;gap:10px;padding:0 20px 12px;flex-wrap:wrap;">
+            ${canManageReservations && res.status !== 'Checked-in' && res.status !== 'Checked-out' ? `<button onclick="checkInReservation(${res.id})" style="padding:8px 20px;border-radius:10px;background:#16a34a;color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;">✓ Check In</button>` : ''}
+            ${canManageReservations && res.status === 'Checked-in' ? `<button onclick="checkOutReservation(${res.id})" style="padding:8px 20px;border-radius:10px;background:#d97706;color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer;">→ Check Out</button>` : ''}
+            ${res.status === 'Checked-out' ? `<span style="padding:8px 18px;border-radius:10px;background:#dcfce7;color:#166534;font-size:14px;font-weight:700;">✓ Checked Out</span>` : ''}
+          </div>
 
           <div class="folio-layout">
             <div class="folio-main">
@@ -4402,6 +4523,14 @@
                   </div>
                   <span class="folio-status ${dueAmount > 0 ? 'danger' : 'success'}">${dueAmount > 0 ? 'გადასახდელია ნაშთი' : 'გადახდილია'}</span>
                 </div>
+                ${(res.comment || res.comments || res.internalNotes) ? `
+                  <div style="margin:10px 0;padding:12px 16px;background:linear-gradient(135deg,#fefce8,#fef9c3);border-left:4px solid #eab308;border-radius:10px;display:flex;align-items:flex-start;gap:10px;">
+                    <span style="font-size:18px;line-height:1;">💬</span>
+                    <div>
+                      <div style="font-size:11px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">კომენტარი</div>
+                      <div style="font-size:13px;color:#1c1917;font-weight:500;white-space:pre-wrap;">${escapeHtml(res.comment || res.comments || res.internalNotes)}</div>
+                    </div>
+                  </div>` : ''}
                 <div class="folio-metrics">
                   <div class="metric neutral"><span>ჯამური სერვისები</span><strong>${Number(res.totalPrice || 0).toLocaleString('en-US')} ${config.currency_symbol}</strong></div>
                   <div class="metric success"><span>გადახდილია</span><strong>${paidAmount.toLocaleString('en-US')} ${config.currency_symbol}</strong></div>
@@ -4438,7 +4567,7 @@
                   <label class="text-xs text-gray-500">მოქალაქეობა<input id="editGuestCitizenship" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.guestCitizenship || '')}"></label>
                   <label class="text-xs text-gray-500">დაბადების თარიღი<input id="editGuestBirthDate" type="date" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.guestBirthDate || '')}"></label>
                   <label class="text-xs text-gray-500">ოთახი<select id="editRoomId" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full">${getRoomsData().map(r => `<option value="${r.id}" ${Number(r.id)===Number(res.roomId)?'selected':''}>${escapeHtml(r.roomName)} (${roomTypeLabel(r.roomType)})</option>`).join('')}</select></label>
-                  <label class="text-xs text-gray-500">სტატუსი<select id="editStatus" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full"><option ${res.status==='Reserved'?'selected':''} value="Reserved">დაჯავშნილი</option><option ${res.status==='Checked-in'?'selected':''} value="Checked-in">შესახლება</option><option ${res.status==='Checked-out'?'selected':''} value="Checked-out">გასვლა</option><option ${res.status==='Cancelled'?'selected':''} value="Cancelled">გაუქმებული</option></select></label>
+                  <label class="text-xs text-gray-500">სტატუსი<select id="editStatus" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full"><option ${res.status==='Reserved'?'selected':''} value="Reserved">დაჯავშნილი</option><option ${res.status==='Checked-in'?'selected':''} value="Checked-in">Check In</option><option ${res.status==='Checked-out'?'selected':''} value="Checked-out">Check Out</option><option ${res.status==='Cancelled'?'selected':''} value="Cancelled">გაუქმებული</option></select></label>
                   <label class="text-xs text-gray-500">შესახლების თარიღი<input id="editCheckinDate" type="date" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.checkinDate || '')}"></label>
                   <label class="text-xs text-gray-500">გასვლის თარიღი<input id="editCheckoutDate" type="date" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.checkoutDate || '')}"></label>
                   <label class="text-xs text-gray-500">გასვლის დრო<input id="editCheckoutTime" type="time" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${escapeHtml(res.checkoutTime || policy.checkoutTime)}"></label>
@@ -4453,7 +4582,7 @@
                     <div class="text-xs text-gray-500 mt-6" id="editExtraBedRateInfo"></div>
                   </div>
                   <label class="text-xs text-gray-500">${externalChannel ? 'არხიდან მიღებული სრული თანხა' : 'სრული თანხა'}<input id="editTotalPrice" type="number" min="0" step="0.01" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${Number(res.totalPrice||0)}" ${externalChannel ? '' : 'readonly'}></label>
-                  <label class="text-xs text-gray-500">დასარჩენი გადასახდელი თანხა<input id="editDueAmount" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${dueAmount}" readonly></label>
+                  <label class="text-xs text-gray-500">დარჩენილი გადასახდელი თანხა<input id="editDueAmount" type="number" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" value="${dueAmount}" readonly></label>
                   <label class="text-xs text-gray-500 flex items-center gap-2 mt-5"><input id="editReservationVip" type="checkbox" class="rounded" ${res.vip || res.vipFlag ? 'checked' : ''}> VIP სტუმარი</label>
                   <label class="md:col-span-2 text-xs text-gray-500">კომენტარი<textarea id="editReservationComment" class="mt-1 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 w-full" rows="3">${escapeHtml(res.comment || res.comments || res.internalNotes || '')}</textarea></label>
                 </div>
@@ -4464,8 +4593,8 @@
                 <div class="mt-2 text-sm font-semibold text-red-600" id="editDueSummary"></div>
                 <div class="flex gap-2 mt-4 flex-wrap">
                   ${canManageReservations ? `<button class="px-3 py-2 rounded bg-sky-600 text-white" onclick="saveReservationEdits(${res.id})">შენახვა</button>` : ''}
-                  ${canManageReservations ? `<button class="px-3 py-2 rounded bg-emerald-600 text-white" onclick="checkInReservation(${res.id})">შესახლება</button>` : ''}
-                  ${canManageReservations ? `<button class="px-3 py-2 rounded bg-amber-500 text-white" onclick="checkOutReservation(${res.id})">გასვლა</button>` : ''}
+                  ${canManageReservations ? `<button class="px-3 py-2 rounded bg-emerald-600 text-white" onclick="checkInReservation(${res.id})">Check In</button>` : ''}
+                  ${canManageReservations ? `<button class="px-3 py-2 rounded bg-amber-500 text-white" onclick="checkOutReservation(${res.id})">Check Out</button>` : ''}
                   ${canManageReservations ? `<button class="px-3 py-2 rounded bg-red-600 text-white" onclick="deleteReservation(${res.id})">წაშლა</button>` : ''}
                   <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printConsent(${res.id}, 'ka')">თანხმობა KA</button>
                   <button class="px-3 py-2 rounded bg-gray-100 dark:bg-gray-700" onclick="printConsent(${res.id}, 'en')">თანხმობა (EN)</button>
@@ -4778,15 +4907,14 @@
               <thead><tr><th>აღწერა</th><th class="right">რაოდენობა</th><th class="right">ფასი</th><th class="right">ჯამი</th></tr></thead>
               <tbody>
                 <tr><td>სასტუმრო — ღამეები</td><td class="right">${financials.nights}</td><td class="right">${financials.nightlyRate}₾</td><td class="right">${financials.baseTotal}₾</td></tr>
-                <tr><td>გვიანი გასვლა</td><td class="right">1</td><td class="right">${financials.lateCheckoutFee}₾</td><td class="right">${financials.lateCheckoutFee}₾</td></tr>
+                ${financials.lateCheckoutFee > 0 ? `<tr><td>გვიანი გასვლა</td><td class="right">1</td><td class="right">${financials.lateCheckoutFee}₾</td><td class="right">${financials.lateCheckoutFee}₾</td></tr>` : ''}
                 ${financials.extraBedFee > 0 ? `<tr><td>დამატებითი საწოლი</td><td class="right">${financials.extraBedQty}</td><td class="right">${getPolicySettings().extraBedRate}₾ x ${financials.nights} ღამე</td><td class="right">${financials.extraBedFee}₾</td></tr>` : ''}
                 ${financials.minibarItems.map((item) => `<tr><td>მინიბარი — ${escapeHtml(item.name)}</td><td class="right">${item.quantity}</td><td class="right">${Number(item.unitPrice || 0)}₾</td><td class="right">${(Number(item.unitPrice || 0) * Number(item.quantity || 0)).toFixed(2)}₾</td></tr>`).join('')}
-                ${financials.minibarTotal > 0 ? `<tr><td>მინიბარი ჯამურად</td><td class="right">-</td><td class="right">-</td><td class="right">${financials.minibarTotal.toFixed(2)}₾</td></tr>` : ''}
                 ${financials.additionalFeeAmount > 0 ? `<tr><td>${escapeHtml(financials.additionalFeeName || 'დამატებითი გადასახადი')}</td><td class="right">1</td><td class="right">${financials.additionalFeeAmount}₾</td><td class="right">${financials.additionalFeeAmount}₾</td></tr>` : ''}
-                <tr><td>ავანსი</td><td class="right">1</td><td class="right">-</td><td class="right">-${financials.advance}₾</td></tr>
+                ${financials.advance > 0 ? `<tr><td>ავანსი</td><td class="right">1</td><td class="right">-</td><td class="right">-${financials.advance}₾</td></tr>` : ''}
               </tbody>
             </table>
-            <div class="row" style="margin-top: 12px;"><div></div><div class="total">სრული: ${financials.grossTotal}₾ | ავანსი: ${financials.advance}₾ | დასარჩენი: ${financials.dueTotal}₾</div></div>
+            <div class="row" style="margin-top: 12px;"><div></div><div class="total">სრული: ${financials.grossTotal}₾${financials.advance > 0 ? ` | ავანსი: ${financials.advance}₾` : ''} | გადასახდელი: ${financials.dueTotal}₾</div></div>
           </div>
           <div class="no-print" style="margin-top: 16px;"><button onclick="window.print()">ბეჭდვა</button></div>
         </body>
@@ -6310,7 +6438,7 @@
 
     const ACTIONS = {
       navigateTo, toggleSidebar, toggleSidebarCollapse, toggleDarkMode, openModal, closeModal,
-      changeCalendarView, navigateCalendar, goToToday, toggleCalendarFullscreen, applyCalendarFilters, resetCalendarFilters,
+      changeCalendarView, navigateCalendar, goToToday, goToCalendarDate, toggleCalendarFullscreen, applyCalendarFilters, resetCalendarFilters,
       openNewReservation, openReservationDetails, handleReservationDragStart, handleReservationDragEnd, handleCalendarCellDragOver, handleCalendarCellDrop,
       runDashboardAvailabilityCheck, openAvailableRoomsFromDashboard, applyRoomFilters, resetRoomFilters,
       addNewReservation, saveReservationEdits, deleteReservation, checkInReservation, checkOutReservation,
